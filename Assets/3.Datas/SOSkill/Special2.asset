@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db1269af176e7bf498f7d3a032b656a5, type: 3}
+  m_Name: Special2
+  m_EditorClassIdentifier: 
+  skillId: ult_upgrade
+  displayName: "\uB9C8\uACF5\uC5F4\uD30C\uCC38"
+  skillType: Special Upgrade
+  description: "\uB0B4\uB824\uCC0D\uC740 \uC774\uD6C4 0.5\uCD08 \uB4A4 2\uCC28 \uD3ED\uBC1C\uC774
+    \uC77C\uC5B4\uB098\uBA70 100*3%\uC758 \uB9C8\uBC95\uB370\uBBF8\uC9C0\uB97C \uC785\uD78C\uB2E4."
+  icon: {fileID: 21300000, guid: 07caf3d1930bab14aa8f6dcdf2db871a, type: 3}
+  material1: {fileID: 11400000, guid: 59efca71d1a37a542bae3ad587ad8090, type: 2}
+  material1Amount: 2
+  material2: {fileID: 11400000, guid: d86ba1727d42264449d30a4f15c0cbcf, type: 2}
+  material2Amount: 5
+  requiredGold: 50

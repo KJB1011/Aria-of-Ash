@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc6ef5f4a2b0c5d458ef19443bf569dd, type: 3}
+  m_Name: Man_Basic
+  m_EditorClassIdentifier: 
+  talks:
+  - index: 0
+    cameraLocalPosition: {x: -2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: 135, z: 0}
+    speakerName: "\uCCAD\uB144"
+    dialogueText: "\uC548\uB155"
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    choices: []
+  - index: 1
+    cameraLocalPosition: {x: -2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: 135, z: 0}
+    speakerName: "\uCCAD\uB144"
+    dialogueText: "\uBB34\uC2A8\uC77C \uC788\uC5B4?"
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 0
+    choices:
+    - choiceText: "\uC751"
+      targetIndex: 2
+    - choiceText: "\uC544\uB2C8"
+      targetIndex: -1
+  - index: 2
+    cameraLocalPosition: {x: -2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: 135, z: 0}
+    speakerName: "\uCCAD\uB144"
+    dialogueText: "\uADF8\uB798 \uD798\uB0B4"
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 0
+    choices: []

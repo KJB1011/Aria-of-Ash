@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db1269af176e7bf498f7d3a032b656a5, type: 3}
+  m_Name: BasicAttack
+  m_EditorClassIdentifier: 
+  skillId: 1
+  displayName: "\uAE30\uBCF8 \uACF5\uACA9"
+  skillType: Basic Attack
+  description: "\uCD1D 3\uD0C0\uB85C \uC774\uB8E8\uC5B4\uC838 \uC788\uC73C\uBA70
+    80%+70%+120%\uC758 \uB370\uBBF8\uC9C0\uB85C \uACF5\uACA9\uD55C\uB2E4"
+  icon: {fileID: 21300000, guid: 5ef17d50e2095c84e8944671a9b4c088, type: 3}
+  material1: {fileID: 0}
+  material1Amount: 0
+  material2: {fileID: 0}
+  material2Amount: 0
+  requiredGold: 0

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a02e8b91cf085a4a90361b615af8f3e, type: 3}
+  m_Name: Table_WoodGolem
+  m_EditorClassIdentifier: 
+  entries:
+  - item: {fileID: 11400000, guid: d86ba1727d42264449d30a4f15c0cbcf, type: 2}
+    dropChance: 1
+    minAmount: 2
+    maxAmount: 3
+  - item: {fileID: 11400000, guid: 60d3e301a9cee5b4e92e95190c09d7b4, type: 2}
+    dropChance: 1
+    minAmount: 1
+    maxAmount: 2

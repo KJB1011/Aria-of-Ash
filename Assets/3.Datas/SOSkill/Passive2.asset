@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db1269af176e7bf498f7d3a032b656a5, type: 3}
+  m_Name: Passive2
+  m_EditorClassIdentifier: 
+  skillId: passive_upgrade
+  displayName: "\uAC00\uB2E4\uB4EC\uAE30"
+  skillType: Passive Upgrade
+  description: "\uC77C\uBC18 \uACF5\uACA9 \uC801\uC911\uC2DC \uC2A4\uD0AC\uC758 \uCFE8\uD0C0\uC784\uC774
+    0.2\uCD08\uC529 \uC904\uC5B4\uB4E0\uB2E4."
+  icon: {fileID: 21300000, guid: 5b14d4ad801dd1d4687224875fda5b23, type: 3}
+  material1: {fileID: 11400000, guid: 60d3e301a9cee5b4e92e95190c09d7b4, type: 2}
+  material1Amount: 1
+  material2: {fileID: 11400000, guid: d43d70c72a6b4b641b9b88ffc6753fae, type: 2}
+  material2Amount: 1
+  requiredGold: 10
