@@ -26,10 +26,18 @@
 // [히트 VFX]
 // hitVfxName에 이름을 넣어두면, 실제로 데미지가 들어가는 순간 VFXManager.Instance.Play()로
 // 그 이름의 이펙트를 재생합니다(Assets/Resources/VFX/ 아래에 그 이름의 프리팹이 있어야 합니다).
-// 재생 위치는 맞은 대상 콜라이더에서 이 히트박스와 가장 가까운 지점(Collider.ClosestPoint)이라
-// 실제로 베인 지점과 비슷하게 나오고, 회전은 이 히트박스 오브젝트의 회전을 그대로 씁니다.
-// 비워두면 VFX 없이 데미지만 들어갑니다. Attack1/Attack2/Attack3마다 다른 이펙트를 쓰고 싶다면
-// 각 오브젝트에서 이 값만 다르게 설정하면 됩니다.
+// 재생 위치는 맞은 대상 콜라이더의 바운딩 박스 중심(GetHitPosition() 참고)이라 항상 몬스터의 몸통
+// 근처에서 안정적으로 재생되고, 회전은 이 히트박스 오브젝트의 회전을 그대로 씁니다. 위치 계산은
+// TakeDamage()를 호출하기 "전에" 미리 끝내둡니다 - 이 타격이 상대를 죽이는 마지막 타격이면
+// TakeDamage() 안에서 곧바로 Die()가 실행되어 상대의 Collider를 꺼버리는데(MonsterFSM.DisableColliders),
+// 그 뒤에 위치를 계산하면 어긋나기 때문입니다. 비워두면 VFX 없이 데미지만 들어갑니다.
+// Attack1/Attack2/Attack3마다 다른 이펙트를 쓰고 싶다면 각 오브젝트에서 이 값만 다르게 설정하면
+// 됩니다.
+// (참고 - 시행착오: 처음엔 Collider.ClosestPoint(이 히트박스 위치)를 썼는데 오목한 Mesh Collider에는
+// 지원되지 않아 입력값을 그대로 돌려주는 문제가, 그 다음 ClosestPointOnBounds로 바꾸니 근접 공격처럼
+// 히트박스가 몬스터의 XZ 범위 안까지 파고들면 그 축은 클램프 안 되고 Y만 클램프되어 "플레이어
+// 발밑"에서 나오는 문제가 있었습니다 - 그래서 지금은 아예 이 히트박스의 위치를 계산에 쓰지 않고
+// bounds.center만 사용합니다.)
 //
 // [데미지 숫자 HUD]
 // 데미지가 들어가는 순간 DamageNumberManager.Instance.Show()로 맞은 지점 위에 데미지 숫자를
@@ -157,14 +165,20 @@ public class AttackHitbox : MonoBehaviour
             effectiveDamagePercent *= 1.3f;
         }
 
+        // 맞은 지점은 데미지를 넣기 "전에" 미리 계산해둡니다 - 이번 타격이 상대를 죽이는 마지막 타격이면
+        // TakeDamage() 안에서 곧바로 Die()가 실행되어 상대의 모든 Collider를 꺼버리는데(MonsterFSM.DisableColliders),
+        // 그 뒤에 계산하면 콜라이더가 이미 꺼진 상태라 위치 계산이 어긋나서 이펙트/데미지 숫자가 몬스터가 아니라
+        // 공격자(플레이어) 발밑 근처에서 나오는 것처럼 보이는 문제가 있었습니다.
+        Vector3 hitPosition = GetHitPosition(other);
+
         DamageResult result = playerStats != null ? playerStats.CalculateDamage(effectiveDamagePercent, targetDefense) : default;
         damageable.TakeDamage(result.damage);
 
         ChargeEnergyOnce();
         ReduceSkillCooldownIfPassiveUpgraded();
 
-        PlayHitVfx(other);
-        ShowDamageNumber(other, result.damage, result.isCrit);
+        PlayHitVfx(hitPosition);
+        ShowDamageNumber(hitPosition, result.damage, result.isCrit);
     }
 
     /// <summary>패시브강화(SkillInfo)가 해제되어 있고 이 히트박스가 기본 공격이면, 적중할 때마다 우클릭
@@ -190,20 +204,31 @@ public class AttackHitbox : MonoBehaviour
         energyChargedThisOpen = true;
     }
 
-    private void PlayHitVfx(Collider hitCollider)
+    private void PlayHitVfx(Vector3 hitPosition)
     {
         if (string.IsNullOrEmpty(hitVfxName)) return;
 
-        // 콜라이더 표면에서 이 히트박스와 가장 가까운 지점을 찾아 재생 위치로 씁니다. 대상마다
-        // 위치가 조금씩 달라져서 실제로 그 자리를 벤 것처럼 보입니다. 회전은 히트박스 자신의
-        // 회전(각 Attack 모션마다 스윙 방향에 맞춰 설정해둔 값)을 그대로 사용합니다.
-        Vector3 vfxPosition = hitCollider.ClosestPoint(transform.position);
-        VFXManager.Instance.Play(hitVfxName, vfxPosition, transform.rotation);
+        // 회전은 히트박스 자신의 회전(각 Attack 모션마다 스윙 방향에 맞춰 설정해둔 값)을 그대로 사용합니다.
+        VFXManager.Instance.Play(hitVfxName, hitPosition, transform.rotation);
     }
 
-    private void ShowDamageNumber(Collider hitCollider, float damage, bool isCrit)
+    private void ShowDamageNumber(Vector3 hitPosition, float damage, bool isCrit)
     {
-        Vector3 position = hitCollider.ClosestPoint(transform.position) + Vector3.up * damageNumberHeightOffset;
+        Vector3 position = hitPosition + Vector3.up * damageNumberHeightOffset;
         DamageNumberManager.Instance.Show(damage, position, isCrit, DamageNumberTeam.Enemy);
+    }
+
+    /// <summary>맞은 대상(hitCollider) 위의 재생 위치를 계산합니다.
+    /// [시행착오] 처음엔 Collider.ClosestPoint(이 히트박스의 위치)를 썼는데, 오목한(Non-Convex) Mesh
+    /// Collider에는 지원되지 않아 입력값(플레이어 쪽 위치)을 그대로 돌려줘버리는 문제가 있었습니다.
+    /// 그래서 ClosestPointOnBounds로 바꿨는데, 이번엔 근접 공격처럼 히트박스가 몬스터의 가로/세로(XZ)
+    /// 범위 안까지 파고드는 경우 그 축은 클램프되지 않고 입력값(플레이어 쪽 XZ) 그대로 남아버리고
+    /// 세로(Y)만 몬스터의 바운딩 박스 높이 범위로 클램프되어서, 결과적으로 "플레이어 발밑"(수평은
+    /// 플레이어, 수직만 몬스터의 바닥 높이)에서 이펙트가 나오는 문제가 있었습니다. 그래서 아예 이
+    /// 히트박스의 위치는 계산에 쓰지 않고, 맞은 대상 콜라이더의 바운딩 박스 중심(bounds.center)을
+    /// 그대로 씁니다 - 항상 몬스터의 몸통 한가운데 근처에서 안정적으로 나옵니다.</summary>
+    private Vector3 GetHitPosition(Collider hitCollider)
+    {
+        return hitCollider.bounds.center;
     }
 }

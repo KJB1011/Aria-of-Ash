@@ -16,6 +16,16 @@
 //   Talks가 없으면 대화 종료). 즉 "다음 줄로 넘어가기"는 배열 순서를, "선택지로 점프하기"는
 //   index 값을 쓰는 방식입니다.
 //
+// [선택지 없이 여기서 바로 대화 끝내기 - endsConversation]
+//   위 규칙 때문에, 배열 "맨 끝"이 아닌 중간의 Talks는 선택지 없이는 대화를 끝낼 방법이 없습니다 -
+//   Advance()가 무조건 배열상 다음 Talks로 진행해버리기 때문입니다. 그런데 NPCTalker처럼 퀘스트
+//   상태별(안 받음/진행 중/완료 보고 대기/완료) 대화 묶음을 전부 이 하나의 talks[] 배열 안에
+//   이어붙여두고 index로 각 묶음의 시작 위치만 다르게 잡는 구조에서는, 각 묶음이 배열 끝이 아니라
+//   중간에서 끝나야 하는 경우가 흔합니다(다음 묶음의 대사로 잘못 이어지면 안 되니까요). 이럴 때
+//   선택지를 억지로 추가하지 않고도 이 Talks에서 대화를 바로 끝내고 싶다면 endsConversation을
+//   켜두세요 - Advance()가 다음 Talks로 넘어가는 대신 곧바로 대화를 종료합니다. 선택지가 있는
+//   Talks(HasChoices)에서는 이 값이 무시됩니다(선택지의 targetIndex = -1로 끝내세요).
+//
 // [Choice.targetIndex]
 //   선택지를 고르면 그 값과 같은 index를 가진 Talks로 바로 이동합니다. -1이면 대화를 그대로
 //   종료합니다. 자기 자신보다 앞선(또는 같은) index를 가리키면 원신 잡담 NPC처럼 같은 선택지
@@ -104,6 +114,12 @@ public class TalkScript : ScriptableObject
                   "달리 씬 오브젝트를 애셋에서 직접 참조하지 않아도 되는 방식입니다). NPC 대화가 " +
                   "아니라 다른 방식(예: 컷신 전용 스크립트)으로 재생되는 TalkScript라면 꺼두세요.")]
         public bool playTalkAnimationOnStart = false;
+
+        [Tooltip("켜두면 이 줄이 끝났을 때(선택지가 없는 경우에 한해) 배열상 다음 Talks로 넘어가지 " +
+                  "않고 곧바로 대화를 종료합니다. 여러 퀘스트 상태별 대화 묶음을 하나의 talks[] 배열에 " +
+                  "이어붙여둔 경우, 각 묶음의 마지막 줄에 이 옵션을 켜서 다음 묶음의 대사로 잘못 이어지는 " +
+                  "것을 막으세요. 선택지가 있는 Talks에서는 무시됩니다.")]
+        public bool endsConversation = false;
 
         [Header("선택지 (최대 3개 권장, 비어있으면 다음 Talks로 자동 진행)")]
         public Choice[] choices = new Choice[0];

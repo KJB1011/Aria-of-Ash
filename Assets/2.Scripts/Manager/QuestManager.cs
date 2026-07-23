@@ -32,6 +32,14 @@
 //   실제 완료/보상 지급은 나중에 TurnInQuest(data)가 호출될 때(보통 NPC 대화 선택지 -
 //   TalkScript.Choice.questToTurnIn → TalkManager.SelectChoice()) 비로소 일어납니다.
 //
+// [보상 획득 로그 - UIIngameLoot]
+//   GrantRewards()가 보상을 지급할 때마다, 전리품을 줍거나(LootPickup) 몬스터가 드롭한 경험치/골드
+//   오브젝트를 흡수했을 때(RewardOrb)와 완전히 같은 방식으로 화면 왼쪽 로그(UIIngameLoot)에도 하나씩
+//   표시합니다 - 경험치는 Exp Reward Icon, 골드는 Gold Reward Icon 필드에 아이콘을 연결해야 표시됩니다
+//   (비워두면 보상은 정상 지급되지만 로그에는 안 뜹니다 - RewardOrb 프리팹에 이미 설정해둔 아이콘과
+//   같은 스프라이트를 연결하면 됩니다). 아이템 보상(rewardItems)은 LootItemData.icon을 그대로 쓰므로
+//   따로 설정할 게 없습니다.
+//
 // [씬 준비]
 //   빈 오브젝트에 이 스크립트를 붙이세요. 씬에 정확히 하나만 있어야 합니다.
 // ============================================================================
@@ -94,6 +102,19 @@ public class QuestManager : MonoBehaviour
     /// 즉시, true면 TurnInQuest()가 호출된 시점에 발생합니다.</summary>
     public event Action<QuestProgress> OnQuestCompleted;
 
+    [Header("보상 획득 로그 (화면 왼쪽 UIIngameLoot)")]
+    [Tooltip("퀘스트 완료로 경험치를 받았을 때 화면 왼쪽 전리품 로그(UIIngameLoot)에 표시할 아이콘입니다 - " +
+              "몬스터를 처치했을 때 나오는 경험치 오브젝트(RewardOrb)와 같은 아이콘을 연결하면 됩니다. " +
+              "비워두면(null) 경험치는 그대로 지급되지만 로그에는 표시되지 않습니다.")]
+    public Sprite expRewardIcon;
+    [Tooltip("경험치 로그에 표시할 이름입니다. 예: \"경험치\" → \"경험치 x100\"으로 표시됩니다.")]
+    public string expRewardDisplayName = "경험치";
+    [Tooltip("퀘스트 완료로 골드를 받았을 때 화면 왼쪽 로그에 표시할 아이콘입니다. 비워두면(null) 골드는 " +
+              "그대로 지급되지만 로그에는 표시되지 않습니다.")]
+    public Sprite goldRewardIcon;
+    [Tooltip("골드 로그에 표시할 이름입니다. 예: \"골드\" → \"골드 x50\"으로 표시됩니다.")]
+    public string goldRewardDisplayName = "골드";
+
     private readonly List<QuestProgress> activeQuests = new List<QuestProgress>();
     private readonly List<QuestProgress> completedQuests = new List<QuestProgress>();
 
@@ -125,8 +146,9 @@ public class QuestManager : MonoBehaviour
     }
 
     /// <summary>data 퀘스트를 새로 시작합니다. 이미 진행 중이거나 이미 완료된 퀘스트면 중복으로
-    /// 추가하지 않습니다. data가 null이면 아무 것도 하지 않습니다(대화 선택지에 퀘스트를 연결하지
-    /// 않은 경우를 안전하게 무시하기 위해서입니다).</summary>
+    /// 추가하지 않고, prerequisiteQuests를 다 채우지 못했으면 역시 추가하지 않습니다(각각 경고 로그만
+    /// 남기고 조용히 무시합니다). data가 null이면 아무 것도 하지 않습니다(대화 선택지에 퀘스트를
+    /// 연결하지 않은 경우를 안전하게 무시하기 위해서입니다).</summary>
     public void AddQuest(QuestData data)
     {
         if (data == null) return;
@@ -134,6 +156,13 @@ public class QuestManager : MonoBehaviour
         if (FindActive(data) != null || FindCompleted(data) != null)
         {
             Debug.LogWarning($"[QuestManager] '{data.questName}'은 이미 진행 중이거나 완료된 퀘스트라 다시 추가하지 않습니다.", data);
+            return;
+        }
+
+        if (!ArePrerequisitesMet(data))
+        {
+            Debug.LogWarning($"[QuestManager] '{data.questName}'은 선행조건(prerequisiteQuests)을 아직 " +
+                              "다 채우지 못해 받을 수 없습니다.", data);
             return;
         }
 
@@ -285,16 +314,30 @@ public class QuestManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>실제로 보상을 지급하고, 전리품을 주울 때/몬스터가 보상을 드롭할 때와 똑같이 화면 왼쪽
+    /// 로그(UIIngameLoot)에도 하나씩 표시합니다(LootPickup.Interact()/RewardOrb.Absorb()와 같은
+    /// 패턴). UIIngameLoot가 씬에 없는 테스트 씬 등에서도 안전하도록 ?.로 호출합니다 - 로그가 안
+    /// 떠도 보상 지급 자체는 정상적으로 이뤄집니다.</summary>
     private void GrantRewards(QuestData data)
     {
         if (data.rewardExp > 0 && PlayerStats.Instance != null)
         {
             PlayerStats.Instance.AddExperience(data.rewardExp);
+
+            if (expRewardIcon != null)
+            {
+                UIIngameLoot.Instance?.AddLoot(expRewardIcon, $"{expRewardDisplayName} x{data.rewardExp}");
+            }
         }
 
         if (data.rewardGold > 0 && PlayerCurrency.Instance != null)
         {
             PlayerCurrency.Instance.AddGold(data.rewardGold);
+
+            if (goldRewardIcon != null)
+            {
+                UIIngameLoot.Instance?.AddLoot(goldRewardIcon, $"{goldRewardDisplayName} x{data.rewardGold}");
+            }
         }
 
         if (data.rewardItems != null && PlayerInventory.Instance != null)
@@ -303,6 +346,7 @@ public class QuestManager : MonoBehaviour
             {
                 if (rewardItem.item == null || rewardItem.amount <= 0) continue;
                 PlayerInventory.Instance.AddItem(rewardItem.item, rewardItem.amount);
+                UIIngameLoot.Instance?.AddLoot(rewardItem.item.icon, $"{rewardItem.item.displayName} x{rewardItem.amount}");
             }
         }
     }
@@ -323,5 +367,55 @@ public class QuestManager : MonoBehaviour
             if (p.data == data) return p;
         }
         return null;
+    }
+
+    /// <summary>data.prerequisiteQuests에 넣어둔 퀘스트들이 전부 완료됐는지 확인합니다. 배열이
+    /// 비어있거나 null이면(선행조건 없음) 항상 true입니다. 배열 안의 null 항목은 무시합니다(인스펙터에서
+    /// 빈 슬롯을 남겨둔 경우를 안전하게 넘어가기 위해서입니다).</summary>
+    private bool ArePrerequisitesMet(QuestData data)
+    {
+        if (data.prerequisiteQuests == null) return true;
+
+        foreach (QuestData prereq in data.prerequisiteQuests)
+        {
+            if (prereq == null) continue;
+            if (FindCompleted(prereq) == null) return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>data가 지금 진행 중인 퀘스트인지 여부입니다(완료 보고 대기 상태 포함). data가 null이면
+    /// false입니다.</summary>
+    public bool IsQuestActive(QuestData data)
+    {
+        return data != null && FindActive(data) != null;
+    }
+
+    /// <summary>data가 이미 완료된 퀘스트인지 여부입니다. data가 null이면 false입니다.</summary>
+    public bool IsQuestCompleted(QuestData data)
+    {
+        return data != null && FindCompleted(data) != null;
+    }
+
+    /// <summary>data가 지금 진행 중이면서 목표를 전부 채워 "완료 보고 대기(ReadyToTurnIn)" 상태인지
+    /// 여부입니다 - requiresTurnIn이 false인 퀘스트는 목표를 채우는 즉시 바로 완료되어 이 상태를
+    /// 거치지 않으므로 항상 false입니다. data가 null이면 false입니다.</summary>
+    public bool IsQuestReadyToTurnIn(QuestData data)
+    {
+        if (data == null) return false;
+        QuestProgress progress = FindActive(data);
+        return progress != null && progress.isReadyToTurnIn;
+    }
+
+    /// <summary>data를 지금 AddQuest()로 받을 수 있는 상태인지(중복이 아니고 선행조건도 다 채웠는지)
+    /// 미리 확인하고 싶을 때 쓰세요 - 예를 들어 NPC 대화에서 아직 선행조건을 못 채운 퀘스트는 아예
+    /// 선택지 자체를 보여주지 않고 싶을 때 이 함수로 미리 물어보면 됩니다. data가 null이면
+    /// false입니다.</summary>
+    public bool CanStartQuest(QuestData data)
+    {
+        if (data == null) return false;
+        if (FindActive(data) != null || FindCompleted(data) != null) return false;
+        return ArePrerequisitesMet(data);
     }
 }

@@ -123,10 +123,14 @@ public class TalkManager : MonoBehaviour
         }
     }
 
-    /// <summary>script를 anchor 위치 기준으로 재생을 시작합니다. talks[0]부터 시작하며, 이미 다른
-    /// 대화가 진행 중이면 그것부터 즉시 끝낸(EndTalk) 뒤 새로 시작합니다. anchor는 카메라 상대
-    /// 좌표를 계산할 기준점입니다(보통 말을 거는 NPC의 Transform).</summary>
-    public void StartTalk(TalkScript script, Transform anchor)
+    /// <summary>script를 anchor 위치 기준으로 재생을 시작합니다. 이미 다른 대화가 진행 중이면
+    /// 그것부터 즉시 끝낸(EndTalk) 뒤 새로 시작합니다. anchor는 카메라 상대 좌표를 계산할
+    /// 기준점입니다(보통 말을 거는 NPC의 Transform). startTalkIndex를 생략하거나 음수를 넘기면
+    /// 기존과 동일하게 배열의 맨 처음(talks[0])부터 시작합니다. 0 이상의 값을 넘기면 그 값과 같은
+    /// Talks.index를 가진 Talks부터 시작합니다(퀘스트 진행 상태에 따라 다른 대사로 시작하고 싶을 때
+    /// 사용 - NPCTalker.ResolveStartTalkIndex() 참고). 그런 index가 없으면 경고를 남기고 talks[0]부터
+    /// 시작합니다.</summary>
+    public void StartTalk(TalkScript script, Transform anchor, int startTalkIndex = -1)
     {
         if (script == null || script.talks == null || script.talks.Length == 0)
         {
@@ -165,10 +169,20 @@ public class TalkManager : MonoBehaviour
         // 카메라 상태를 이 어긋난 위치로 캐싱해버려서 talks[0]에 설정한 위치로 제대로 이동하지
         // 않는 것처럼 보이는 문제가 있었습니다(대화를 한 번이라도 성공적으로 마치고 나면, 그 다음
         // 부터는 dialogueCamera가 이미 한 번 Live였던 적이 있어서 더 이상 이 문제가 나타나지
-        // 않습니다). GoToPosition(0)을 먼저 호출해 transform을 확정한 뒤에 Priority를 올리면
+        // 않습니다). GoToPosition(...)을 먼저 호출해 transform을 확정한 뒤에 Priority를 올리면
         // Cinemachine이 전환을 감지하는 시점에 이미 올바른 위치가 반영되어 있어 매번(첫 대화
         // 포함) 정확한 위치로 전환됩니다.
-        GoToPosition(0);
+        int startPosition = 0;
+        if (startTalkIndex >= 0)
+        {
+            if (!indexToPosition.TryGetValue(startTalkIndex, out startPosition))
+            {
+                Debug.LogWarning($"[TalkManager] index {startTalkIndex}를 가진 Talks를 찾을 수 없어 " +
+                                  "0번(배열 맨 처음)부터 시작합니다.", script);
+                startPosition = 0;
+            }
+        }
+        GoToPosition(startPosition);
 
         if (dialogueCamera != null)
         {
@@ -176,13 +190,23 @@ public class TalkManager : MonoBehaviour
         }
     }
 
-    /// <summary>선택지가 없는 Talks에서 "다음" 입력(클릭 등)이 들어왔을 때 호출하세요. 배열상 다음
-    /// Talks로 진행하고, 더 이상 다음이 없으면 대화를 종료합니다. 선택지가 있는 Talks에서는
-    /// 이 함수가 아무 것도 하지 않습니다 - 대신 SelectChoice()를 호출하세요.</summary>
+    /// <summary>선택지가 없는 Talks에서 "다음" 입력(클릭 등)이 들어왔을 때 호출하세요. endsConversation이
+    /// 켜져 있거나 더 이상 다음 Talks가 없으면 대화를 바로 종료하고, 그렇지 않으면 배열상 다음
+    /// Talks로 진행합니다. 선택지가 있는 Talks에서는 이 함수가 아무 것도 하지 않습니다 - 대신
+    /// SelectChoice()를 호출하세요.</summary>
     public void Advance()
     {
         if (!IsTalking || CurrentTalk == null) return;
         if (CurrentTalk.HasChoices) return; // 선택지가 있으면 SelectChoice()로만 진행합니다.
+
+        // 여러 퀘스트 상태별 대화 묶음을 하나의 talks[] 배열에 이어붙여둔 경우, 이 묶음이 배열 끝이
+        // 아닌 중간에서 끝나야 할 수 있습니다(TalkScript.cs의 endsConversation 설명 참고) - 이 값이
+        // 켜져 있으면 선택지 없이도 여기서 바로 대화를 종료합니다.
+        if (CurrentTalk.endsConversation)
+        {
+            EndTalk();
+            return;
+        }
 
         int nextPosition = currentPosition + 1;
         if (nextPosition >= currentScript.talks.Length)

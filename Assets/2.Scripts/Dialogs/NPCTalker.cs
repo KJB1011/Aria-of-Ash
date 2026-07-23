@@ -73,6 +73,22 @@ public class NPCTalker : MonoBehaviour, IInteractable
     [Tooltip("상호작용하면 재생할 TalkScript입니다.")]
     public TalkScript talkScript;
 
+    [Header("퀘스트 연동 (선택사항 - 비워두면 항상 talks[0]부터 시작 = 기존과 동일)")]
+    [Tooltip("이 NPC의 대사를 이 퀘스트의 진행 상태(안 받음/진행 중/완료 보고 대기/완료)에 따라 다르게 " +
+              "시작하고 싶으면 연결하세요. 비워두면 퀘스트 상태를 전혀 확인하지 않고 항상 talks[0]부터 " +
+              "시작합니다(기존 NPC와 완전히 동일하게 동작 - 아래 4개 index 필드도 전부 무시됩니다).")]
+    public QuestData relatedQuest;
+    [Tooltip("relatedQuest를 아직 받지 않은 상태일 때 시작할 Talks.index입니다(퀘스트를 처음 제안하는 " +
+              "대사 - 보통 이 Talks의 선택지에 Choice.questToGrant로 relatedQuest를 연결해두세요).")]
+    public int notStartedTalkIndex = 0;
+    [Tooltip("relatedQuest를 받아서 진행 중이지만 아직 목표를 다 채우지 못했을 때 시작할 Talks.index입니다.")]
+    public int inProgressTalkIndex = 0;
+    [Tooltip("relatedQuest의 목표를 다 채워 완료 보고를 기다리는 중일 때 시작할 Talks.index입니다(보통 " +
+              "이 Talks의 선택지에 Choice.questToTurnIn으로 relatedQuest를 연결해 여기서 보고받으세요).")]
+    public int readyToTurnInTalkIndex = 0;
+    [Tooltip("relatedQuest가 이미 완료됐을 때 시작할 Talks.index입니다.")]
+    public int completedTalkIndex = 0;
+
     [Header("카메라 기준점 (즉시 스냅 회전)")]
     [Tooltip("TalkManager.StartTalk()에 넘길 anchor입니다. 비워두면 이 오브젝트 자신의 Transform을 " +
               "씁니다 - TalkScript의 카메라 좌표가 이 지점 기준 상대 좌표로 계산됩니다. 대화 시작/종료 " +
@@ -245,6 +261,20 @@ public class NPCTalker : MonoBehaviour, IInteractable
         return Quaternion.LookRotation(direction);
     }
 
+    /// <summary>relatedQuest의 진행 상태를 확인해서 이번 대화가 시작할 Talks.index를 결정합니다.
+    /// relatedQuest가 비어있거나(퀘스트 연동을 안 쓰는 NPC) 씬에 QuestManager가 없으면 -1을 반환해서
+    /// TalkManager.StartTalk()가 기존과 동일하게 배열 맨 처음(talks[0])부터 시작하게 합니다. 완료 →
+    /// 완료 보고 대기 → 진행 중 → 안 받음 순서로 확인합니다(먼저 맞는 상태를 우선합니다).</summary>
+    private int ResolveStartTalkIndex()
+    {
+        if (relatedQuest == null || QuestManager.Instance == null) return -1;
+
+        if (QuestManager.Instance.IsQuestCompleted(relatedQuest)) return completedTalkIndex;
+        if (QuestManager.Instance.IsQuestReadyToTurnIn(relatedQuest)) return readyToTurnInTalkIndex;
+        if (QuestManager.Instance.IsQuestActive(relatedQuest)) return inProgressTalkIndex;
+        return notStartedTalkIndex;
+    }
+
     // ------------------------------------------------------------------
     // IInteractable 구현
     // ------------------------------------------------------------------
@@ -288,6 +318,7 @@ public class NPCTalker : MonoBehaviour, IInteractable
         // talks[0]의 OnTalkChanged도 이 구독으로 받아야 하므로, StartTalk()보다 먼저 구독합니다.
         SubscribeToTalk();
 
-        TalkManager.Instance.StartTalk(talkScript, anchorTransform);
+        int startTalkIndex = ResolveStartTalkIndex();
+        TalkManager.Instance.StartTalk(talkScript, anchorTransform, startTalkIndex);
     }
 }

@@ -8,24 +8,30 @@
 // [완료 보고형 퀘스트 - 목표를 다 채운 뒤]
 //   QuestData.requiresTurnIn이 켜진 퀘스트는 목표를 다 채워도(QuestProgress.isReadyToTurnIn = true)
 //   여전히 ActiveQuests에 남아있어서 HUD에 계속 표시됩니다 - 이때 목표 텍스트 아래에 "(NPC에게
-//   보고하세요)" 한 줄을 추가로 붙여서, 플레이어가 다 채웠는데도 왜 안 사라지는지 헷갈리지 않게
-//   합니다.
+//   보고하세요)" 한 줄을 추가로 붙이고, Img Checkmark(연결해뒀다면)를 켜서, 플레이어가 다 채웠는데도
+//   왜 안 사라지는지 헷갈리지 않게 합니다. 완료(activeQuests에서 완전히 빠짐) 즉시 이 항목 자체가
+//   UIIngameQuest.RefreshEntries()에서 통째로 Destroy되므로, 체크마크가 켜진 채로 계속 남아있는
+//   일은 없습니다.
 //
 // [프리팹 준비]
 //   1) TextMeshProUGUI를 Txt Quest Name 필드에 연결하세요.
 //   2) 목표 텍스트를 표시할 TextMeshProUGUI를 Txt Objectives 필드에 연결하세요(목표가 여러 개면
 //      줄바꿈으로 이어붙입니다 - 목표마다 별도 오브젝트로 나누고 싶다면 이 스크립트를 그에 맞게
 //      확장하세요).
+//   3) (선택) 완료 보고 대기 상태를 표시할 체크마크 Image를 Img Checkmark 필드에 연결하세요 - 평소엔
+//      꺼져있다가 완료 보고를 기다리는 동안만 켜집니다. 비워두면 체크마크 없이 텍스트로만 표시됩니다.
 // ============================================================================
 
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UIIngameQuestBar : MonoBehaviour
 {
     [SerializeField] TextMeshProUGUI _txtQuestName;
     [SerializeField] TextMeshProUGUI _txtObjectives;
+    [SerializeField] Image _imgCheckmark;
 
     private static readonly StringBuilder builder = new StringBuilder();
 
@@ -47,11 +53,21 @@ public class UIIngameQuestBar : MonoBehaviour
                    .Append(")");
         }
 
-        if (progress.data.requiresTurnIn && progress.isReadyToTurnIn && !progress.isCompleted)
+        // requiresTurnIn 퀘스트가 목표를 다 채워서 완료 보고를 기다리는 상태인지 여부입니다.
+        // (progress가 이 항목으로 그려지는 시점엔 항상 ActiveQuests에 있는 상태라 isCompleted는
+        // 이론상 항상 false지만, 텍스트 조건과 동일하게 방어적으로 남겨둡니다.)
+        bool readyToTurnIn = progress.data.requiresTurnIn && progress.isReadyToTurnIn && !progress.isCompleted;
+
+        if (readyToTurnIn)
         {
             builder.AppendLine().Append("(NPC에게 보고하세요)");
         }
 
         _txtObjectives.text = builder.ToString();
+
+        if (_imgCheckmark != null)
+        {
+            _imgCheckmark.gameObject.SetActive(readyToTurnIn);
+        }
     }
 }

@@ -95,17 +95,21 @@ public class UICanvas : MonoBehaviour
 
     /// <summary>지금 열려있는 UI가 하나라도 있으면 true입니다. PlayerController가 입력 처리를
     /// 건너뛸지 판단하는 데 사용합니다(위 [IsUIOpen] 설명 참고). currentPopup(메인 패널)뿐 아니라
-    /// UINotice/UIYesNo/UITrash/UIExit이 열려있는 경우, 그리고 TalkManager가 대화를 재생 중인
-    /// 경우(IsTalking)도 함께 확인합니다 - 이들은 UICanvas가 직접 관리하는 팝업이 아니라 각자
-    /// static Instance로 스스로 열고 닫지만, "게임 입력을 막아야 하는 UI/연출이 떠 있다"는
-    /// 의미에서는 currentPopup과 동등하게 취급합니다.</summary>
+    /// UINotice/UIYesNo/UITrash/UIExit이 열려있는 경우, TalkManager가 대화를 재생 중인 경우
+    /// (IsTalking), CutsceneManager가 컷씬을 재생 중인 경우(IsAnyCutscenePlaying)도 함께 확인합니다 -
+    /// 이들은 UICanvas가 직접 관리하는 팝업이 아니라 각자 static Instance/static 플래그로 스스로 열고
+    /// 닫지만, "게임 입력을 막아야 하는 UI/연출이 떠 있다"는 의미에서는 currentPopup과 동등하게
+    /// 취급합니다(컷씬 중에 인벤토리를 열거나 Escape로 끼어들 수 없도록 막는 목적입니다 -
+    /// PlayerController의 입력 차단은 CutsceneManager.PlayRoutine()이 BeginCutsceneControl()로 따로
+    /// 처리하므로, 여기서는 다른 UI가 끼어드는 것만 막으면 됩니다).</summary>
     public bool IsUIOpen =>
         currentPopup != null ||
         (UINotice.Instance != null && UINotice.Instance.IsOpen) ||
         (UIYesNo.Instance != null && UIYesNo.Instance.IsOpen) ||
         (UITrash.Instance != null && UITrash.Instance.IsOpen) ||
         (UIExit.Instance != null && UIExit.Instance.IsOpen) ||
-        (TalkManager.Instance != null && TalkManager.Instance.IsTalking);
+        (TalkManager.Instance != null && TalkManager.Instance.IsTalking) ||
+        CutsceneManager.IsAnyCutscenePlaying;
 
     private InputAction escapeAction;
 

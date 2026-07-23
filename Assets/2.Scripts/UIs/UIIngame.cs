@@ -52,6 +52,11 @@
 //   패턴입니다(UIQuest.cs 참고). L 키로도 같은 창을 열고 닫을 수 있는데, 그건 이 버튼과 별개로
 //   UIQuest 자신이 직접 처리합니다(I키를 자기가 직접 처리하는 UIInventory와 같은 방식이라 여기서는
 //   따로 InputAction을 만들 필요가 없습니다).
+//
+// [SetVisible - 컷씬 중 HUD 숨기기]
+//   CutsceneManager가 컷씬 연출 동안 HP/MP 바 등 HUD가 화면에 끼어들지 않도록 SetVisible(false)/
+//   SetVisible(true)로 이 HUD 전체를 즉시 켜고 끕니다(CutsceneManager.cs 참고). CanvasGroup 알파만
+//   조절하므로 이 스크립트의 나머지 로직(미니맵 추적 등)은 숨겨진 동안에도 계속 정상 동작합니다.
 // ============================================================================
 
 using TMPro;
@@ -59,6 +64,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
+[RequireComponent(typeof(CanvasGroup))]
 public class UIIngame : MonoBehaviour
 {
     [SerializeField] Slider _hpBar;
@@ -82,6 +88,7 @@ public class UIIngame : MonoBehaviour
     public float minimapMaxZoom = 60f;
 
     private Transform playerTransform;
+    private CanvasGroup canvasGroup;
 
     // =/- 키 입력을 처리하는 InputAction입니다. UIInventory의 I키, UICharacterInfo의 U키와 완전히 같은
     // 패턴입니다 - Awake()에서 만들고, OnEnable/OnDisable에서 Enable/Disable 하고, Update()에서
@@ -93,8 +100,23 @@ public class UIIngame : MonoBehaviour
 
     private void Awake()
     {
+        canvasGroup = GetComponent<CanvasGroup>();
+
         minimapZoomInAction = new InputAction("MinimapZoomIn", InputActionType.Button, "<Keyboard>/equals");
         minimapZoomOutAction = new InputAction("MinimapZoomOut", InputActionType.Button, "<Keyboard>/minus");
+    }
+
+    /// <summary>HUD 전체(HP/MP 바, 미니맵, 스킬/필살기 게이지 등)를 즉시 보이기/숨기기 합니다.
+    /// CutsceneManager가 화면이 까맣게 가려진 틈(GameManager.FadeOut 도중)에 호출해서, 컷씬 연출에
+    /// 평소 HUD가 끼어들지 않게 하는 용도입니다. 페이드 없이 즉시 전환됩니다 - 화면이 이미 검게 가려진
+    /// 순간에 호출하는 걸 전제로 하기 때문입니다. 숨긴 동안에도 Update()/LateUpdate()는 계속 돌아서
+    /// HP/MP 값이나 미니맵 위치는 최신 상태로 유지되고, 다시 보이자마자(SetVisible(true)) 어긋난 값
+    /// 없이 바로 정확하게 표시됩니다.</summary>
+    public void SetVisible(bool visible)
+    {
+        canvasGroup.alpha = visible ? 1f : 0f;
+        canvasGroup.interactable = visible;
+        canvasGroup.blocksRaycasts = visible;
     }
 
     private void OnEnable()

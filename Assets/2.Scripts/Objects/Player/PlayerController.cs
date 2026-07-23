@@ -104,6 +104,13 @@ public class PlayerController : MonoBehaviour
     public float moveSpeed = 5f;
     public float rotationSmoothTime = 0.1f;
 
+    [Header("걷기 (이벤트/컷씬 전용 - IsWalk)")]
+    [Tooltip("평소 이동(WASD, IsMove)과는 별개로, 컷씬 등 이벤트에서 CutsceneMove()로 자동으로 걸을 때만 " +
+              "사용하는 속도입니다. 이때는 IsMove가 아니라 IsWalk 애니메이터 bool을 켜서 걷는 모션을 " +
+              "재생합니다 - 지금은 실제 플레이어 조작(이동)용이 아니라 이벤트 전용이므로, 애니메이션의 " +
+              "걷기 사이클과 자연스럽게 맞도록 이 값을 인스펙터에서 직접 조절하세요.")]
+    public float cutsceneWalkSpeed = 2f;
+
     [Header("대시")]
     public float dashSpeed = 6f;
     public float dashDuration = 0.9f;
@@ -291,8 +298,14 @@ public class PlayerController : MonoBehaviour
     // 모든 조작(이동/회전/공격/스킬/대시/피격)을 영구히 무시합니다.
     private bool isDead;
 
+    /// <summary>컷씬(CutsceneManager 등)이 지금 조작을 넘겨받아 대신 움직이고 있는지 여부입니다.
+    /// true인 동안 Update()는 평소 이동/전투 입력 처리를 전부 건너뜁니다 - 실제 이동은 컷씬 쪽이
+    /// CutsceneMove()를 매 프레임 직접 호출해서 넣어줍니다(BeginCutsceneControl() 참고).</summary>
+    public bool IsCutsceneControlled { get; private set; }
+
     // 문자열을 매 프레임 비교하지 않도록 애니메이터 파라미터를 미리 해시로 변환해둡니다.
     private static readonly int IsMoveParam = Animator.StringToHash("IsMove");
+    private static readonly int IsWalkParam = Animator.StringToHash("IsWalk"); // 이벤트/컷씬 전용 걷기 모션 (CutsceneMove() 참고)
     private static readonly int IsDashParam = Animator.StringToHash("IsDash");
     private static readonly int ChangeDirectionParam = Animator.StringToHash("ChangeDirection");
     private static readonly int SkillParam = Animator.StringToHash("Skill");
@@ -414,7 +427,12 @@ public class PlayerController : MonoBehaviour
         // 계속 반복 재생될 수 있습니다(예: 달리다가 대화가 시작되면 제자리에서 계속 달리는 것처럼
         // 보임). 그래서 대화 중에는 아래 else 분기에서 ForceIdleFacingTalkPartnerWhileTalking()으로
         // 매 프레임 명시적으로 Idle 상태를 강제하고 대화 상대 쪽을 바라보게 합니다.
-        if (!isDead && !IsAnyUIOpen())
+        // 주의 4: 컷씬 중(IsCutsceneControlled)에도 이 블록을 건너뜁니다 - CutsceneManager가
+        // BeginCutsceneControl()로 조작을 넘겨받아 매 프레임 CutsceneMove()를 직접 호출해서 이동을
+        // 넣어주므로, 평소 입력 처리(HandleSkills 등)와 동시에 돌아가면 충돌합니다. 대화 중과 달리
+        // 컷씬 중엔 별도로 "매 프레임 Idle 강제"를 해줄 필요가 없습니다 - CutsceneMove(Vector3.zero)를
+        // 호출하면 그 자체로 Idle 애니메이션이 나오기 때문입니다.
+        if (!isDead && !IsAnyUIOpen() && !IsCutsceneControlled)
         {
             Vector3 moveDirection = GetCameraRelativeMoveDirection();
 
@@ -484,6 +502,7 @@ public class PlayerController : MonoBehaviour
         if (animator != null)
         {
             animator.SetBool(IsMoveParam, false);
+            animator.SetBool(IsWalkParam, false);
             animator.SetBool(IsDashParam, false);
             animator.ResetTrigger(SkillParam);
             animator.ResetTrigger(UltSkillParam);
@@ -514,6 +533,106 @@ public class PlayerController : MonoBehaviour
             direction.y = 0f;
             RotateTowards(direction);
         }
+    }
+
+    /// <summary>컷씬(CutsceneManager 등 외부 연출 스크립트)이 조작을 넘겨받기 시작할 때 호출하세요.
+    /// ForceIdleFacingTalkPartnerWhileTalking()과 같은 이유로, 진행 중이던 조작/전투 상태(콤보/스킬/
+    /// 대시/무적/필살기 카메라·차지VFX 등)를 안전하게 정리한 뒤(인터럽트 세이프티넷) IsCutsceneControlled를
+    /// 켭니다 - 그 순간부터 Update()가 평소 이동/전투 처리를 건너뛰므로, 실제 이동은 CutsceneMove()를
+    /// 매 프레임 직접 호출해서 넣어줘야 합니다. 이미 죽었거나 이미 컷씬 조작 중이면 아무 것도 하지
+    /// 않습니다.</summary>
+    public void BeginCutsceneControl()
+    {
+        if (isDead || IsCutsceneControlled) return;
+
+        if (animator != null)
+        {
+            animator.SetBool(IsMoveParam, false);
+            animator.SetBool(IsWalkParam, false);
+            animator.SetBool(IsDashParam, false);
+            animator.ResetTrigger(SkillParam);
+            animator.ResetTrigger(UltSkillParam);
+            animator.ResetTrigger(Attack1Param);
+            animator.ResetTrigger(Attack2Param);
+            animator.ResetTrigger(Attack3Param);
+            animator.ResetTrigger(HitParam);
+            animator.speed = 1f; // 기본공격강화 등으로 배속이 올라가 있었을 수 있으니 원래 속도로 되돌립니다.
+        }
+
+        if (attackArea != null) attackArea.CloseAllHitboxes();
+        EndUltInvincibilityGraceIfActive(); // 무적 여유 시간이 진행 중이었다면 취소합니다.
+        ExitInvincible(); // 대시/필살기 무적 중이 아니었어도 안전하게 호출할 수 있습니다.
+        EndUltCameraIfActive(); // 컷씬 도중 필살기 연출이 남아있을 일은 거의 없겠지만, 안전장치로 정리합니다.
+        EndUltChargeVfxIfActive();
+
+        isDashing = false;
+        isUsingSkill = false;
+        isAttacking = false;
+        isHit = false;
+        comboIndex = 0;
+        comboWindowOpen = false;
+
+        IsCutsceneControlled = true;
+    }
+
+    /// <summary>컷씬이 끝나 조작을 돌려줄 때 호출하세요. IsCutsceneControlled를 끄고 Animator를
+    /// Idle로 되돌립니다 - 그 다음 프레임부터 Update()가 평소 이동/전투 입력을 다시 처리합니다.</summary>
+    public void EndCutsceneControl()
+    {
+        IsCutsceneControlled = false;
+        if (animator != null)
+        {
+            animator.SetBool(IsMoveParam, false);
+            animator.SetBool(IsWalkParam, false);
+        }
+    }
+
+    /// <summary>컷씬이 매 프레임 호출해서 플레이어를 worldDirection 방향으로 걷게 합니다. 정규화되어
+    /// 있지 않아도 되고(방향만 취하고 실제 이동 속도는 cutsceneWalkSpeed를 사용합니다), Vector3.zero를
+    /// 넘기면 제자리에 멈춰서 Idle 애니메이션으로 표시됩니다. 평소 이동(IsMove, moveSpeed)과는 별개로
+    /// IsWalk bool과 cutsceneWalkSpeed를 사용합니다 - 지금은 실제 플레이어 조작용이 아니라 컷씬 등
+    /// 이벤트 전용이기 때문입니다. CharacterController 이동/회전(RotateTowards/ApplyGravity)은 평소
+    /// 이동과 같은 경로를 그대로 타므로 걷는 모습 자체는 자연스럽게 이어집니다.
+    /// BeginCutsceneControl() ~ EndCutsceneControl() 사이에서만 호출하세요 - 그 밖의 상태에서 호출하면
+    /// 평소 Update()의 이동 처리와 충돌할 수 있어 안전하게 무시합니다.</summary>
+    public void CutsceneMove(Vector3 worldDirection)
+    {
+        if (!IsCutsceneControlled || isDead) return;
+
+        worldDirection.y = 0f;
+        bool isMoving = worldDirection.sqrMagnitude > 0.0001f;
+
+        if (animator != null) animator.SetBool(IsWalkParam, isMoving);
+
+        Vector3 normalizedDirection = isMoving ? worldDirection.normalized : Vector3.zero;
+        if (isMoving)
+        {
+            RotateTowards(normalizedDirection);
+        }
+
+        ApplyGravity();
+
+        Vector3 finalVelocity = normalizedDirection * cutsceneWalkSpeed;
+        finalVelocity.y = verticalVelocity;
+        controller.Move(finalVelocity * Time.deltaTime);
+    }
+
+    /// <summary>플레이어를 position/rotation으로 즉시 순간이동시킵니다. CharacterController가 켜져있는
+    /// 채로 transform.position을 직접 바꾸면 다음 Move() 호출 때 그 사이 이동한 것으로 충돌 판정을
+    /// 시도해 엉뚱하게 밀려나거나 걸릴 수 있으므로, 표준적인 방식대로 컨트롤러를 잠깐 꺼서 순간이동시킨
+    /// 뒤 다시 켭니다. 순간이동 직후 이전 낙하 속도(verticalVelocity)가 남아있으면 새 위치에서 바닥을
+    /// 뚫고 떨어지거나 튕길 수 있어 0으로 초기화하고, 회전 스무딩(currentYaw/currentYawVelocity)도
+    /// 새 회전값으로 맞춰서 다음 프레임에 이전 방향에서 홱 돌아오는 것처럼 보이지 않게 합니다.
+    /// 주로 컷씬(CutsceneManager)이 화면이 까맣게 가려진 동안(FadeOut ~ FadeIn 사이) 호출합니다.</summary>
+    public void TeleportTo(Vector3 position, Quaternion rotation)
+    {
+        controller.enabled = false;
+        transform.SetPositionAndRotation(position, rotation);
+        controller.enabled = true;
+
+        verticalVelocity = 0f;
+        currentYaw = rotation.eulerAngles.y;
+        currentYawVelocity = 0f;
     }
 
     /// <summary>지금 마우스 포인터가 UI 위에 있는지(=이번 클릭을 UI가 이미 처리했는지) 확인합니다.

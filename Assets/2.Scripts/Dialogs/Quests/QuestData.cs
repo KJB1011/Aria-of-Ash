@@ -26,6 +26,13 @@
 //   이뤄집니다(QuestManager.TurnInQuest 참고) - 원신/전형적인 RPG의 "NPC에게 돌아가 보고하기" 퀘스트를
 //   만들 때 켜세요.
 //
+// [선행조건 - prerequisiteQuests]
+//   여기 넣은 퀘스트들을 전부 완료(completedQuests에 있음)해야만 이 퀘스트를 받을 수 있습니다.
+//   QuestManager.AddQuest()가 자동으로 확인해서, 선행조건을 못 채웠으면 조용히(경고만 남기고) 지급을
+//   거부합니다. NPC 대화에서 이 퀘스트를 아예 제안하지 않게 하고 싶다면(선택지 자체를 안 보여주거나
+//   다른 대사로 넘어가고 싶다면) QuestManager.CanStartQuest(data)를 미리 물어보고 분기하세요. 비워두면
+//   선행조건 없이 언제든 받을 수 있습니다(기존 퀘스트와 동일하게 동작).
+//
 // [애셋 만들기]
 //   Project 창에서 우클릭 → Create → Quest > Quest Data 로 새 퀘스트 애셋을 만드세요.
 // ============================================================================
@@ -84,6 +91,11 @@ public class QuestData : ScriptableObject
               "보고해야 그때 완료/보상 지급됩니다. 꺼두면(기본값) 목표 달성 즉시 자동으로 완료/보상 " +
               "지급됩니다.")]
     public bool requiresTurnIn = false;
+
+    [Header("선행조건 (비워두면 언제든 받을 수 있음)")]
+    [Tooltip("여기 넣은 퀘스트들을 전부 완료해야만 이 퀘스트를 받을 수 있습니다. QuestManager.AddQuest()가 " +
+              "자동으로 확인합니다. 자세한 설명은 파일 상단 주석 참고.")]
+    public QuestData[] prerequisiteQuests = new QuestData[0];
 
     [Header("보상 - 완료되는 시점(자동 완료 또는 보고 완료)에 자동 지급됩니다(QuestManager.GrantRewards 참고)")]
     public int rewardExp = 0;
