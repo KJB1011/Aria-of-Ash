@@ -6,18 +6,35 @@
 // 씁니다. QuestManager의 OnQuestAdded/OnQuestProgressChanged/OnQuestCompleted 이벤트를 구독해서
 // 창이 열려있든 아니든 항상 최신 목록을 유지하다가, 열렸을 때 바로 맞는 상태가 보이게 합니다.
 //
-// [진행 중 + 완료 목록을 함께 표시]
-//   RefreshEntries()가 QuestManager.ActiveQuests를 먼저, CompletedQuests를 그 아래에 이어서 그립니다.
-//   UIQuestBar가 완료 여부(_imgCompleted)를 함께 표시하므로 한 목록 안에서 구분됩니다.
+// [사이드 탭 - QuestWindow / ClearQuestWindow]
+// UICharacterInfo(CharInfo/SkillInfo)와 같은 방식으로, 왼쪽 사이드 버튼 두 개로 서로 전환합니다.
+// 다만 CharInfo/SkillInfo와 달리 두 탭이 패널을 따로 두지 않고 같은 배경/같은 ScrollRect(View
+// Quest) 하나를 그대로 공유합니다 - 사이드 버튼을 누르면 그 안의 내용물만 통째로 비우고(기존
+// 항목을 Destroy) 새 탭에 맞는 목록으로 다시 채웁니다.
+//   - QuestWindow(진행 중인 퀘스트): QuestManager.ActiveQuests를 Entry Prefab(UIQuestBar)으로 표시.
+//   - ClearQuestWindow(완료된 퀘스트): QuestManager.CompletedQuests를 Clear Entry Prefab
+//     (UIClearQuestBar - 진행 중 표시(보고 대기 "!" 등)가 필요 없는 별도 프리팹)으로 표시.
+// 창이 닫혀있는 동안에도 QuestManager 이벤트가 오면 그때그때 다시 그려두므로(HandleQuestChanged),
+// 다음에 열었을 때 바로 최신 상태가 보입니다 - 단, 지금 보고 있지 않은 탭까지 미리 그려두지는
+// 않고(같은 ScrollRect를 공유하므로 동시에 둘 다 그릴 수 없습니다) 지금 선택된 탭만 갱신합니다.
+// 다른 탭으로 전환하는 순간(SetActiveTab) 그 시점 기준으로 새로 그리므로 항상 최신 내용입니다.
 //
 // [씬 준비]
 //   1) 퀘스트 창 패널(전체를 여닫을 오브젝트)에 이 스크립트와 CanvasGroup을 붙이세요(CanvasGroup은
 //      RequireComponent로 자동 추가됩니다) - 여닫을 때 DOTween으로 알파를 페이드합니다.
-//   2) Vertical Layout Group 등을 붙인 Content를 가진 ScrollRect를 View Quest 필드에 연결하세요.
-//   3) UIQuestBar 프리팹을 Entry Prefab 필드에 연결하세요.
-//   4) 버튼으로도 여닫고 싶다면, 그 버튼의 OnClick에 이 컴포넌트의 ToggleQuest()를 연결하세요.
+//   2) Vertical Layout Group 등을 붙인 Content를 가진 ScrollRect 하나를 View Quest 필드에
+//      연결하세요 - QuestWindow/ClearQuestWindow 두 탭이 이 ScrollRect 하나를 그대로 같이 씁니다.
+//   3) 진행 중인 퀘스트용 UIQuestBar 프리팹을 Entry Prefab 필드에, 완료된 퀘스트용 UIClearQuestBar
+//      프리팹을 Clear Entry Prefab 필드에 각각 연결하세요.
+//   4) UICharacterInfo의 사이드 탭과 같은 방식으로, 두 개의 사이드 버튼(OnClick에 각각
+//      ClickSideQuestButton()/ClickSideClearQuestButton() 연결)과, 선택 안 된 쪽을 어둡게 표시할
+//      Image 두 개(Img Side Quest Black / Img Side Clear Quest Black)를 준비하세요.
+//   4-1) (선택) 탭 위에 "진행중인 퀘스트"/"완료된 퀘스트"라고 자동으로 바뀌는 타이틀을 쓰고
+//        싶다면, 그 TextMeshProUGUI를 Txt Window Title 필드에 연결하세요 - 탭을 전환할 때마다
+//        스크립트가 알아서 텍스트를 바꿔줍니다. 비워두면 그냥 무시합니다.
+//   5) 버튼으로도 여닫고 싶다면, 그 버튼의 OnClick에 이 컴포넌트의 ToggleQuest()를 연결하세요.
 //      L 키는 코드에서 자동으로 처리되므로 따로 설정할 게 없습니다.
-//   5) 이 오브젝트는 항상 활성화(Active) 상태로 두세요 - UICanvas가 SetActive로 껐다 켜는 게 아니라,
+//   6) 이 오브젝트는 항상 활성화(Active) 상태로 두세요 - UICanvas가 SetActive로 껐다 켜는 게 아니라,
 //      이 스크립트가 CanvasGroup 알파로 보이기/숨기기를 처리합니다. 씬 시작 시 기본적으로 닫혀있습니다
 //      (알파 0, 상호작용 불가).
 //
@@ -31,6 +48,7 @@
 
 using System.Collections.Generic;
 using DG.Tweening;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -38,16 +56,30 @@ using UnityEngine.UI;
 [RequireComponent(typeof(CanvasGroup))]
 public class UIQuest : MonoBehaviour, IUIWindow
 {
+    [Header("사이드 탭")]
+    [SerializeField] Image _imgSideQuestBlack;
+    [SerializeField] Image _imgSideClearQuestBlack;
+    [Tooltip("QuestWindow/ClearQuestWindow 탭 위에 뜨는 타이틀 텍스트입니다 - 탭을 전환할 때마다 " +
+              "\"진행중인 퀘스트\"/\"완료된 퀘스트\"로 자동으로 바뀝니다. 비워두면 무시합니다.")]
+    [SerializeField] TextMeshProUGUI _txtWindowTitle;
+
+    [Header("배경 - QuestWindow/ClearQuestWindow가 이 ScrollRect 하나를 공유합니다")]
     [SerializeField] ScrollRect _viewQuest;
+    [Tooltip("QuestWindow(진행 중인 퀘스트) 탭에서 쓰는 항목 프리팹입니다.")]
     [SerializeField] UIQuestBar _entryPrefab;
+    [Tooltip("ClearQuestWindow(완료된 퀘스트) 탭에서 쓰는 항목 프리팹입니다 - UIQuestBar와 별도로 " +
+              "만든 프리팹입니다(UIClearQuestBar.cs 참고).")]
+    [SerializeField] UIClearQuestBar _clearEntryPrefab;
 
     [Header("표시/숨김")]
     public float fadeDuration = 0.15f;
 
     private CanvasGroup canvasGroup;
-    private readonly List<UIQuestBar> activeEntries = new List<UIQuestBar>();
+    private readonly List<UIQuestBar> activeQuestEntries = new List<UIQuestBar>();
+    private readonly List<UIClearQuestBar> clearedQuestEntries = new List<UIClearQuestBar>();
     private Tween fadeTween;
     private bool isOpen;
+    private bool isShowingQuestWindow = true;
     private bool subscribedToQuest;
 
     // 퀘스트 창을 열기 직전의 커서 상태를 저장해뒀다가, 닫을 때 그대로 복원합니다 - UIInventory와
@@ -63,6 +95,8 @@ public class UIQuest : MonoBehaviour, IUIWindow
         canvasGroup.alpha = 0f;
         canvasGroup.interactable = false;
         canvasGroup.blocksRaycasts = false;
+
+        SetSideTabVisual(true); // 씬 저장 상태와 무관하게 항상 QuestWindow 탭으로 시작합니다.
 
         toggleAction = new InputAction("ToggleQuest", InputActionType.Button, "<Keyboard>/l");
     }
@@ -134,6 +168,8 @@ public class UIQuest : MonoBehaviour, IUIWindow
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
+        SetSideTabVisual(true); // 열 때마다 항상 QuestWindow 탭부터 보여줍니다.
+        isShowingQuestWindow = true;
         RefreshEntries(); // 닫혀있는 동안 진행됐을 수 있는 퀘스트 상태를 여는 순간 최신으로 맞춥니다.
 
         fadeTween?.Kill();
@@ -158,34 +194,87 @@ public class UIQuest : MonoBehaviour, IUIWindow
         canvasGroup.blocksRaycasts = false;
     }
 
+    // ------------------------------------------------------------------
+    // 사이드 탭 전환 (QuestWindow ↔ ClearQuestWindow)
+    // ------------------------------------------------------------------
+
+    public void ClickSideQuestButton()
+    {
+        if (isShowingQuestWindow) return; // 이미 QuestWindow 상태면 무시.
+        isShowingQuestWindow = true;
+        SetSideTabVisual(true);
+        RefreshEntries();
+    }
+
+    public void ClickSideClearQuestButton()
+    {
+        if (!isShowingQuestWindow) return; // 이미 ClearQuestWindow 상태면 무시.
+        isShowingQuestWindow = false;
+        SetSideTabVisual(false);
+        RefreshEntries();
+    }
+
+    /// <summary>선택 안 된 쪽을 어둡게 표시하는 sideBlack 이미지들과, 위에 뜨는 타이틀 텍스트를
+    /// 갱신합니다(UICharacterInfo의 SetActiveTab과 같은 방식) - 실제 목록 내용을 다시 그리는 건
+    /// RefreshEntries()가 따로 담당합니다.</summary>
+    private void SetSideTabVisual(bool showQuestWindow)
+    {
+        if (_imgSideQuestBlack != null) _imgSideQuestBlack.gameObject.SetActive(!showQuestWindow);
+        if (_imgSideClearQuestBlack != null) _imgSideClearQuestBlack.gameObject.SetActive(showQuestWindow);
+
+        if (_txtWindowTitle != null) _txtWindowTitle.text = showQuestWindow ? "진행중인 퀘스트" : "완료된 퀘스트";
+    }
+
+    // ------------------------------------------------------------------
+    // 목록 표시
+    // ------------------------------------------------------------------
+
     private void HandleQuestChanged(QuestProgress progress)
     {
         RefreshEntries();
     }
 
-    /// <summary>진행 중인 퀘스트를 먼저, 완료된 퀘스트를 그 아래에 이어서 그립니다.</summary>
+    /// <summary>지금 선택된 탭(isShowingQuestWindow)에 맞는 목록만 View Quest에 새로 그립니다. 두 탭이
+    /// 같은 ScrollRect를 공유하므로, 먼저 기존에 떠 있던 항목(어느 탭 것이든)을 전부 지운 뒤 다시
+    /// 채웁니다.</summary>
     private void RefreshEntries()
     {
-        foreach (UIQuestBar entry in activeEntries)
-        {
-            if (entry != null) Destroy(entry.gameObject);
-        }
-        activeEntries.Clear();
+        ClearAllEntries();
 
         if (QuestManager.Instance == null) return;
 
-        foreach (QuestProgress progress in QuestManager.Instance.ActiveQuests)
+        if (isShowingQuestWindow)
         {
-            UIQuestBar entry = Instantiate(_entryPrefab, _viewQuest.content);
-            entry.Setup(progress);
-            activeEntries.Add(entry);
+            foreach (QuestProgress progress in QuestManager.Instance.ActiveQuests)
+            {
+                UIQuestBar entry = Instantiate(_entryPrefab, _viewQuest.content);
+                entry.Setup(progress);
+                activeQuestEntries.Add(entry);
+            }
         }
+        else
+        {
+            foreach (QuestProgress progress in QuestManager.Instance.CompletedQuests)
+            {
+                UIClearQuestBar entry = Instantiate(_clearEntryPrefab, _viewQuest.content);
+                entry.Setup(progress);
+                clearedQuestEntries.Add(entry);
+            }
+        }
+    }
 
-        foreach (QuestProgress progress in QuestManager.Instance.CompletedQuests)
+    private void ClearAllEntries()
+    {
+        foreach (UIQuestBar entry in activeQuestEntries)
         {
-            UIQuestBar entry = Instantiate(_entryPrefab, _viewQuest.content);
-            entry.Setup(progress);
-            activeEntries.Add(entry);
+            if (entry != null) Destroy(entry.gameObject);
         }
+        activeQuestEntries.Clear();
+
+        foreach (UIClearQuestBar entry in clearedQuestEntries)
+        {
+            if (entry != null) Destroy(entry.gameObject);
+        }
+        clearedQuestEntries.Clear();
     }
 }

@@ -9,9 +9,16 @@
 //   QuestData.requiresTurnIn이 켜진 퀘스트는 목표를 다 채워도(QuestProgress.isReadyToTurnIn = true)
 //   여전히 ActiveQuests에 남아있어서 HUD에 계속 표시됩니다 - 이때 목표 텍스트 아래에 "(NPC에게
 //   보고하세요)" 한 줄을 추가로 붙이고, Img Checkmark(연결해뒀다면)를 켜서, 플레이어가 다 채웠는데도
-//   왜 안 사라지는지 헷갈리지 않게 합니다. 완료(activeQuests에서 완전히 빠짐) 즉시 이 항목 자체가
-//   UIIngameQuest.RefreshEntries()에서 통째로 Destroy되므로, 체크마크가 켜진 채로 계속 남아있는
-//   일은 없습니다.
+//   왜 안 사라지는지 헷갈리지 않게 합니다.
+//
+// [완료 연출 - ClearImage]
+//   퀘스트가 완전히 완료되면(activeQuests에서 빠짐) UIIngameQuest.RefreshEntries()가 이 항목을
+//   곧바로 Destroy하지 않고, 대신 PlayCompletedEffect()를 먼저 호출합니다 - 미리 배치해둔
+//   ClearImage를 왼쪽(원래 위치에서 Clear Image Start Offset만큼 떨어진 곳)에서 원래 자리(중앙)로
+//   부드럽게 슬라이드시킵니다(밖에서 들어오는 느낌). 그 뒤 UIIngameQuest가 일정 시간(기본 3초, HUD
+//   컴포넌트의 Completed Display Duration)을 더 기다렸다가 이 항목을 실제로 Destroy합니다 - 실제
+//   대기/제거 타이밍은 이 스크립트가 아니라 UIIngameQuest.cs가 관리합니다(UIIngameQuestBar는 연출
+//   재생만 담당).
 //
 // [프리팹 준비]
 //   1) TextMeshProUGUI를 Txt Quest Name 필드에 연결하세요.
@@ -20,9 +27,15 @@
 //      확장하세요).
 //   3) (선택) 완료 보고 대기 상태를 표시할 체크마크 Image를 Img Checkmark 필드에 연결하세요 - 평소엔
 //      꺼져있다가 완료 보고를 기다리는 동안만 켜집니다. 비워두면 체크마크 없이 텍스트로만 표시됩니다.
+//   4) (선택) 미리 만들어두신 ClearImage 오브젝트를 Clear Image 필드에 연결하세요 - 원하는 최종
+//      위치(보통 중앙)에 미리 배치해두시면 됩니다. 이 스크립트가 Awake()에서 그 위치를 기억해뒀다가,
+//      완료되는 순간 Clear Image Start Offset만큼 왼쪽으로 이동시킨 뒤 다시 그 자리로 슬라이드시킵니다.
+//      평소에는 자동으로 비활성화해두므로 씬에서 따로 꺼둘 필요는 없습니다. 비워두면 연출 없이
+//      Completed Display Duration만큼 대기한 뒤 바로 사라집니다.
 // ============================================================================
 
 using System.Text;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -33,11 +46,39 @@ public class UIIngameQuestBar : MonoBehaviour
     [SerializeField] TextMeshProUGUI _txtObjectives;
     [SerializeField] Image _imgCheckmark;
 
+    [Header("완료 연출 - ClearImage")]
+    [Tooltip("퀘스트 완료 시 왼쪽에서 중앙(원래 배치해둔 자리)으로 슬라이드해 들어오는 이미지입니다. " +
+              "평소엔 꺼져있다가 PlayCompletedEffect()가 호출될 때만 나타납니다. 비워두면 연출 없이 " +
+              "넘어갑니다.")]
+    [SerializeField] RectTransform _clearImage;
+    [Tooltip("ClearImage가 원래 자리까지 이동하는 데 걸리는 시간(초)입니다.")]
+    public float clearImageMoveDuration = 0.4f;
+    [Tooltip("ClearImage가 시작하는 지점의 오프셋입니다 - 원래 자리(중앙)에서 이 값만큼 떨어진 곳에서 " +
+              "시작해 부드럽게 들어옵니다. 왼쪽에서 들어오게 하려면 X를 음수로 크게(예: -400) 주세요.")]
+    public Vector2 clearImageStartOffset = new Vector2(-400f, 0f);
+
+    /// <summary>이 항목이 지금 나타내고 있는 퀘스트입니다. UIIngameQuest가 OnQuestCompleted로 넘어온
+    /// QuestProgress와 같은 항목을 찾을 때(참조 비교) 씁니다.</summary>
+    public QuestProgress Progress { get; private set; }
+
+    private Vector2 clearImageTargetAnchoredPosition;
+    private Tween clearImageTween;
+
     private static readonly StringBuilder builder = new StringBuilder();
+
+    private void Awake()
+    {
+        if (_clearImage != null)
+        {
+            clearImageTargetAnchoredPosition = _clearImage.anchoredPosition;
+            _clearImage.gameObject.SetActive(false);
+        }
+    }
 
     /// <summary>이 항목이 나타낼 퀘스트 진행 상황을 설정합니다.</summary>
     public void Setup(QuestProgress progress)
     {
+        Progress = progress;
         _txtQuestName.text = progress.data.questName;
 
         builder.Clear();
@@ -69,5 +110,21 @@ public class UIIngameQuestBar : MonoBehaviour
         {
             _imgCheckmark.gameObject.SetActive(readyToTurnIn);
         }
+    }
+
+    /// <summary>퀘스트가 완료된 순간 UIIngameQuest가 호출합니다. ClearImage를 원래 자리에서
+    /// clearImageStartOffset만큼 떨어진 곳으로 옮겨뒀다가, 다시 원래 자리(중앙)까지 부드럽게
+    /// 슬라이드시킵니다. Clear Image가 연결되어 있지 않으면 아무 것도 하지 않고 null을 돌려줍니다 -
+    /// 호출하는 쪽(UIIngameQuest)은 null이면 곧바로 대기 단계로 넘어가면 됩니다.</summary>
+    public Tween PlayCompletedEffect()
+    {
+        if (_clearImage == null) return null;
+
+        _clearImage.gameObject.SetActive(true);
+        _clearImage.anchoredPosition = clearImageTargetAnchoredPosition + clearImageStartOffset;
+
+        clearImageTween?.Kill();
+        clearImageTween = _clearImage.DOAnchorPos(clearImageTargetAnchoredPosition, clearImageMoveDuration).SetUpdate(true);
+        return clearImageTween;
     }
 }

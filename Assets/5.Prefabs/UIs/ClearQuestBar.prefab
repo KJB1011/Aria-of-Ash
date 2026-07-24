@@ -363,9 +363,9 @@ GameObject:
   - component: {fileID: 4036963964310800981}
   - component: {fileID: 565327120633186905}
   - component: {fileID: 6222198376806663689}
-  - component: {fileID: 8300392932528825208}
+  - component: {fileID: 6872025366474405297}
   m_Layer: 5
-  m_Name: QuestBar
+  m_Name: ClearQuestBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -386,7 +386,6 @@ RectTransform:
   - {fileID: 6993225081551572366}
   - {fileID: 1117703139334195275}
   - {fileID: 4327388940902994952}
-  - {fileID: 1436518046787365291}
   - {fileID: 2807169004115718880}
   - {fileID: 7637150999515660990}
   - {fileID: 7435590938441659786}
@@ -435,7 +434,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &8300392932528825208
+--- !u!114 &6872025366474405297
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -444,15 +443,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 1780331646102899891}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9099b14619d91c448b60b39cea515e23, type: 3}
+  m_Script: {fileID: 11500000, guid: d98a4e2400b4a5147865ca225e6fde0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   _txtQuestName: {fileID: 1053907321466708591}
   _txtDescription: {fileID: 8194558253138769136}
   _txtObjectives: {fileID: 2714254805374329442}
   _txtRewards: {fileID: 4260597650174564714}
-  _imgCompleted: {fileID: 6209639359618258561}
-  _imgReadyToTurnIn: {fileID: 4233284422446836877}
 --- !u!1 &1888196572625024186
 GameObject:
   m_ObjectHideFlags: 0
@@ -810,81 +807,6 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_Sprite: {fileID: 21300000, guid: ea8e53a333b2c4b4f94e1b45237ff377, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
---- !u!1 &5957929094360129721
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1436518046787365291}
-  - component: {fileID: 5818534738699480322}
-  - component: {fileID: 4233284422446836877}
-  m_Layer: 5
-  m_Name: ReportImage
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1436518046787365291
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5957929094360129721}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4036963964310800981}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 20, y: -20}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0, y: 1}
---- !u!222 &5818534738699480322
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5957929094360129721}
-  m_CullTransparentMesh: 1
---- !u!114 &4233284422446836877
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5957929094360129721}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 0.9721714, b: 0, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 10901, guid: 0000000000000000f000000000000000, type: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

@@ -1,36 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &454974757154330331
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2481729667479191808}
-  m_Layer: 7
-  m_Name: CameraPos
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2481729667479191808
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 454974757154330331}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 5219248342137728360}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3269287233430328840
 GameObject:
   m_ObjectHideFlags: 0
@@ -42,6 +11,7 @@ GameObject:
   - component: {fileID: 5219248342137728360}
   - component: {fileID: 4214025210755934867}
   - component: {fileID: 4395650794242550939}
+  - component: {fileID: 1721246323541368916}
   m_Layer: 7
   m_Name: Man
   m_TagString: Untagged
@@ -63,7 +33,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1702771263126223719}
-  - {fileID: 2481729667479191808}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!136 &4214025210755934867
@@ -102,12 +71,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   npcName: "\uCCAD\uB144"
-  talkScript: {fileID: 11400000, guid: 9410ac8b7889fcc4fa8fd1141f27ab4a, type: 2}
-  cameraAnchor: {fileID: 2481729667479191808}
+  npcId: Man
+  talkScript: {fileID: 11400000, guid: 51ec53aa08587f747a543718a52ec9a0, type: 2}
+  relatedQuest: {fileID: 11400000, guid: e180b68e24470e449ba057cbf30613b4, type: 2}
+  notStartedTalkIndex: 0
+  inProgressTalkIndex: 11
+  readyToTurnInTalkIndex: 21
+  completedTalkIndex: 31
+  questCompletionOverrides:
+  - quest: {fileID: 0}
+    talkIndex: 0
+  cameraAnchor: {fileID: 0}
   modelTransform: {fileID: 1702771263126223719}
   talkRotationSpeed: 180
   positionReturnSpeed: 5
   animator: {fileID: 2547565504002683795}
+--- !u!114 &1721246323541368916
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3269287233430328840}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9df80f801056e54d9a1399b058ce481, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nameplatePrefab: {fileID: 2801262752573981416, guid: 6919c6aeddf59c24b9c787f896c0c1e8,
+    type: 3}
+  worldOffset: {x: 0, y: 2, z: 0}
+  targetCamera: {fileID: 0}
 --- !u!1001 &1165249281840176268
 PrefabInstance:
   m_ObjectHideFlags: 0

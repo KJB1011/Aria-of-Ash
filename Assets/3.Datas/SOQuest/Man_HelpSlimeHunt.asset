@@ -10,18 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dd500b238f1d4bb419645648b573b0ae, type: 3}
-  m_Name: Man_SlimeHunt
+  m_Name: Man_HelpSlimeHunt
   m_EditorClassIdentifier: 
-  questId: 1
+  questId: HelpSlimeHunt
   questName: "\uD558\uAE09 \uC2AC\uB77C\uC784 \uCC98\uCE58"
   description: "\uD558\uAE09 \uC2AC\uB77C\uC784\uC744 5\uB9C8\uB9AC \uCC98\uCE58"
   objectives:
   - type: 0
     targetMonsterId: SmallSlime
     targetItem: {fileID: 0}
+    targetNpcId: 
+    targetQuest: {fileID: 0}
     targetCount: 5
     description: "\uB9C8\uC744\uC744 \uACF5\uACA9\uD558\uB294 \uD558\uAE09 \uC2AC\uB77C\uC784\uC744
       5\uB9C8\uB9AC \uD574\uCE58\uC6B0\uC790."
+  requiresTurnIn: 1
+  prerequisiteQuests: []
   rewardExp: 300
   rewardGold: 50
   rewardItems: []

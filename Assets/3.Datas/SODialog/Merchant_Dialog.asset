@@ -1,0 +1,104 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc6ef5f4a2b0c5d458ef19443bf569dd, type: 3}
+  m_Name: Merchant_Dialog
+  m_EditorClassIdentifier: 
+  talks:
+  - index: 0
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uC624, \uBABB\uBCF4\uB358 \uC5BC\uAD74\uC778\uB370? \uB9C8\uC744
+      \uBC16\uC5D0\uC11C \uC624\uC168\uB098?"
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 0
+    choices:
+    - choiceText: "\uC608.."
+      targetIndex: 1
+      questToGrant: {fileID: 0}
+      questToTurnIn: {fileID: 0}
+  - index: 1
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uC5EC\uAE30\uC11C \uC7A5\uC0AC\uD560\uAC70\uBA74 \uAD00\uB46C.
+      \uC774 \uACF3\uC740 \uC774\uBBF8 \uB9DD\uD55C \uACF3\uC774\uB098 \uB2E4\uB984\uC5C6\uC5B4."
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 0
+    endsConversation: 0
+    choices:
+    - choiceText: "\uBB34\uC2A8 \uC77C\uC774\uB77C\uB3C4 \uC788\uC5C8\uB098\uC694?"
+      targetIndex: 2
+      questToGrant: {fileID: 0}
+      questToTurnIn: {fileID: 0}
+  - index: 2
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uB9C8\uC871\uB4E4\uC758 \uC218\uD558\uC778 \uB9C8\uBB3C\uB4E4\uC758
+      \uC2B5\uACA9\uC744 \uBC1B\uC73C\uBA74\uC11C \uC8FC\uBCC0 \uD658\uACBD\uC774
+      \uD669\uD3D0\uD654\uB410\uC5B4."
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 0
+    endsConversation: 0
+    choices: []
+  - index: 3
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uB9C8\uC744 \uC8FC\uBCC0\uC758 \uAC15\uC774\uB098 \uBC14\uB2E4\uB294
+      \uC2AC\uB77C\uC784\uB54C\uBB38\uC5D0 \uC624\uC5FC\uB418\uACE0 \uBA39\uC744
+      \uC5F4\uB9E4\uB97C \uCC44\uC9D1\uD558\uB358 \uC232\uC740 \uC6B0\uB4DC\uACE8\uB818\uC5D0
+      \uC758\uD574 \uD1B5\uD589\uC774 \uBD88\uAC00\uB2A5\uD574\uC84C\uC9C0."
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 0
+    endsConversation: 0
+    choices: []
+  - index: 4
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uB9C8\uC744\uC5D0 \uC2F8\uC6B8 \uC218 \uC788\uB294 \uC0AC\uB78C\uB3C4
+      \uAC70\uC758 \uB0A8\uC9C0 \uC54A\uC544\uC11C \uB2E4\uB4E4 \uD3EC\uAE30\uD55C
+      \uC0C1\uD0DC\uC57C."
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 0
+    endsConversation: 0
+    choices:
+    - choiceText: "\uC81C\uAC00 \uBB38\uC81C\uB97C \uD574\uACB0\uD574\uBCFC\uAC8C\uC694"
+      targetIndex: 5
+      questToGrant: {fileID: 11400000, guid: fb5a6387d1f702d42ab3da982b99dcff, type: 2}
+      questToTurnIn: {fileID: 0}
+  - index: 5
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uB108\uAC00 \uD574\uACB0\uD574\uBCF8\uB2E4\uACE0? \uC5B4\uB290\uC815\uB3C4
+      \uC2F8\uC6B8\uC904\uC740 \uC544\uB294 \uBAA8\uC591\uC774\uB124. \uADF8\uB7FC
+      \uC6B0\uC120 \uB9C8\uC744 \uCD0C\uC7A5\uD55C\uD14C \uAC00\uBD10."
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 1
+    choices: []

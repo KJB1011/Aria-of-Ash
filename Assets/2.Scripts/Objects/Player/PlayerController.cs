@@ -303,6 +303,11 @@ public class PlayerController : MonoBehaviour
     /// CutsceneMove()를 매 프레임 직접 호출해서 넣어줍니다(BeginCutsceneControl() 참고).</summary>
     public bool IsCutsceneControlled { get; private set; }
 
+    // CutsceneMove()가 매 프레임 호출되어도 IsWalk를 값이 바뀔 때만 SetBool하기 위한 이전 프레임 상태값입니다
+    // (CutsceneMove() 참고 - 매 프레임 같은 값으로 계속 SetBool을 호출하면 걷는 모션이 이상하게 재생되는
+    // 문제가 있어서, 움직이기 시작하는/멈추는 그 순간에만 딱 한 번 켜고 끄도록 바꿨습니다).
+    private bool wasCutsceneWalking;
+
     // 문자열을 매 프레임 비교하지 않도록 애니메이터 파라미터를 미리 해시로 변환해둡니다.
     private static readonly int IsMoveParam = Animator.StringToHash("IsMove");
     private static readonly int IsWalkParam = Animator.StringToHash("IsWalk"); // 이벤트/컷씬 전용 걷기 모션 (CutsceneMove() 참고)
@@ -572,6 +577,8 @@ public class PlayerController : MonoBehaviour
         comboIndex = 0;
         comboWindowOpen = false;
 
+        wasCutsceneWalking = false; // 새 컷씬을 깨끗한 상태(정지)로 시작하도록 이전 걷기 상태를 리셋합니다.
+
         IsCutsceneControlled = true;
     }
 
@@ -580,6 +587,7 @@ public class PlayerController : MonoBehaviour
     public void EndCutsceneControl()
     {
         IsCutsceneControlled = false;
+        wasCutsceneWalking = false;
         if (animator != null)
         {
             animator.SetBool(IsMoveParam, false);
@@ -602,7 +610,14 @@ public class PlayerController : MonoBehaviour
         worldDirection.y = 0f;
         bool isMoving = worldDirection.sqrMagnitude > 0.0001f;
 
-        if (animator != null) animator.SetBool(IsWalkParam, isMoving);
+        // 매 프레임 같은 값을 계속 SetBool하지 않도록, 값이 바뀐 순간(움직이기 시작/도착해서 멈춤)에만
+        // 딱 한 번 호출합니다 - 이전에는 매 프레임 무조건 SetBool을 호출해서 걷는 모션이 이상하게
+        // 재생되는 문제가 있었습니다.
+        if (animator != null && isMoving != wasCutsceneWalking)
+        {
+            animator.SetBool(IsWalkParam, isMoving);
+        }
+        wasCutsceneWalking = isMoving;
 
         Vector3 normalizedDirection = isMoving ? worldDirection.normalized : Vector3.zero;
         if (isMoving)
@@ -615,6 +630,39 @@ public class PlayerController : MonoBehaviour
         Vector3 finalVelocity = normalizedDirection * cutsceneWalkSpeed;
         finalVelocity.y = verticalVelocity;
         controller.Move(finalVelocity * Time.deltaTime);
+    }
+
+    /// <summary>컷씬이 매 프레임 호출해서 플레이어를 worldPosition 쪽으로(제자리에서, 이동은 하지 않고)
+    /// 부드럽게 회전시킵니다 - NPC와 눈을 마주치는 연출 등에 사용하세요. CutsceneMove()가 이동 중
+    /// 회전에 쓰는 것과 같은 RotateTowards()(rotationSmoothTime 기준 SmoothDampAngle)를 그대로
+    /// 재사용합니다. 한 번 호출로는 목표 방향을 다 향하지 못할 수 있으니, 원하는 시간 동안 매 프레임
+    /// 계속 호출하세요(CutsceneManager의 FacePlayerAndNpc 스텝 참고). BeginCutsceneControl() ~
+    /// EndCutsceneControl() 사이에서만 호출하세요 - 그 밖의 상태에서 호출하면 평소 Update()의 이동
+    /// 처리와 충돌할 수 있어 안전하게 무시합니다.</summary>
+    public void CutsceneFaceTowards(Vector3 worldPosition)
+    {
+        if (!IsCutsceneControlled || isDead) return;
+
+        Vector3 direction = worldPosition - transform.position;
+        direction.y = 0f;
+        RotateTowards(direction);
+    }
+
+    /// <summary>CutsceneFaceTowards()와 같지만 여러 프레임에 걸친 보간 없이 그 자리에서 즉시(스냅)
+    /// worldPosition 쪽으로 회전시킵니다. 눈 마주침 연출을 부드럽게가 아니라 카메라 컷에 맞춰 딱
+    /// 끊어서 보여주고 싶을 때, 또는 부드러운 회전 구간이 끝난 뒤 정확히 정렬을 맞추고 싶을 때
+    /// 사용하세요.</summary>
+    public void CutsceneFaceTowardsInstant(Vector3 worldPosition)
+    {
+        if (!IsCutsceneControlled || isDead) return;
+
+        Vector3 direction = worldPosition - transform.position;
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.0001f) return;
+
+        currentYaw = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
+        currentYawVelocity = 0f;
+        transform.rotation = Quaternion.Euler(0f, currentYaw, 0f);
     }
 
     /// <summary>플레이어를 position/rotation으로 즉시 순간이동시킵니다. CharacterController가 켜져있는

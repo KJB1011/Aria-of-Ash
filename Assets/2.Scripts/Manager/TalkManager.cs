@@ -287,6 +287,13 @@ public class TalkManager : MonoBehaviour
 
         ApplyCamera(CurrentTalk);
 
+        // 이 Talks가 시작되는 순간 선택지 없이도 자동으로 퀘스트를 지급/보고합니다(TalkScript.cs의
+        // [Talks.questToGrant / questToTurnIn] 참고) - SelectChoice()의 questToGrant/questToTurnIn과
+        // 완전히 같은 안전장치(null이면 무시, 이미 진행 중/완료된 퀘스트면 QuestManager가 경고만
+        // 남기고 무시)가 그대로 적용됩니다.
+        QuestManager.Instance?.AddQuest(CurrentTalk.questToGrant);
+        QuestManager.Instance?.TurnInQuest(CurrentTalk.questToTurnIn);
+
         CurrentTalk.onTalkStart?.Invoke();
         OnTalkChanged?.Invoke(CurrentTalk);
     }

@@ -32,6 +32,15 @@
 //   목록으로 되돌아가는 "루프형" 대화도 그대로 만들 수 있습니다. 선택지는 최대 3개를 권장합니다
 //   (OnValidate가 그보다 많으면 경고를 남깁니다 - 강제로 자르지는 않습니다).
 //
+// [Talks.questToGrant / questToTurnIn - 선택지 없이 대사만으로 퀘스트 지급/보고]
+//   Choice.questToGrant/questToTurnIn은 "그 선택지를 골라야만" 적용되지만, 이 둘은 Talks 자신에
+//   달려 있어서 이 Talks가 시작되는 순간(플레이어가 아무 선택도 하지 않고 그냥 대사만 봐도)
+//   TalkManager.GoToPosition()이 자동으로 적용합니다 - "말을 걸기만 해도 퀘스트를 준다" 같은 연출을
+//   만들 때 씁니다. Choice 쪽과 완전히 같은 안전장치가 그대로 적용됩니다(QuestData가 null이면 무시,
+//   이미 진행 중/완료된 퀘스트를 questToGrant에 넣어도 QuestManager가 경고만 남기고 조용히 무시,
+//   requiresTurnIn 조건을 못 채운 채 questToTurnIn을 넣어도 마찬가지). 같은 Talks에 둘 다(그리고
+//   Choice의 questToGrant/questToTurnIn까지) 동시에 넣어도 서로 방해하지 않습니다.
+//
 // [카메라 좌표 - anchor 기준 상대값]
 //   cameraLocalPosition/cameraLocalEulerAngles는 월드 절대 좌표가 아니라, TalkManager.StartTalk()에
 //   넘겨준 anchor Transform을 기준으로 한 상대 위치/회전입니다. 그래서 같은 TalkScript를 여러
@@ -120,6 +129,17 @@ public class TalkScript : ScriptableObject
                   "이어붙여둔 경우, 각 묶음의 마지막 줄에 이 옵션을 켜서 다음 묶음의 대사로 잘못 이어지는 " +
                   "것을 막으세요. 선택지가 있는 Talks에서는 무시됩니다.")]
         public bool endsConversation = false;
+
+        [Header("퀘스트 - 선택지 없이 이 줄이 시작되기만 해도 자동 지급/보고 (파일 상단 참고)")]
+        [Tooltip("이 Talks가 시작되는 순간 자동으로 지급할 퀘스트입니다(비워두면 아무 것도 지급하지 " +
+                  "않습니다) - Choice.questToGrant와 달리 선택지를 고를 필요 없이 이 대사가 나오기만 " +
+                  "하면 QuestManager.Instance.AddQuest()가 호출됩니다.")]
+        public QuestData questToGrant;
+        [Tooltip("이 Talks가 시작되는 순간 자동으로 \"완료 보고\"할 퀘스트입니다(비워두면 아무 것도 " +
+                  "보고하지 않습니다) - Choice.questToTurnIn과 달리 선택지 없이 이 대사가 나오기만 하면 " +
+                  "QuestManager.Instance.TurnInQuest()가 호출됩니다. requiresTurnIn 조건(목표를 다 " +
+                  "채운 상태)을 아직 못 채웠다면 QuestManager가 경고만 남기고 조용히 무시합니다.")]
+        public QuestData questToTurnIn;
 
         [Header("선택지 (최대 3개 권장, 비어있으면 다음 Talks로 자동 진행)")]
         public Choice[] choices = new Choice[0];

@@ -15,6 +15,20 @@
 //   MonsterFSM.ChangeState(State.Die)에서 ReportKill(stats.monsterId)를 호출해줍니다. 지금 진행 중인
 //   퀘스트 중 Kill 목표가 있고 targetMonsterId가 일치하면(아직 목표 수량 미만이면) 카운트를 1 올립니다.
 //
+// [TalkToNpc 목표]
+//   NPCTalker.Interact()에서 ReportTalkToNpc(npcId)를 호출해줍니다. Kill 목표와 완전히 같은 방식으로,
+//   지금 진행 중인 퀘스트 중 TalkToNpc 목표가 있고 targetNpcId가 일치하면(아직 목표 수량 미만이면)
+//   카운트를 1 올립니다 - 그 NPC와 상호작용(F키)하기만 하면 카운트되고 대화 내용/분기는 확인하지
+//   않습니다.
+//
+// [CompleteQuest 목표 - 여러 작은 퀘스트를 다 깨야 완료되는 큰 퀘스트]
+//   외부에서 Report 함수를 호출할 필요가 없습니다 - CompleteQuest()가 어떤 퀘스트든 완료 처리할 때마다
+//   내부에서 자동으로 CheckDependentQuestObjectives(data)를 호출해서, 지금 진행 중인 다른 퀘스트들 중
+//   방금 완료된 이 퀘스트를 targetQuest로 하는 CompleteQuest 목표가 있으면 카운트를 1 올립니다(Kill/
+//   TalkToNpc와 완전히 같은 증가 방식). 이 과정에서 그 상위 퀘스트까지 완료돼버리면 CompleteQuest()가
+//   재귀적으로 다시 호출되는데, activeQuests.ToArray()로 스냅샷을 떠서 순회하므로(다른 Report 함수들과
+//   같은 이유) 안전합니다.
+//
 // [Collect 목표 - 인벤토리 기반]
 //   PlayerInventory.OnInventoryChanged를 구독해서(Start()에서, Awake가 아닙니다 - PlayerInventory.Instance가
 //   확실히 준비된 뒤에 구독하기 위해서입니다), 인벤토리가 바뀔 때마다 진행 중인 퀘스트의 모든 Collect
@@ -213,6 +227,39 @@ public class QuestManager : MonoBehaviour
         }
     }
 
+    /// <summary>npcId를 가진 NPC와 상호작용했을 때 호출하세요(NPCTalker.Interact() 참고). ReportKill()과
+    /// 완전히 같은 방식으로, 지금 진행 중인 퀘스트 중 이 NPC를 목표로 하는 TalkToNpc 목표가 있으면
+    /// (아직 다 채우지 못했다면) 카운트를 1 올립니다. npcId가 비어있으면 무시합니다(NPC에 ID를 설정하지
+    /// 않은 경우를 안전하게 넘어가기 위해서입니다).</summary>
+    public void ReportTalkToNpc(string npcId)
+    {
+        if (string.IsNullOrEmpty(npcId)) return;
+
+        // ReportKill()과 같은 이유로 스냅샷을 떠서 돕니다(완료 시 보상 지급이 다른 이벤트를 재귀적으로
+        // 발생시킬 수 있습니다).
+        foreach (QuestProgress progress in activeQuests.ToArray())
+        {
+            bool changed = false;
+
+            for (int i = 0; i < progress.data.objectives.Length; i++)
+            {
+                QuestData.Objective obj = progress.data.objectives[i];
+                if (obj.type != QuestData.ObjectiveType.TalkToNpc) continue;
+                if (obj.targetNpcId != npcId) continue;
+                if (progress.objectiveCounts[i] >= obj.targetCount) continue;
+
+                progress.objectiveCounts[i]++;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                OnQuestProgressChanged?.Invoke(progress);
+                CheckCompletion(progress);
+            }
+        }
+    }
+
     private void HandleInventoryChanged()
     {
         // ReportKill()과 같은 이유로 스냅샷을 떠서 돕니다(완료 시 보상 지급이 이 이벤트를 다시
@@ -286,6 +333,41 @@ public class QuestManager : MonoBehaviour
         GrantRewards(progress.data);
 
         OnQuestCompleted?.Invoke(progress);
+
+        // 이 퀘스트의 완료를 targetQuest로 삼는 CompleteQuest 목표가 있는지 확인합니다(파일 상단
+        // [CompleteQuest 목표] 참고) - "여러 작은 퀘스트를 다 깨야 완료되는 큰 퀘스트" 기능입니다.
+        CheckDependentQuestObjectives(progress.data);
+    }
+
+    /// <summary>completedQuestData가 방금 완료됐을 때 호출합니다. 지금 진행 중인 퀘스트 중 이
+    /// completedQuestData를 targetQuest로 하는 CompleteQuest 목표가 있으면(아직 목표 수량 미만이면)
+    /// 카운트를 1 올립니다 - ReportKill()/ReportTalkToNpc()와 완전히 같은 증가 방식이지만, 외부에서
+    /// 호출하는 게 아니라 CompleteQuest() 내부에서만 호출됩니다.</summary>
+    private void CheckDependentQuestObjectives(QuestData completedQuestData)
+    {
+        // ReportKill()과 같은 이유로 스냅샷을 떠서 돕니다 - 이 순회 도중 다른 퀘스트가 완료되면
+        // CompleteQuest()가 재귀적으로 다시 호출되어 activeQuests/completedQuests가 바뀔 수 있습니다.
+        foreach (QuestProgress progress in activeQuests.ToArray())
+        {
+            bool changed = false;
+
+            for (int i = 0; i < progress.data.objectives.Length; i++)
+            {
+                QuestData.Objective obj = progress.data.objectives[i];
+                if (obj.type != QuestData.ObjectiveType.CompleteQuest) continue;
+                if (obj.targetQuest != completedQuestData) continue;
+                if (progress.objectiveCounts[i] >= obj.targetCount) continue;
+
+                progress.objectiveCounts[i]++;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                OnQuestProgressChanged?.Invoke(progress);
+                CheckCompletion(progress);
+            }
+        }
     }
 
     /// <summary>NPC 대화 선택지 등에서, requiresTurnIn 퀘스트를 보고해서 완료 처리할 때 호출하세요
