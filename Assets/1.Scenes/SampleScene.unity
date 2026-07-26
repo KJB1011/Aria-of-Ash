@@ -3320,8 +3320,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0.02497661, y: -5.58048e-11, z: -1.3942495e-12, w: 0.999688}
+  m_LocalPosition: {x: 286.27362, y: 2.76, z: 329.85233}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4003,7 +4003,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   masterVolume: 1
   bgmVolume: 1
-  sfxVolume: 1
+  sfxVolume: 0.591
   defaultBgmFadeDuration: 1.5
   sfxVoicePrewarmCount: 8
   sfxVoiceMaxPoolSize: 32
@@ -25581,8 +25581,18 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1451238227853741428, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
         type: 3}
+      propertyPath: hitSfxName
+      value: SFX_Player_Hit
+      objectReference: {fileID: 0}
+    - target: {fileID: 1451238227853741428, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
+        type: 3}
       propertyPath: hitVfxName
       value: FX_Player_Basic3Hit
+      objectReference: {fileID: 0}
+    - target: {fileID: 1570959737340412087, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
+        type: 3}
+      propertyPath: hitSfxName
+      value: SFX_Player_Hit
       objectReference: {fileID: 0}
     - target: {fileID: 1570959737340412087, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
         type: 3}
@@ -25591,8 +25601,18 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2174529614301901994, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
         type: 3}
+      propertyPath: hitSfxName
+      value: SFX_Player_Hit
+      objectReference: {fileID: 0}
+    - target: {fileID: 2174529614301901994, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
+        type: 3}
       propertyPath: hitVfxName
       value: FX_Player_BasicHit
+      objectReference: {fileID: 0}
+    - target: {fileID: 4027608897743110962, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
+        type: 3}
+      propertyPath: hitSfxName
+      value: SFX_Player_Hit
       objectReference: {fileID: 0}
     - target: {fileID: 4027608897743110962, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
         type: 3}
@@ -25626,8 +25646,28 @@ PrefabInstance:
       objectReference: {fileID: 1066516434}
     - target: {fileID: 5483862702824518511, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
         type: 3}
+      propertyPath: ultSwingSfxName
+      value: SFX_Player_UltSlash
+      objectReference: {fileID: 0}
+    - target: {fileID: 5483862702824518511, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
+        type: 3}
       propertyPath: ultSkillDuration
       value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5483862702824518511, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
+        type: 3}
+      propertyPath: attack1SwingSfxName
+      value: SFX_Player_Slash
+      objectReference: {fileID: 0}
+    - target: {fileID: 5483862702824518511, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
+        type: 3}
+      propertyPath: attack2SwingSfxName
+      value: SFX_Player_Slash
+      objectReference: {fileID: 0}
+    - target: {fileID: 5483862702824518511, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
+        type: 3}
+      propertyPath: attack3SwingSfxName
+      value: SFX_Player_Slash
       objectReference: {fileID: 0}
     - target: {fileID: 5483862702824518511, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
         type: 3}

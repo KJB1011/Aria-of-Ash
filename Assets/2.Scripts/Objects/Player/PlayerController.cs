@@ -100,6 +100,34 @@ public class PlayerController : MonoBehaviour
     [Tooltip("ultChargeVfxPoint(또는 weaponVfxPoint) 기준 로컬 회전 보정(오일러 각, 도)입니다.")]
     public Vector3 ultChargeVfxRotationOffset;
 
+    [Header("사운드 - 기본 공격 휘두르기 (Resources/SFX 아래 클립 이름)")]
+    [Tooltip("각 콤보 타(1타/2타/3타)를 휘두르는 순간 재생할 효과음입니다 - VFX와 별도의 새 Animation " +
+              "Event를 추가할 필요 없이, 기존 OnAttackSwingVfx Animation Event가 호출되는 바로 그 프레임에 " +
+              "함께 재생됩니다(OnAttackSwingVfx(string) 참고). 비워두면(빈 문자열) 그 타에는 스윙 효과음이 " +
+              "재생되지 않습니다. weaponVfxPoint 위치에서 재생됩니다.")]
+    public string attack1SwingSfxName;
+    public string attack2SwingSfxName;
+    public string attack3SwingSfxName;
+    [Tooltip("스윙 효과음이 매번 똑같이 들리지 않도록 피치를 ±이 값(비율)만큼 무작위로 섞습니다. 0이면 " +
+              "항상 같은 피치로 재생됩니다. SoundManager.PlaySFX의 pitchVariation 그대로입니다.")]
+    public float attackSwingSfxPitchVariation = 0.08f;
+
+    [Header("사운드 - 필살기 (Resources/SFX 아래 클립 이름)")]
+    [Tooltip("필살기 시전 순간부터 재생되는 차징(기 모으기) 루프 효과음입니다 - ultChargeVfxName과 같은 " +
+              "타이밍에 시작하고(PlayUltChargeVfx() 참고), 실제로 내려찍는 순간(OnUltSlamImpact()) 또는 " +
+              "피격/사망 등으로 필살기가 중간에 끊길 때(EndUltChargeVfxIfActive()) 자동으로 정지됩니다. " +
+              "루프 재생이라 SoundManager.PlaySFXAttached(loop: true)를 사용합니다 - 비워두면 재생하지 않습니다.")]
+    public string ultChargeSfxName;
+    [Tooltip("필살기 모션 중 칼을 크게 휘두르는(내려찍기 직전) 순간에 재생할 효과음입니다. UltSkill " +
+              "클립에 그 프레임을 기준으로 새 Animation Event(Function: OnUltSwingSfx, 파라미터 없음)를 " +
+              "추가하세요 - OnUltSlamImpact보다 앞선, 칼을 들어올려 크게 휘두르기 시작하는 프레임이 " +
+              "적당합니다. 비워두면 재생하지 않습니다.")]
+    public string ultSwingSfxName;
+    [Tooltip("필살기가 실제로 땅을 내려찍는 순간(OnUltSlamImpact() Animation Event) 재생할 효과음입니다 - " +
+              "새 Animation Event를 추가할 필요 없이 기존 OnUltSlamImpact 이벤트에서 함께 재생됩니다. " +
+              "비워두면 재생하지 않습니다.")]
+    public string ultSlamSfxName;
+
     [Header("이동")]
     public float moveSpeed = 5f;
     public float rotationSmoothTime = 0.1f;
@@ -261,6 +289,7 @@ public class PlayerController : MonoBehaviour
     // PlayUltChargeVfx()가 VFXManager.PlayAttached()로 재생한 차지 이펙트 인스턴스입니다. null이 아니면
     // 지금 재생 중이라는 뜻이고, EndUltChargeVfxIfActive()가 이 참조로 풀에 반납합니다.
     private GameObject ultChargeVfxInstance;
+    private GameObject ultChargeSfxInstance;
 
     // ultInvincibilityExtraDuration만큼 무적을 더 유지하기 위해 ExitInvincible()을 지연 호출하는
     // 코루틴입니다. null이 아니면 지금 "무적 여유 시간"이 진행 중이라는 뜻입니다 - 새 필살기를 다시
@@ -854,15 +883,37 @@ public class PlayerController : MonoBehaviour
             Quaternion.Euler(ultChargeVfxRotationOffset), ultSkillDuration);
     }
 
-    /// <summary>재생 중인 필살기 차지 VFX가 있으면 즉시 풀로 반납합니다(OnUltSlamImpact()에서의 정상
+    /// <summary>필살기 시전 순간 PlayUltChargeVfx()와 같은 자리에서 호출됩니다. ultChargeSfxName이
+    /// 설정되어 있으면 차지 VFX와 같은 기준 위치에 루프 효과음을 붙여서 재생합니다(SoundManager.
+    /// PlaySFXAttached(loop: true)) - 루프라 자동으로 반납되지 않으므로, EndUltChargeVfxIfActive()가
+    /// VFX와 함께 반드시 정지시켜줍니다.</summary>
+    private void PlayUltChargeSfx()
+    {
+        if (string.IsNullOrEmpty(ultChargeSfxName)) return;
+
+        Transform point = ultChargeVfxPoint != null ? ultChargeVfxPoint
+            : (weaponVfxPoint != null ? weaponVfxPoint : transform);
+
+        ultChargeSfxInstance = SoundManager.Instance.PlaySFXAttached(ultChargeSfxName, point, 1f, loop: true);
+    }
+
+    /// <summary>재생 중인 필살기 차지 VFX/SFX가 있으면 즉시 정리합니다(OnUltSlamImpact()에서의 정상
     /// 종료뿐 아니라, 피격(TakeHit)/사망(Die)/대화 시작(ForceIdleFacingTalkPartnerWhileTalking) 등
-    /// 필살기가 중간에 끊기는 모든 경로에서도 호출해서 무기에 이펙트가 계속 남아있는 일이 없게
+    /// 필살기가 중간에 끊기는 모든 경로에서도 호출해서 무기에 이펙트/사운드가 계속 남아있는 일이 없게
     /// 합니다). 재생 중이 아니었으면 아무 것도 하지 않아 어디서 호출해도 안전합니다.</summary>
     private void EndUltChargeVfxIfActive()
     {
-        if (ultChargeVfxInstance == null) return;
-        VFXManager.Instance.ReturnToPool(ultChargeVfxName, ultChargeVfxInstance);
-        ultChargeVfxInstance = null;
+        if (ultChargeVfxInstance != null)
+        {
+            VFXManager.Instance.ReturnToPool(ultChargeVfxName, ultChargeVfxInstance);
+            ultChargeVfxInstance = null;
+        }
+
+        if (ultChargeSfxInstance != null)
+        {
+            SoundManager.Instance.StopSFX(ultChargeSfxInstance);
+            ultChargeSfxInstance = null;
+        }
     }
 
     /// <summary>지금 대시가 시작된 지 얼마나 지났는지(0~1)를 dashSpeedCurve에 대입해 속도 배율을 구합니다.</summary>
@@ -936,9 +987,10 @@ public class PlayerController : MonoBehaviour
             // 보고 있습니다(NPCTalker의 회전-후-카메라 순서와 같은 이유). 씬에
             // UltSkillEffector가 없어도 안전하게 아무 일도 하지 않습니다.
             UltSkillEffector.Instance?.PlayFaceShot();
-            // 칼에 기를 모으는 차지 VFX도 같은 순간 시작합니다 - OnUltSlamImpact()(실제 내려찍는
+            // 칼에 기를 모으는 차지 VFX/SFX도 같은 순간 시작합니다 - OnUltSlamImpact()(실제 내려찍는
             // 프레임)에서 정리됩니다.
             PlayUltChargeVfx();
+            PlayUltChargeSfx();
             return;
         }
 
@@ -1113,10 +1165,37 @@ public class PlayerController : MonoBehaviour
     /// 재생 위치/회전은 weaponVfxPoint를 기준으로, 지금 몇 타째인지(comboIndex)에 맞는
     /// attack1/2/3SwingVfxPositionOffset(위치)과 attack1/2/3SwingVfxRotationOffset(회전)을 각각
     /// 적용해서 계산합니다 - 모션마다 스윙 방향/위치가 달라 VFX가 어색하게 나온다면 코드가 아니라
-    /// 그 여섯 필드값을 인스펙터에서 조절해서 맞추세요.</summary>
+    /// 그 여섯 필드값을 인스펙터에서 조절해서 맞추세요.
+    /// 같은 프레임에 스윙 효과음도 함께 재생합니다(attack1/2/3SwingSfxName, comboIndex 기준) - VFX와
+    /// 달리 이름은 Animation Event 파라미터가 아니라 인스펙터 필드에서 가져오므로, 새 Animation
+    /// Event를 추가할 필요 없이 이 이벤트 하나로 VFX/SFX가 함께 재생됩니다.</summary>
     public void OnAttackSwingVfx(string vfxName)
     {
         PlayOffsetVfx(vfxName, weaponVfxPoint, GetSwingVfxPositionOffset(), GetSwingVfxRotationOffset());
+        PlaySwingSfx();
+    }
+
+    /// <summary>지금 콤보가 몇 타째인지(comboIndex)에 맞는 스윙 효과음을 weaponVfxPoint 위치에서
+    /// 재생합니다. 해당 타에 설정된 이름이 비어있으면 아무 것도 하지 않습니다.</summary>
+    private void PlaySwingSfx()
+    {
+        string sfxName = GetSwingSfxName();
+        if (string.IsNullOrEmpty(sfxName)) return;
+
+        Vector3 position = weaponVfxPoint != null ? weaponVfxPoint.position : transform.position;
+        SoundManager.Instance.PlaySFX(sfxName, position, 1f, attackSwingSfxPitchVariation);
+    }
+
+    /// <summary>지금 콤보가 몇 타째인지(comboIndex)에 맞는 스윙 효과음 이름을 돌려줍니다.</summary>
+    private string GetSwingSfxName()
+    {
+        switch (comboIndex)
+        {
+            case 1: return attack1SwingSfxName;
+            case 2: return attack2SwingSfxName;
+            case 3: return attack3SwingSfxName;
+            default: return null;
+        }
     }
 
     /// <summary>지금 콤보가 몇 타째인지(comboIndex)에 맞는 회전 보정값을 돌려줍니다.
@@ -1199,13 +1278,31 @@ public class PlayerController : MonoBehaviour
     /// 이 함수를 호출하도록 UltSkill 클립에 Animation Event를 추가하세요(파라미터 없음). SkillInfo의
     /// '필살기강화'가 해제되어 있을 때만(playerStats.HasUltUpgrade) ultSecondExplosionDelay초 뒤 2차 폭발을
     /// 예약합니다 - 해제 전이면 이벤트를 걸어두셔도 안전하게 아무 일도 하지 않습니다(나중에 강화를 해제하면
-    /// 별도 작업 없이 바로 동작합니다).</summary>
+    /// 별도 작업 없이 바로 동작합니다). ultSlamSfxName이 설정되어 있으면 같은 순간 땅을 내려찍는 효과음도
+    /// 재생합니다 - 새 Animation Event를 추가할 필요 없이 이 이벤트 하나로 처리됩니다.</summary>
     public void OnUltSlamImpact()
     {
-        EndUltChargeVfxIfActive(); // 실제로 내려찍는(에너지를 방출하는) 순간이므로 차지 VFX를 여기서 정리합니다.
+        EndUltChargeVfxIfActive(); // 실제로 내려찍는(에너지를 방출하는) 순간이므로 차지 VFX/SFX를 여기서 정리합니다.
+        PlayUltSlamSfx();
 
         if (playerStats == null || !playerStats.HasUltUpgrade) return;
         StartCoroutine(UltSecondExplosionRoutine());
+    }
+
+    private void PlayUltSlamSfx()
+    {
+        if (string.IsNullOrEmpty(ultSlamSfxName)) return;
+        SoundManager.Instance.PlaySFX(ultSlamSfxName, transform.position);
+    }
+
+    /// <summary>Animation Event 전용 콜백입니다. 필살기 모션 중 칼을 크게 휘두르는(내려찍기 직전) 순간에
+    /// 이 함수를 호출하도록 UltSkill 클립에 새 Animation Event를 추가하세요(파라미터 없음, Function:
+    /// OnUltSwingSfx) - OnUltSlamImpact보다 앞선 프레임에 걸어두세요. ultSwingSfxName이 비어있으면
+    /// 아무 것도 하지 않습니다.</summary>
+    public void OnUltSwingSfx()
+    {
+        if (string.IsNullOrEmpty(ultSwingSfxName)) return;
+        SoundManager.Instance.PlaySFX(ultSwingSfxName, transform.position);
     }
 
     /// <summary>Animation Event 전용 콜백입니다. 필살기 카메라 연출(정면샷 → 뒤로 확 멀어지는 샷 → 뒤쪽

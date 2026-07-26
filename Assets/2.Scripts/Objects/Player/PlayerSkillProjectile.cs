@@ -62,6 +62,10 @@ public class PlayerSkillProjectile : MonoBehaviour
     public float energyOnHit = 30f;
     [Tooltip("타겟을 조준할 때 발밑이 아니라 몸통 높이를 겨냥하도록 더해주는 값(미터).")]
     public float aimHeightOffset = 1f;
+    [Tooltip("파이어볼이 발사되는(손을 떠나는) 순간 재생할 효과음 이름입니다(Resources/SFX/ 아래 클립 " +
+              "이름과 일치해야 함). 비워두면 발사음 없이 파이어볼만 나갑니다. 맞았을 때 나는 소리는 " +
+              "여기가 아니라 Fireball Prefab(FireballProjectile)의 Hit Sfx Name에서 설정하세요.")]
+    public string castSfxName;
 
     [Header("스킬강화 (SkillInfo에서 해제 시)")]
     [Tooltip("평소(강화 전) 파이어볼의 시각적 크기입니다(Transform.localScale, 세 축 동일). 기획 스펙: 0.3.")]
@@ -91,6 +95,11 @@ public class PlayerSkillProjectile : MonoBehaviour
 
         Vector3 spawnPosition = firePoint != null ? firePoint.position : transform.position;
         Vector3 direction = GetAimDirection(spawnPosition);
+
+        if (!string.IsNullOrEmpty(castSfxName))
+        {
+            SoundManager.Instance.PlaySFX(castSfxName, spawnPosition);
+        }
 
         bool upgraded = playerStats != null && playerStats.HasSkillUpgrade;
 

@@ -33,6 +33,12 @@
 // 그 뒤에 위치를 계산하면 어긋나기 때문입니다. 비워두면 VFX 없이 데미지만 들어갑니다.
 // Attack1/Attack2/Attack3마다 다른 이펙트를 쓰고 싶다면 각 오브젝트에서 이 값만 다르게 설정하면
 // 됩니다.
+//
+// [히트 SFX]
+// hitVfxName과 완전히 같은 방식으로, hitSfxName에 이름을 넣어두면(Resources/SFX/ 아래 클립 이름)
+// 같은 순간(같은 위치, hitVfxName 바로 옆) SoundManager.Instance.PlaySFX()로 타격음을 재생합니다.
+// Attack1/Attack2/Attack3/Skill/UltSkill 오브젝트마다 이 값을 각각 다르게 설정하면 기본 공격 3타/
+// 스킬/필살기의 타격음을 전부 따로 지정할 수 있습니다. 비워두면 타격음 없이 데미지만 들어갑니다.
 // (참고 - 시행착오: 처음엔 Collider.ClosestPoint(이 히트박스 위치)를 썼는데 오목한 Mesh Collider에는
 // 지원되지 않아 입력값을 그대로 돌려주는 문제가, 그 다음 ClosestPointOnBounds로 바꾸니 근접 공격처럼
 // 히트박스가 몬스터의 XZ 범위 안까지 파고들면 그 축은 클램프 안 되고 Y만 클램프되어 "플레이어
@@ -76,6 +82,10 @@ public class AttackHitbox : MonoBehaviour
     [Tooltip("데미지가 들어가는 순간 재생할 VFX 이름 (Resources/VFX/ 아래 프리팹 이름과 일치해야 함). " +
               "비워두면 VFX 없이 데미지만 적용됩니다. 예: \"FX_Player_Slash\"")]
     public string hitVfxName;
+    [Tooltip("데미지가 들어가는 순간 재생할 타격 효과음 이름 (Resources/SFX/ 아래 클립 이름과 일치해야 함). " +
+              "비워두면 타격음 없이 데미지만 적용됩니다. Attack1/Attack2/Attack3/Skill/UltSkill 오브젝트마다 " +
+              "다르게 설정하세요.")]
+    public string hitSfxName;
     [Tooltip("데미지 숫자가 뜨는 위치를 맞은 지점에서 위로 얼마나 띄울지(미터). 발밑이 아니라 " +
               "몸통 근처에서 뜨도록 하기 위한 값입니다.")]
     public float damageNumberHeightOffset = 0.8f;
@@ -178,6 +188,7 @@ public class AttackHitbox : MonoBehaviour
         ReduceSkillCooldownIfPassiveUpgraded();
 
         PlayHitVfx(hitPosition);
+        PlayHitSfx(hitPosition);
         ShowDamageNumber(hitPosition, result.damage, result.isCrit);
     }
 
@@ -210,6 +221,13 @@ public class AttackHitbox : MonoBehaviour
 
         // 회전은 히트박스 자신의 회전(각 Attack 모션마다 스윙 방향에 맞춰 설정해둔 값)을 그대로 사용합니다.
         VFXManager.Instance.Play(hitVfxName, hitPosition, transform.rotation);
+    }
+
+    private void PlayHitSfx(Vector3 hitPosition)
+    {
+        if (string.IsNullOrEmpty(hitSfxName)) return;
+
+        SoundManager.Instance.PlaySFX(hitSfxName, hitPosition);
     }
 
     private void ShowDamageNumber(Vector3 hitPosition, float damage, bool isCrit)

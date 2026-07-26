@@ -126,3 +126,4 @@ MonoBehaviour:
   bobHeight: 0.1
   bobSpeed: 2
   spinSpeed: 90
+  pickupSfxName: SFX_Coin

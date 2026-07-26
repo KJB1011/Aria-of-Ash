@@ -17,7 +17,9 @@
 //      맞는 순간 각자의 방어력(MonsterStats.TotalDefense)을 반영해서 데미지를 따로 계산합니다.
 //      ProjectileBase에서 물려받은 damage 필드는 이 클래스에서는 사용하지 않습니다.
 //   5) 원한다면 폭발 이펙트를 Hit Vfx Name(ProjectileBase에서 물려받은 필드)에 이름으로 연결하세요
-//      (Resources/VFX/ 아래 프리팹 이름과 일치해야 합니다).
+//      (Resources/VFX/ 아래 프리팹 이름과 일치해야 합니다). 폭발 효과음도 같은 방식으로 Hit Sfx Name
+//      (역시 ProjectileBase에서 물려받은 필드, Resources/SFX/ 아래 클립 이름)에 연결하면 폭발이 터지는
+//      순간 함께 재생됩니다 - "스킬 타격음"은 여기에 연결하세요.
 //   6) 데미지가 들어가는 대상마다 그 위치에 DamageNumberManager.Instance.Show()로 데미지 숫자를
 //      띄웁니다(DamageNumberTeam.Enemy로, 치명타면 더 크고 다른 색으로 표시됩니다).
 //   7) 필살기 에너지 충전도 여기서 처리합니다 - energyOnHit 값도 damagePercent처럼 PlayerSkillProjectile이
@@ -109,6 +111,11 @@ public class FireballProjectile : ProjectileBase
         if (!string.IsNullOrEmpty(hitVfxName))
         {
             VFXManager.Instance.Play(hitVfxName, transform.position);
+        }
+
+        if (!string.IsNullOrEmpty(hitSfxName))
+        {
+            SoundManager.Instance.PlaySFX(hitSfxName, transform.position);
         }
 
         Destroy(gameObject);

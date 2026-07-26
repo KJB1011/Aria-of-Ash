@@ -27,17 +27,21 @@
 //   4) 각 클립에 걸어둔 Animation Event(Function: OnAttackComboWindowOpen /
 //      OnAttackMotionEnd / OnHitboxOpen(String) / OnHitboxClose(String) / OnAttackSwingVfx(String) /
 //      OnAttackSwingVfx2(String) / OnUltSkillVfx1(String) / OnUltSkillVfx2(String) / OnUltSlamImpact /
-//      OnUltCameraPullBack / OnUltCameraSwitchToBack)는 그대로 두시면 됩니다. OnHitboxOpen/OnHitboxClose의
-//      String 파라미터에는 AttackArea 아래 만들어둔 자식 오브젝트 이름(예: "Attack1")을, 나머지 VFX 관련
-//      이벤트들의 String 파라미터에는 Resources/VFX 아래의 이펙트 이름(예: "FX_Player_Slash")을 넣으세요.
-//      OnAttackSwingVfx2는 한 타격에 VFX를 2개 넣고 싶을 때만(예: 3타) 그 클립에 추가로 걸어두면 됩니다.
+//      OnUltSwingSfx / OnUltCameraPullBack / OnUltCameraSwitchToBack)는 그대로 두시면 됩니다. OnHitboxOpen/
+//      OnHitboxClose의 String 파라미터에는 AttackArea 아래 만들어둔 자식 오브젝트 이름(예: "Attack1")을,
+//      나머지 VFX 관련 이벤트들의 String 파라미터에는 Resources/VFX 아래의 이펙트 이름(예: "FX_Player_Slash")을
+//      넣으세요. OnAttackSwingVfx2는 한 타격에 VFX를 2개 넣고 싶을 때만(예: 3타) 그 클립에 추가로 걸어두면
+//      됩니다. OnAttackSwingVfx는 VFX뿐 아니라 그 타(comboIndex)에 맞는 스윙 효과음도 함께 재생합니다
+//      (PlayerController.attack1/2/3SwingSfxName 인스펙터 필드 - 별도 Animation Event 불필요).
 //      OnUltSlamImpact(파라미터 없음)는 UltSkill 클립에서 실제로 내려찍는(타격) 프레임에 걸어두세요 -
-//      SkillInfo의 '필살기강화'가 해제되어 있을 때만 그 프레임을 기준으로 0.5초 뒤 2차 폭발이 터집니다
-//      (PlayerController.ultSecondExplosionDelay 참고). OnUltCameraPullBack(파라미터 없음)은 정면샷이
-//      잠깐 보여진 직후 프레임에 걸어두세요 - FaceCam에서 뒤로 멀어지는 PullBackCam으로 블렌드를
-//      시작시킵니다. OnUltCameraSwitchToBack(파라미터 없음)은 그보다 뒤, OnUltSlamImpact보다 살짝
-//      앞쪽(캐릭터가 돌아서며 감아 들어가기 시작하는 프레임)에 걸어두세요 - PullBackCam에서 BackCam으로
-//      블렌드를 시작시킵니다.
+//      SkillInfo의 '필살기강화'가 해제되어 있을 때만 그 프레임을 기준으로 0.5초 뒤 2차 폭발이 터지고
+//      (PlayerController.ultSecondExplosionDelay 참고), ultSlamSfxName이 설정되어 있으면 땅을 내려찍는
+//      효과음도 이 이벤트에서 함께 재생됩니다. OnUltSwingSfx(파라미터 없음, 새로 추가)는 필살기 모션 중
+//      칼을 크게 휘두르는(내려찍기 직전) 프레임에 걸어두세요 - PlayerController.ultSwingSfxName을
+//      재생합니다. OnUltCameraPullBack(파라미터 없음)은 정면샷이 잠깐 보여진 직후 프레임에 걸어두세요 -
+//      FaceCam에서 뒤로 멀어지는 PullBackCam으로 블렌드를 시작시킵니다. OnUltCameraSwitchToBack(파라미터
+//      없음)은 그보다 뒤, OnUltSlamImpact보다 살짝 앞쪽(캐릭터가 돌아서며 감아 들어가기 시작하는 프레임)에
+//      걸어두세요 - PullBackCam에서 BackCam으로 블렌드를 시작시킵니다.
 // ============================================================================
 
 using UnityEngine;
@@ -123,6 +127,11 @@ public class AnimationEventRelay : MonoBehaviour
     public void OnUltSlamImpact()
     {
         if (playerController != null) playerController.OnUltSlamImpact();
+    }
+
+    public void OnUltSwingSfx()
+    {
+        if (playerController != null) playerController.OnUltSwingSfx();
     }
 
     public void OnUltCameraPullBack()

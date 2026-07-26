@@ -14,6 +14,9 @@
 //      지금은 실제로 트리거 판정을 쓰지 않고 거리 계산(absorbDistance)만으로 흡수 여부를
 //      판단합니다 (나중에 다른 용도로 재사용할 수 있도록 그냥 켜둔 것뿐입니다).
 //   4) 이 두 프리팹을 LootDropper의 Exp Orb Prefab / Gold Orb Prefab 필드에 연결하세요.
+//   5) Pickup Sfx Name에 흡수될 때 재생할 효과음 이름을 넣으세요(Resources/SFX/ 아래 클립 이름).
+//      Exp Orb 프리팹과 Gold Orb 프리팹이 서로 다른 컴포넌트 인스턴스이므로, 경험치와 골드의
+//      흡수음을 서로 다르게 설정할 수 있습니다. 비워두면 소리 없이 조용히 흡수됩니다.
 //
 // [동작 흐름]
 //   1) Launch()로 팝(포물선) 애니메이션 시작 - LootPickup.Launch()와 같은 방식입니다.
@@ -53,6 +56,11 @@ public class RewardOrb : MonoBehaviour
     public float seekAcceleration = 12f;
     [Tooltip("플레이어와 이 거리 안으로 들어오면 흡수됩니다.")]
     public float absorbDistance = 0.6f;
+
+    [Header("사운드")]
+    [Tooltip("흡수(Absorb)되는 순간 재생할 효과음 이름 (Resources/SFX/ 아래 클립 이름과 일치해야 함). " +
+              "비워두면 소리 없이 조용히 흡수됩니다. Exp Orb/Gold Orb 프리팹마다 다르게 설정하세요.")]
+    public string pickupSfxName;
 
     private int amount;
     private Transform playerTransform;
@@ -149,6 +157,13 @@ public class RewardOrb : MonoBehaviour
         }
 
         UIIngameLoot.Instance.AddLoot(icon, $"{displayNamePrefix} x{amount}");
+        PlayPickupSfx();
         Destroy(gameObject);
+    }
+
+    private void PlayPickupSfx()
+    {
+        if (string.IsNullOrEmpty(pickupSfxName)) return;
+        SoundManager.Instance.PlaySFX(pickupSfxName, transform.position);
     }
 }

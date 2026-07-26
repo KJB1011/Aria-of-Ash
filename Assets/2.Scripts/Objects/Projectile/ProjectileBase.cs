@@ -57,6 +57,9 @@ public abstract class ProjectileBase : MonoBehaviour
     [Tooltip("맞았을 때 재생할 VFX 이름 (Resources/VFX/ 아래 프리팹 이름과 일치해야 함). 비워두면 VFX " +
               "없이 데미지만 적용됩니다. 예: \"FX_SmallSlime_Hit\", \"FX_WoodGolem_Hit\"")]
     public string hitVfxName;
+    [Tooltip("맞았을 때 재생할 타격 효과음 이름 (Resources/SFX/ 아래 클립 이름과 일치해야 함). 비워두면 " +
+              "타격음 없이 데미지만 적용됩니다.")]
+    public string hitSfxName;
     [Tooltip("데미지가 들어갈 때, 데미지 숫자를 맞은 대상 위로 얼마나 띄울지(미터).")]
     public float damageNumberHeightOffset = 0.8f;
 
@@ -101,6 +104,11 @@ public abstract class ProjectileBase : MonoBehaviour
         if (!string.IsNullOrEmpty(hitVfxName))
         {
             VFXManager.Instance.Play(hitVfxName, transform.position);
+        }
+
+        if (!string.IsNullOrEmpty(hitSfxName))
+        {
+            SoundManager.Instance.PlaySFX(hitSfxName, transform.position);
         }
 
         Destroy(gameObject);

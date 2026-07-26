@@ -25,6 +25,12 @@
 //   상호작용 키로 선택하면 Interact()가 호출되는 흐름을 그대로 탑니다. Interact()에서
 //   PlayerInventory.Instance.AddItem()으로 실제로 인벤토리에 넣고, UIIngameLoot로 왼쪽 로그에도
 //   표시한 뒤 오브젝트를 파괴합니다.
+//
+// [줍는 소리]
+//   pickupSfxName에 이름을 넣어두면(Resources/SFX/ 아래 클립 이름) Interact()로 주운 순간 그
+//   위치에서 SoundManager.Instance.PlaySFX()로 재생합니다. 비워두면 소리 없이 조용히 줍습니다.
+//   이 프리팹을 여러 아이템(LootItemData.worldPickupPrefab)이 공유한다면 소리도 같이 공유됩니다 -
+//   아이템마다 다른 줍는 소리를 쓰고 싶다면 아이템별로 다른 프리팹을 만들어 각자 설정하세요.
 // ============================================================================
 
 using UnityEngine;
@@ -43,6 +49,11 @@ public class LootPickup : MonoBehaviour, IInteractable
     public float bobSpeed = 2f;
     [Tooltip("초당 회전 각도(도).")]
     public float spinSpeed = 90f;
+
+    [Header("사운드")]
+    [Tooltip("주웠을 때(Interact) 재생할 효과음 이름 (Resources/SFX/ 아래 클립 이름과 일치해야 함). " +
+              "비워두면 소리 없이 조용히 줍습니다.")]
+    public string pickupSfxName;
 
     private Collider col;
     private LootItemData itemData;
@@ -140,6 +151,13 @@ public class LootPickup : MonoBehaviour, IInteractable
     {
         PlayerInventory.Instance.AddItem(itemData, amount);
         UIIngameLoot.Instance.AddLoot(itemData.icon, InteractionName);
+        PlayPickupSfx();
         Destroy(gameObject);
+    }
+
+    private void PlayPickupSfx()
+    {
+        if (string.IsNullOrEmpty(pickupSfxName)) return;
+        SoundManager.Instance.PlaySFX(pickupSfxName, transform.position);
     }
 }

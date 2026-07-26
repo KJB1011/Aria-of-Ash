@@ -130,3 +130,4 @@ MonoBehaviour:
   seekSpeed: 6
   seekAcceleration: 12
   absorbDistance: 0.6
+  pickupSfxName: SFX_Coin
