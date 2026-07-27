@@ -14,10 +14,10 @@ OcclusionCullingSettings:
 RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
-  m_Fog: 0
-  m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  m_Fog: 1
+  m_FogColor: {r: 0.48660558, g: 0.69003254, b: 0.764151, a: 1}
   m_FogMode: 3
-  m_FogDensity: 0.01
+  m_FogDensity: 0.005
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
   m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
@@ -30,7 +30,7 @@ RenderSettings:
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
-  m_HaloTexture: {fileID: 0}
+  m_HaloTexture: {fileID: 2800000, guid: acbb6ee94ea96f449b0c62cacb2c847f, type: 3}
   m_SpotCookie: {fileID: 10001, guid: 0000000000000000e000000000000000, type: 0}
   m_DefaultReflectionMode: 0
   m_DefaultReflectionResolution: 128
@@ -3320,8 +3320,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.02497661, y: -5.58048e-11, z: -1.3942495e-12, w: 0.999688}
-  m_LocalPosition: {x: 286.27362, y: 2.76, z: 329.85233}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4001,8 +4001,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b91bbcc6c1aa9904c80f86c351a6640d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  masterVolume: 1
-  bgmVolume: 1
+  masterVolume: 0.468
+  bgmVolume: 0.468
   sfxVolume: 0.591
   defaultBgmFadeDuration: 1.5
   sfxVoicePrewarmCount: 8
@@ -4440,7 +4440,7 @@ Light:
   m_Enabled: 1
   serializedVersion: 11
   m_Type: 1
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.66723037, g: 0.8093149, b: 0.9622642, a: 1}
   m_Intensity: 2
   m_Range: 10
   m_SpotAngle: 30
@@ -15766,6 +15766,54 @@ Transform:
   - {fileID: 1435755295}
   m_Father: {fileID: 294266658}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1488709908
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1488709910}
+  - component: {fileID: 1488709909}
+  m_Layer: 0
+  m_Name: MonsterActivationManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1488709909
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1488709908}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 453ab12ab410db64cab1d1ff9cb6eb31, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  player: {fileID: 1138875692}
+  activationRange: 50
+  checkInterval: 1
+  debugLog: 0
+--- !u!4 &1488709910
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1488709908}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 286.5379, y: 10.469277, z: 322.56186}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1501377905
 GameObject:
   m_ObjectHideFlags: 0
@@ -25633,6 +25681,11 @@ PrefabInstance:
         type: 3}
       propertyPath: moveSpeed
       value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 5483862702824518511, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
+        type: 3}
+      propertyPath: dashSfxName
+      value: SFX_Dash
       objectReference: {fileID: 0}
     - target: {fileID: 5483862702824518511, guid: ab1e7d29c0b2ef747b630d2bf1cb011c,
         type: 3}
@@ -40017,6 +40070,7 @@ SceneRoots:
   - {fileID: 364939141}
   - {fileID: 1286995289}
   - {fileID: 1997285830}
+  - {fileID: 1488709910}
   - {fileID: 1609459634}
   - {fileID: 1049700781}
   - {fileID: 294266658}

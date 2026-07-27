@@ -160,6 +160,10 @@ public class PlayerController : MonoBehaviour
         new Keyframe(0f, 1f, 0f, -1.2f),
         new Keyframe(1f, 0.25f, -1.2f, 0f)
     );
+    [Tooltip("구르기 시작하는 순간 재생할 효과음 이름 (Resources/SFX/ 아래 클립 이름과 일치해야 함). " +
+              "새 Animation Event가 필요 없이, 대시 입력이 실제로 받아들여지는 그 프레임(HandleDash 내부)에 " +
+              "바로 재생됩니다. 비워두면 재생하지 않습니다.")]
+    public string dashSfxName;
 
     [Header("중력")]
     public float gravity = -20f;
@@ -777,6 +781,8 @@ public class PlayerController : MonoBehaviour
             {
                 animator.SetTrigger(IsDashParam);
             }
+
+            PlayDashSfx();
         }
 
         if (isDashing)
@@ -789,6 +795,13 @@ public class PlayerController : MonoBehaviour
                 ExitInvincible();
             }
         }
+    }
+
+    /// <summary>구르기가 시작되는 프레임에 dashSfxName을 재생합니다. 비워두면 아무 것도 하지 않습니다.</summary>
+    private void PlayDashSfx()
+    {
+        if (string.IsNullOrEmpty(dashSfxName)) return;
+        SoundManager.Instance.PlaySFX(dashSfxName, transform.position);
     }
 
     /// <summary>플레이어 오브젝트를 invincibleLayerName 레이어로 바꿔서 무적으로 만듭니다. 대시(구르기)와

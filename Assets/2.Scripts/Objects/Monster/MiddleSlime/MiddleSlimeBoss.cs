@@ -94,6 +94,7 @@ using UnityEngine;
 
 [RequireComponent(typeof(MonsterStats))]
 [RequireComponent(typeof(LootDropper))]
+[RequireComponent(typeof(MonsterActivation))]
 public class MiddleSlimeBoss : MonoBehaviour, IDamageable
 {
     private enum State { Idle, SwingAttack, WaveAttack, Dead }

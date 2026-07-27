@@ -51,6 +51,13 @@
 //   상태와 무관하게(Return/Hit/Die 제외) 매 프레임 스폰 지점과의 거리를 검사해서
 //   maxLeashDistance를 넘으면 즉시 Return으로 전환합니다.
 //
+// [최적화 - 아주 멀리 있을 때 오브젝트 자체를 비활성화]
+//   detectRange(전투 감지)와는 완전히 별개로, [RequireComponent]로 자동으로 붙는 MonsterActivation이
+//   MonsterActivationManager에 등록되어 플레이어와의 거리가 activationRange(훨씬 넓은 값, 기본 50m)를
+//   넘으면 이 몬스터 오브젝트 자체가 SetActive(false)로 꺼집니다 - 이 스크립트의 Update()를 포함해
+//   전부 멈추므로 필드에 몬스터가 많을 때 성능에 도움이 됩니다. 자세한 내용은
+//   MonsterActivationManager.cs를 참고하세요.
+//
 // [체력 - MonsterStats]
 //   체력(HP)은 이제 이 스크립트가 아니라 같이 붙는 MonsterStats 컴포넌트가 갖고 있습니다
 //   ([RequireComponent]로 자동 추가됩니다). Max Health를 조절하려면 MonsterStats의 Base HP를
@@ -76,6 +83,7 @@ using UnityEngine.AI;
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(MonsterStats))]
 [RequireComponent(typeof(LootDropper))]
+[RequireComponent(typeof(MonsterActivation))]
 public abstract class MonsterFSM : MonoBehaviour, IDamageable
 {
     public enum State
