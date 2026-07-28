@@ -24253,6 +24253,7 @@ MonoBehaviour:
     m_Bits: 72
   lifeTime: 5
   hitVfxName: FX_Player_FireballExplosion
+  hitSfxName: SFX_Player_FireballHit
   damageNumberHeightOffset: 0.8
   explosionRadius: 2
   damagePercent: 0

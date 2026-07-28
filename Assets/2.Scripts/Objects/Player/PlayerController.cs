@@ -111,6 +111,14 @@ public class PlayerController : MonoBehaviour
     [Tooltip("스윙 효과음이 매번 똑같이 들리지 않도록 피치를 ±이 값(비율)만큼 무작위로 섞습니다. 0이면 " +
               "항상 같은 피치로 재생됩니다. SoundManager.PlaySFX의 pitchVariation 그대로입니다.")]
     public float attackSwingSfxPitchVariation = 0.08f;
+    [Tooltip("두 번째 VFX 슬롯(OnAttackSwingVfx2 - 예: 3타의 내려찍기 보조 이펙트)이 재생되는 순간 " +
+              "함께 재생할 효과음입니다. attack1/2/3SwingSfxName과 완전히 독립된 슬롯이라, 지금처럼 " +
+              "3타에만 두 번째 VFX/효과음을 쓰고 싶다면 attack3SwingSfx2Name만 채우고 나머지 둘은 " +
+              "비워두면 됩니다 - 1타/2타 클립에 OnAttackSwingVfx2 이벤트 자체를 추가하지 않으면 애초에 " +
+              "호출되지 않으니 값이 있어도 영향 없습니다. weaponVfxPoint2 위치에서 재생됩니다.")]
+    public string attack1SwingSfx2Name;
+    public string attack2SwingSfx2Name;
+    public string attack3SwingSfx2Name;
 
     [Header("사운드 - 필살기 (Resources/SFX 아래 클립 이름)")]
     [Tooltip("필살기 시전 순간부터 재생되는 차징(기 모으기) 루프 효과음입니다 - ultChargeVfxName과 같은 " +
@@ -1241,10 +1249,36 @@ public class PlayerController : MonoBehaviour
     /// 재생하고 싶을 때 문자열 파라미터(VFX 이름)로 Animation Event를 따로 추가하면 됩니다. 1타/2타 클립에는
     /// 이 이벤트를 아예 추가하지 않으면 그 타에서는 호출되지 않으니, 지금처럼 3타에만 쓰고 싶다면 Attack3
     /// 클립에만 걸어두세요. 재생 위치/회전은 weaponVfxPoint2를 기준으로 attack1/2/3SwingVfx2PositionOffset/
-    /// RotationOffset을 적용해서 계산합니다.</summary>
+    /// RotationOffset을 적용해서 계산합니다. 같은 프레임에 attack1/2/3SwingSfx2Name(comboIndex 기준) 효과음도
+    /// 함께 재생됩니다 - OnAttackSwingVfx와 마찬가지로 새 Animation Event를 추가할 필요 없이 이 이벤트
+    /// 하나로 VFX/SFX가 함께 나갑니다.</summary>
     public void OnAttackSwingVfx2(string vfxName)
     {
         PlayOffsetVfx(vfxName, weaponVfxPoint2, GetSwingVfx2PositionOffset(), GetSwingVfx2RotationOffset());
+        PlaySwingSfx2();
+    }
+
+    /// <summary>지금 콤보가 몇 타째인지(comboIndex)에 맞는 두 번째 슬롯 스윙 효과음을 weaponVfxPoint2
+    /// 위치에서 재생합니다. 해당 타에 설정된 이름이 비어있으면 아무 것도 하지 않습니다.</summary>
+    private void PlaySwingSfx2()
+    {
+        string sfxName = GetSwingSfx2Name();
+        if (string.IsNullOrEmpty(sfxName)) return;
+
+        Vector3 position = weaponVfxPoint2 != null ? weaponVfxPoint2.position : transform.position;
+        SoundManager.Instance.PlaySFX(sfxName, position, 1f, attackSwingSfxPitchVariation);
+    }
+
+    /// <summary>지금 콤보가 몇 타째인지(comboIndex)에 맞는 두 번째 슬롯 스윙 효과음 이름을 돌려줍니다.</summary>
+    private string GetSwingSfx2Name()
+    {
+        switch (comboIndex)
+        {
+            case 1: return attack1SwingSfx2Name;
+            case 2: return attack2SwingSfx2Name;
+            case 3: return attack3SwingSfx2Name;
+            default: return null;
+        }
     }
 
     /// <summary>지금 콤보가 몇 타째인지(comboIndex)에 맞는 두 번째 VFX용 회전 보정값을 돌려줍니다.</summary>

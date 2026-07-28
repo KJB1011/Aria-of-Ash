@@ -27,6 +27,12 @@
 // 재생 위치는 맞은 플레이어 콜라이더에서 이 히트박스와 가장 가까운 지점입니다. 비워두면 VFX
 // 없이 데미지만 들어갑니다. 데미지가 들어가는 순간 DamageNumberManager.Instance.Show()로 맞은
 // 지점 위에 데미지 숫자도 띄웁니다.
+//
+// [히트 SFX - 몬스터별로 설정]
+// 이 몬스터의 공격이 플레이어에게 적중하는 순간, 부모 쪽 MonsterStats.attackHitSfxName(Resources/SFX/
+// 아래 클립 이름)이 채워져 있으면 SoundManager.Instance.PlaySFX()로 같은 위치에서 재생합니다 - 몬스터
+// 종류마다 이 값을 다르게 설정하면 각자 다른 공격 타격음을 낼 수 있습니다. 비워두면 소리 없이 데미지만
+// 들어갑니다.
 // ============================================================================
 
 using System.Collections.Generic;
@@ -107,6 +113,7 @@ public class MonsterAttackHitbox : MonoBehaviour
         damageable.TakeDamage(result.damage);
 
         PlayHitVfx(other);
+        PlayHitSfx(other);
         ShowDamageNumber(other, result.damage);
     }
 
@@ -116,6 +123,17 @@ public class MonsterAttackHitbox : MonoBehaviour
 
         Vector3 vfxPosition = hitCollider.ClosestPoint(transform.position);
         VFXManager.Instance.Play(hitVfxName, vfxPosition, transform.rotation);
+    }
+
+    /// <summary>부모 쪽 MonsterStats.attackHitSfxName(이 몬스터가 플레이어를 맞혔을 때 낼 소리)이
+    /// 설정되어 있으면 재생합니다. 몬스터마다 이 값을 다르게 설정하면 각자 다른 공격 타격음을 낼 수
+    /// 있습니다.</summary>
+    private void PlayHitSfx(Collider hitCollider)
+    {
+        if (monsterStats == null || string.IsNullOrEmpty(monsterStats.attackHitSfxName)) return;
+
+        Vector3 sfxPosition = hitCollider.ClosestPoint(transform.position);
+        SoundManager.Instance.PlaySFX(monsterStats.attackHitSfxName, sfxPosition);
     }
 
     private void ShowDamageNumber(Collider hitCollider, float damage)

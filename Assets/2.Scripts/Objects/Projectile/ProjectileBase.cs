@@ -24,6 +24,13 @@
 //   연결해두셨다면 그 연결은 사라지므로, 대신 이 이름(hitVfxName)에 그 프리팹과 같은 이름을
 //   문자열로 넣어주세요 (프리팹은 Assets/Resources/VFX/ 아래에 있어야 VFXManager가 찾을 수 있습니다).
 //
+// [히트 SFX - 몬스터별 설정과 프리팹 기본값의 우선순위]
+//   맞는 순간 재생할 소리는 두 곳에서 올 수 있습니다: (1) sourceMonsterStats.attackHitSfxName(발사한
+//   몬스터 쪽에 몬스터별로 설정하는 값, MonsterAttackHitbox/MiddleSlimeBoss의 근접 공격과 동일한
+//   설정입니다), (2) 이 프리팹 자체의 hitSfxName(기본값). (1)이 채워져 있으면 그게 우선이고, 비어있을
+//   때만 (2)가 대신 재생됩니다 - 즉 MonsterStats 쪽에 소리를 설정해두면 ArcProjectile/LinearProjectile
+//   프리팹을 몬스터별로 따로 만들 필요 없이 같은 프리팹이라도 발사한 몬스터에 따라 다른 소리가 납니다.
+//
 // [데미지 계산 - Player의 AttackHitbox/MonsterAttackHitbox와 동일한 방식]
 //   고정 데미지 대신, 이 투사체를 쏜 몬스터의 MonsterStats.CalculateDamage()로 최종 데미지를
 //   계산합니다 - (몬스터의 총 공격력 - 맞은 플레이어의 총 방어력) × (monsterDamagePercent%)입니다.
@@ -58,7 +65,9 @@ public abstract class ProjectileBase : MonoBehaviour
               "없이 데미지만 적용됩니다. 예: \"FX_SmallSlime_Hit\", \"FX_WoodGolem_Hit\"")]
     public string hitVfxName;
     [Tooltip("맞았을 때 재생할 타격 효과음 이름 (Resources/SFX/ 아래 클립 이름과 일치해야 함). 비워두면 " +
-              "타격음 없이 데미지만 적용됩니다.")]
+              "타격음 없이 데미지만 적용됩니다. [주의] sourceMonsterStats.attackHitSfxName(몬스터별 공격 " +
+              "명중 사운드)이 채워져 있으면 이 값 대신 그쪽이 우선 재생됩니다 - 이 값은 몬스터 쪽에 설정이 " +
+              "없을 때 쓰이는 프리팹 기본값 역할입니다.")]
     public string hitSfxName;
     [Tooltip("데미지가 들어갈 때, 데미지 숫자를 맞은 대상 위로 얼마나 띄울지(미터).")]
     public float damageNumberHeightOffset = 0.8f;
@@ -106,11 +115,23 @@ public abstract class ProjectileBase : MonoBehaviour
             VFXManager.Instance.Play(hitVfxName, transform.position);
         }
 
-        if (!string.IsNullOrEmpty(hitSfxName))
-        {
-            SoundManager.Instance.PlaySFX(hitSfxName, transform.position);
-        }
+        PlayHitSfx();
 
         Destroy(gameObject);
+    }
+
+    /// <summary>sourceMonsterStats.attackHitSfxName(이 몬스터가 플레이어를 맞혔을 때 낼 소리)이 설정되어
+    /// 있으면 그걸 우선 재생하고, 비어있으면 이 프리팹의 기본값인 hitSfxName을 대신 재생합니다. 몬스터마다
+    /// MonsterStats 쪽 값만 다르게 설정하면, 프리팹을 몬스터별로 따로 만들지 않아도 각자 다른 공격 타격음을
+    /// 낼 수 있습니다.</summary>
+    private void PlayHitSfx()
+    {
+        string resolvedSfxName = (sourceMonsterStats != null && !string.IsNullOrEmpty(sourceMonsterStats.attackHitSfxName))
+            ? sourceMonsterStats.attackHitSfxName
+            : hitSfxName;
+
+        if (string.IsNullOrEmpty(resolvedSfxName)) return;
+
+        SoundManager.Instance.PlaySFX(resolvedSfxName, transform.position);
     }
 }

@@ -199,6 +199,12 @@ public class ShockwaveWave : MonoBehaviour
                 VFXManager.Instance.Play(hitVfxName, hitPoint, transform.rotation);
             }
 
+            // sourceStats(MonsterStats).attackHitSfxName - "이 몬스터가 플레이어를 맞혔을 때" 낼 소리입니다.
+            if (sourceStats != null && !string.IsNullOrEmpty(sourceStats.attackHitSfxName))
+            {
+                SoundManager.Instance.PlaySFX(sourceStats.attackHitSfxName, hitPoint);
+            }
+
             Vector3 numberPosition = hitPoint + Vector3.up * damageNumberHeightOffset;
             DamageNumberManager.Instance.Show(result.damage, numberPosition, false, DamageNumberTeam.Player);
         }

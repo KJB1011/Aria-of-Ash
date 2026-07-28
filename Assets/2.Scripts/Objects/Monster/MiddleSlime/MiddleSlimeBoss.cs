@@ -11,6 +11,16 @@
 //                 계속 Idle에 머무릅니다 (플레이어가 범위 안으로 들어오면 즉시 공격 시작).
 //   SwingAttack : 휘두르기 - 플레이어를 따라다니는 원형 범위 표시 → 고정 → 내려찍기
 //   WaveAttack  : 파도보내기 - 차징 + 부채꼴 범위 표시 → 부채꼴 전체를 waveCount개 방향으로 나눠 동시 발사
+//   Swing/Wave 둘 다 공격을 시작하는 그 순간(EnterSwingAttack/EnterWaveAttack) target 쪽으로 즉시
+//   회전(스냅, 보간 없음)해서 바라봅니다(FaceTarget(), 수평 방향만 - y축 높이차는 무시) - 공격 도중에
+//   플레이어가 움직여도 다시 돌아보지는 않고, 다음 공격이 시작될 때 다시 갱신됩니다.
+//
+// [시전 사운드 - swingCastSfxName / waveCastSfxName]
+//   둘 다 "범위 표시가 사라지는 시점"에 맞춰 재생됩니다(공격을 시작하는 EnterSwingAttack/EnterWaveAttack
+//   시점이 아닙니다) - Swing은 PerformSwingSlam()(범위 표시가 지워지고 실제 내려찍기 판정이 진행되는
+//   순간), Wave는 FireWaveFan()(범위 표시가 지워지고 waveCastVfxName/waveTravelVfxName이 재생되는
+//   순간)에서 각각 한 번씩 재생됩니다. 맞은 대상별로 반복 재생되는 타격음(hitVfxName 쪽 SFX,
+//   MonsterStats.attackHitSfxName)과는 완전히 별개입니다 - 비워두면 재생하지 않습니다.
 //
 // [피격]
 //   MiddleSlime은 별도의 Hit(피격) 모션이 없습니다. TakeDamage()가 호출되어도 애니메이터
@@ -134,6 +144,11 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     public float idleDurationMax = 2.5f;
 
     [Header("공격 - 휘두르기 (Swing)")]
+    [Tooltip("범위 표시가 사라지고 실제 판정(내려찍기)이 진행되는 그 순간(PerformSwingSlam) 보스 위치에서 " +
+              "딱 한 번 재생할 시전 효과음입니다(Resources/SFX/ 아래 클립 이름과 일치해야 함). 맞은 대상 " +
+              "각각에 대해 반복 재생되는 타격음(hitVfxName 쪽 SFX/attackHitSfxName)과 달리, 아무도 못 " +
+              "맞혀도 항상 한 번만 재생됩니다. 비워두면 재생하지 않습니다.")]
+    public string swingCastSfxName;
     [Tooltip("범위 표시가 플레이어를 따라다니는 시간(초)")]
     public float swingFollowDuration = 1f;
     [Tooltip("범위 표시가 고정된 뒤 실제로 내려찍기까지 걸리는 시간(초)")]
@@ -151,6 +166,10 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     public string swingSlamVfxName;
 
     [Header("공격 - 파도보내기 (Wave)")]
+    [Tooltip("범위 표시가 사라지고 waveCastVfxName/waveTravelVfxName이 재생되는 그 순간(FireWaveFan, " +
+              "차징이 끝나고 파도가 실제로 발사되는 시점) waveOrigin 위치에서 딱 한 번 재생할 시전 " +
+              "효과음입니다(Resources/SFX/ 아래 클립 이름과 일치해야 함). 비워두면 재생하지 않습니다.")]
+    public string waveCastSfxName;
     [Tooltip("차징(손을 뒤로 보내는) 모션 동안의 시간(초). 이 동안 부채꼴 범위 표시가 보입니다.")]
     public float waveChargeDuration = 1f;
     [Tooltip("부채꼴 범위의 전체 각도(도)")]
@@ -338,6 +357,8 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         stateTimer = 0f;
         swingLocked = false;
 
+        FaceTarget();
+
         GameObject go = new GameObject("SwingIndicator");
         swingIndicator = go.AddComponent<CircleAreaIndicator>();
         swingIndicator.SetRadius(swingRadius);
@@ -370,6 +391,13 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
 
     private void PerformSwingSlam()
     {
+        // 범위 표시가 사라지고(이 메서드 맨 끝의 DestroySwingIndicator()) 실제 판정(아래 OverlapSphere)이
+        // 진행되는 이 순간, 딱 한 번만 재생되는 시전 효과음입니다.
+        if (!string.IsNullOrEmpty(swingCastSfxName))
+        {
+            SoundManager.Instance.PlaySFX(swingCastSfxName, transform.position);
+        }
+
         // 맞은 대상이 있든 없든, 내려찍는 그 순간 항상 한 번만 재생되는 임팩트 연출입니다 -
         // 대상별로 반복 재생되는 hitVfxName(아래 foreach 안)과는 별개입니다.
         if (!string.IsNullOrEmpty(swingSlamVfxName))
@@ -396,6 +424,12 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
                 VFXManager.Instance.Play(hitVfxName, hitPoint, transform.rotation);
             }
 
+            // stats(MonsterStats).attackHitSfxName - "이 몬스터가 플레이어를 맞혔을 때" 낼 소리입니다.
+            if (!string.IsNullOrEmpty(stats.attackHitSfxName))
+            {
+                SoundManager.Instance.PlaySFX(stats.attackHitSfxName, hitPoint);
+            }
+
             Vector3 numberPosition = hitPoint + Vector3.up * swingDamageNumberHeightOffset;
             DamageNumberManager.Instance.Show(result.damage, numberPosition, false, DamageNumberTeam.Player);
         }
@@ -419,6 +453,8 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         currentState = State.WaveAttack;
         stateTimer = 0f;
         waveFired = false;
+
+        FaceTarget();
 
         waveForward = Flatten(target.position - transform.position);
         if (waveForward.sqrMagnitude < 0.0001f) waveForward = transform.forward;
@@ -464,6 +500,13 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         if (!string.IsNullOrEmpty(waveCastVfxName))
         {
             VFXManager.Instance.Play(waveCastVfxName, waveOrigin, Quaternion.LookRotation(waveForward));
+        }
+
+        // 범위 표시가 사라지고(UpdateWaveAttack()에서 이 메서드 직후 호출되는 DestroyWaveIndicator())
+        // VFX가 재생되는 이 순간, 딱 한 번만 재생되는 시전 효과음입니다.
+        if (!string.IsNullOrEmpty(waveCastSfxName))
+        {
+            SoundManager.Instance.PlaySFX(waveCastSfxName, waveOrigin);
         }
 
         float sliceAngle = waveFanAngle / waveCount; // 조각 하나의 전체 각도
@@ -579,6 +622,20 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         return v;
     }
 
+    /// <summary>공격을 시작하는 순간, 이 보스를 target 쪽으로 즉시(스냅) 회전시켜 바라보게 합니다
+    /// (수평 방향만 - y축 높이 차이는 무시합니다). EnterSwingAttack()/EnterWaveAttack() 맨 앞에서 호출되어,
+    /// 내려찍기/파도가 나가는 방향과 실제로 몸이 보고 있는 방향이 어긋나지 않도록 합니다. target이 null이거나
+    /// 완전히 같은 위치(수평 거리 0)면 회전을 건드리지 않습니다.</summary>
+    private void FaceTarget()
+    {
+        if (target == null) return;
+
+        Vector3 direction = Flatten(target.position - transform.position);
+        if (direction.sqrMagnitude < 0.0001f) return;
+
+        transform.rotation = Quaternion.LookRotation(direction.normalized);
+    }
+
     private Vector3 GroundPosition(Vector3 worldPos)
     {
         worldPos.y = transform.position.y + swingHeight; // 보스 바닥 높이 + swingHeight 오프셋.
@@ -589,9 +646,100 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     {
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, detectRange);
+
+        DrawSwingRangeGizmos();
+        DrawWaveRangeGizmos();
+    }
+
+    // ------------------------------------------------------------------
+    // [임시 디버그용] 공격 판정 범위 시각화 - Gizmos
+    // ----------------------------------------------------------------------
+    // 실제 판정 계산 방식(특히 Wave의 부채꼴 + burst별 원형 판정)을 그대로 반영해서 그리는 용도입니다.
+    // 정식 기능이 아니라 튜닝 중 눈으로 확인하기 위한 임시 함수라서, 더 이상 필요 없어지면 이 두 메서드와
+    // 위 OnDrawGizmosSelected() 안의 호출부만 지우면 됩니다(다른 로직과는 무관합니다).
+    //
+    // Play 모드에서 실제로 SwingAttack/WaveAttack 중이면 그 순간의 진짜 판정 위치/방향(swingLockedPosition,
+    // waveOrigin/waveForward)을 그대로 쓰고, 아닐 때(에디터에서 미리보기)는 보스의 현재 위치/정면 방향
+    // 기준으로 대략적인 예상 범위를 그립니다.
+    // ------------------------------------------------------------------
+
+    /// <summary>[임시 디버그용] 휘두르기(Swing) 판정 범위. PerformSwingSlam()이 실제로 Physics.OverlapSphere를
+    /// 호출하는 그 위치(swingLockedPosition)와 반지름(swingRadius)을 그대로 그립니다. 아직 고정되기 전(범위
+    /// 표시가 플레이어를 따라다니는 중)이면 target의 현재 위치를 기준으로, 공격 중이 아니면 보스 정면 방향
+    /// swingRadius만큼 앞을 기준으로 미리보기를 그립니다.</summary>
+    private void DrawSwingRangeGizmos()
+    {
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, swingRadius);
+
+        Vector3 previewPos;
+        if (Application.isPlaying && currentState == State.SwingAttack)
+        {
+            previewPos = swingLocked
+                ? swingLockedPosition
+                : GroundPosition(target != null ? target.position : transform.position);
+        }
+        else
+        {
+            previewPos = GroundPosition(transform.position + transform.forward * swingRadius);
+        }
+
+        Gizmos.DrawWireSphere(previewPos, swingRadius);
+    }
+
+    /// <summary>[임시 디버그용] 파도보내기(Wave) 판정 범위. FireWaveFan()/ShockwaveWave와 완전히 같은 계산으로
+    /// 그립니다 - 부채꼴 전체 폭(waveFanAngle)의 양쪽 경계선(주황), waveCount개로 나눈 조각들의 경계선(옅은
+    /// 노랑), 그리고 각 조각 중심 방향으로 waveBurstCount개의 burst 지점마다 실제 판정 반지름(waveBurstRadius)
+    /// 원(청록)을 그립니다. 이 청록색 원들이 곧 ShockwaveWave.CheckHitsAt()이 실제로 Physics.OverlapSphere를
+    /// 호출하는 자리와 크기입니다(다만 실제로는 burstArcSamples개 지점을 조각 폭 전체에 걸쳐 샘플링하므로,
+    /// 여기 그려진 조각 중심 원 하나보다 실제 판정 폭이 살짝 더 넓게 커버됩니다).</summary>
+    private void DrawWaveRangeGizmos()
+    {
+        Vector3 origin;
+        Vector3 forward;
+        if (Application.isPlaying && currentState == State.WaveAttack)
+        {
+            origin = waveOrigin;
+            forward = waveForward;
+        }
+        else
+        {
+            origin = transform.position + Vector3.up * waveHeight;
+            forward = transform.forward;
+        }
+
+        if (waveCount <= 0) return;
+        float sliceAngle = waveFanAngle / waveCount;
+
+        // 부채꼴 전체의 양쪽 바깥 경계선.
         Gizmos.color = new Color(1f, 0.5f, 0f);
-        Gizmos.DrawWireSphere(transform.position, waveFanRadius);
+        Vector3 leftEdge = Quaternion.AngleAxis(-waveFanAngle * 0.5f, Vector3.up) * forward;
+        Vector3 rightEdge = Quaternion.AngleAxis(waveFanAngle * 0.5f, Vector3.up) * forward;
+        Gizmos.DrawLine(origin, origin + leftEdge * waveFanRadius);
+        Gizmos.DrawLine(origin, origin + rightEdge * waveFanRadius);
+
+        // waveCount개 조각으로 나누는 경계선들(양끝 포함).
+        Gizmos.color = new Color(1f, 0.85f, 0.2f, 0.6f);
+        for (int i = 0; i <= waveCount; i++)
+        {
+            float angle = -waveFanAngle * 0.5f + sliceAngle * i;
+            Vector3 dir = Quaternion.AngleAxis(angle, Vector3.up) * forward;
+            Gizmos.DrawLine(origin, origin + dir * waveFanRadius);
+        }
+
+        // 각 조각 중심 방향으로, burst가 실제로 터지는 거리마다 판정 반지름 원.
+        Gizmos.color = Color.cyan;
+        int burstCount = Mathf.Max(1, waveBurstCount);
+        for (int i = 0; i < waveCount; i++)
+        {
+            float centerAngle = -waveFanAngle * 0.5f + sliceAngle * (i + 0.5f);
+            Vector3 dir = Quaternion.AngleAxis(centerAngle, Vector3.up) * forward;
+
+            for (int b = 1; b <= burstCount; b++)
+            {
+                float distance = waveFanRadius * b / burstCount;
+                Vector3 burstPos = origin + dir * distance;
+                Gizmos.DrawWireSphere(burstPos, waveBurstRadius);
+            }
+        }
     }
 }

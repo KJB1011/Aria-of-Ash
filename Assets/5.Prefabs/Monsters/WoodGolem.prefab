@@ -10039,6 +10039,7 @@ GameObject:
   - component: {fileID: 7160896341587856328}
   - component: {fileID: 9195788157534492745}
   - component: {fileID: 1861136317143491183}
+  - component: {fileID: 7275094230822863706}
   m_Layer: 6
   m_Name: WoodGolem
   m_TagString: Untagged
@@ -10078,6 +10079,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   displayName: "\uC6B0\uB4DC \uACE8\uB818"
+  level: 1
   monsterId: WoodGolem
   baseHP: 1000
   baseAttackPower: 150
@@ -10085,6 +10087,8 @@ MonoBehaviour:
   bonusHPPercent: 0
   bonusAttackPercent: 0
   bonusDefensePercent: 0
+  hitSfxName: 
+  attackHitSfxName: SFX_WoodGolem_Hit
   damageVariancePercent: 1
   expReward: 10
   goldReward: 20
@@ -10276,6 +10280,18 @@ MonoBehaviour:
   worldOffset: {x: 0, y: 2.5, z: 0}
   targetCamera: {fileID: 0}
   hideWhenFullHealth: 1
+--- !u!114 &7275094230822863706
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4800839809881058091}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: facfd87d05569e74e9bf3e9a02d605fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5464489719840728496
 GameObject:
   m_ObjectHideFlags: 0

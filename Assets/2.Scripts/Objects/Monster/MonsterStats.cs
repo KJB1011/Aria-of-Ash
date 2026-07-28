@@ -57,6 +57,22 @@ public class MonsterStats : MonoBehaviour
     public float bonusAttackPercent = 0f;
     public float bonusDefensePercent = 0f;
 
+    [Header("피격 사운드 (이 몬스터가 [플레이어에게] 맞았을 때)")]
+    [Tooltip("플레이어의 공격에 맞았을 때 재생할 타격 효과음 이름입니다(Resources/SFX/ 아래 클립 이름과 " +
+              "일치해야 함). 몬스터 종류마다 서로 다른 타격음(예: 슬라임은 질척한 소리, 골렘은 둔탁한 " +
+              "소리)을 내고 싶을 때 여기서 설정하세요. AttackHitbox.hitSfxName(공격 모션 쪽에 설정해둔 " +
+              "타격음)과 둘 다 채워져 있으면 이 몬스터 쪽 값이 우선하고, 이게 비어있을 때만 " +
+              "AttackHitbox.hitSfxName이 대신 재생됩니다. 둘 다 비어있으면 타격음 없이 데미지만 들어갑니다.")]
+    public string hitSfxName;
+
+    [Header("공격 명중 사운드 (이 몬스터가 [플레이어를] 맞혔을 때)")]
+    [Tooltip("반대 방향입니다 - 위 hitSfxName은 '이 몬스터가 맞았을 때'이고, 이건 '이 몬스터의 공격이 " +
+              "플레이어에게 적중했을 때' 재생할 효과음입니다(Resources/SFX/ 아래 클립 이름과 일치해야 함). " +
+              "몬스터 종류마다 다른 공격 타격음(예: 슬라임의 물컹한 타격, 골렘의 묵직한 타격)을 내고 싶을 " +
+              "때 여기서 설정하세요. MonsterAttackHitbox를 쓰는 일반 몬스터와 MiddleSlimeBoss의 Swing/Wave " +
+              "공격 모두 이 값을 재생합니다. 비워두면 타격음 없이 데미지만 들어갑니다.")]
+    public string attackHitSfxName;
+
     [Header("데미지 랜덤 편차")]
     [Tooltip("CalculateDamage()가 계산한 최종 데미지에 마지막으로 적용하는 무작위 편차(%). PlayerStats와 " +
               "동일한 방식입니다 - 예: 1이면 최종 데미지가 ±1% 범위에서 매번 조금씩 다르게 나옵니다.")]

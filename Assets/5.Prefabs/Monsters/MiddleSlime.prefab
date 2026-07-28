@@ -1393,6 +1393,8 @@ MonoBehaviour:
   bonusHPPercent: 0
   bonusAttackPercent: 0
   bonusDefensePercent: 0
+  hitSfxName: 
+  attackHitSfxName: SFX_MiddleSlime_Hit
   damageVariancePercent: 1
   expReward: 100
   goldReward: 250
@@ -1417,23 +1419,26 @@ MonoBehaviour:
   hitVfxName: FX_MiddleSlime_Hit
   bossHpBar: {fileID: 0}
   dieDelay: 2
-  detectRange: 17
+  detectRange: 20
   idleDurationMin: 1.5
   idleDurationMax: 2.5
+  swingCastSfxName: SFX_MiddleSlime_Attack1
   swingFollowDuration: 0.5
   swingSlamDelay: 0.5
   swingRadius: 2.5
   swingDamagePercent: 100
   swingDamageNumberHeightOffset: 1.2
   swingSlamVfxName: FX_MiddleSlime_Attack1
-  waveChargeDuration: 1
+  waveCastSfxName: SFX_MiddleSlime_Attack2
+  waveChargeDuration: 0.5
   waveFanAngle: 90
-  waveFanRadius: 14
+  waveFanRadius: 12
   waveCount: 3
-  waveTravelDuration: 1
+  waveTravelDuration: 0.6
   waveDamagePercent: 75
   waveBurstCount: 3
-  waveBurstRadius: 1.5
+  waveBurstRadius: 2
+  waveVfxForwardOffset: 6
   waveTravelVfxName: FX_MiddleSlime_Attack2
   waveCastVfxName: 
   swingHeight: 9

@@ -490,6 +490,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 7784421021522911251}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a7f0d07576b6e4b4eb1ab7a98c56d802,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8558550984188517836}
   m_SourcePrefab: {fileID: 100100000, guid: a7f0d07576b6e4b4eb1ab7a98c56d802, type: 3}
 --- !u!4 &7445081739186605028 stripped
 Transform:
@@ -516,6 +520,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   displayName: "\uD558\uAE09 \uC2AC\uB77C\uC784"
+  level: 1
   monsterId: SmallSlime
   baseHP: 500
   baseAttackPower: 100
@@ -523,6 +528,8 @@ MonoBehaviour:
   bonusHPPercent: 0
   bonusAttackPercent: 0
   bonusDefensePercent: 0
+  hitSfxName: 
+  attackHitSfxName: SFX_SmallSlime_Hit
   damageVariancePercent: 1
   expReward: 5
   goldReward: 10
@@ -713,3 +720,15 @@ MonoBehaviour:
   worldOffset: {x: 0, y: 2.5, z: 0}
   targetCamera: {fileID: 0}
   hideWhenFullHealth: 1
+--- !u!114 &8558550984188517836
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7789519581752021342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: facfd87d05569e74e9bf3e9a02d605fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

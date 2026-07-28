@@ -39,6 +39,13 @@
 // 같은 순간(같은 위치, hitVfxName 바로 옆) SoundManager.Instance.PlaySFX()로 타격음을 재생합니다.
 // Attack1/Attack2/Attack3/Skill/UltSkill 오브젝트마다 이 값을 각각 다르게 설정하면 기본 공격 3타/
 // 스킬/필살기의 타격음을 전부 따로 지정할 수 있습니다. 비워두면 타격음 없이 데미지만 들어갑니다.
+//
+// [몬스터별 히트 SFX가 우선]
+// 맞은 대상의 MonsterStats.hitSfxName이 채워져 있으면 이 hitSfxName 대신 그 값을 재생합니다 - 슬라임은
+// 질척한 소리, 골렘은 둔탁한 소리처럼 몬스터 종류마다 다른 타격음을 내고 싶을 때는 각 몬스터 프리팹의
+// MonsterStats.hitSfxName을 설정하세요. MonsterStats.hitSfxName이 비어있는 몬스터는 지금처럼 이
+// hitSfxName(공격 모션 쪽 기본값)이 그대로 재생됩니다 - 즉 "몬스터 쪽 설정이 있으면 몬스터 우선,
+// 없으면 공격 쪽 기본값"입니다.
 // (참고 - 시행착오: 처음엔 Collider.ClosestPoint(이 히트박스 위치)를 썼는데 오목한 Mesh Collider에는
 // 지원되지 않아 입력값을 그대로 돌려주는 문제가, 그 다음 ClosestPointOnBounds로 바꾸니 근접 공격처럼
 // 히트박스가 몬스터의 XZ 범위 안까지 파고들면 그 축은 클램프 안 되고 Y만 클램프되어 "플레이어
@@ -84,7 +91,8 @@ public class AttackHitbox : MonoBehaviour
     public string hitVfxName;
     [Tooltip("데미지가 들어가는 순간 재생할 타격 효과음 이름 (Resources/SFX/ 아래 클립 이름과 일치해야 함). " +
               "비워두면 타격음 없이 데미지만 적용됩니다. Attack1/Attack2/Attack3/Skill/UltSkill 오브젝트마다 " +
-              "다르게 설정하세요.")]
+              "다르게 설정하세요. 맞은 대상의 MonsterStats.hitSfxName이 채워져 있으면 이 값 대신 그쪽이 " +
+              "우선 재생됩니다 - 이 값은 몬스터 쪽에 설정이 없을 때 쓰이는 기본값 역할입니다.")]
     public string hitSfxName;
     [Tooltip("데미지 숫자가 뜨는 위치를 맞은 지점에서 위로 얼마나 띄울지(미터). 발밑이 아니라 " +
               "몸통 근처에서 뜨도록 하기 위한 값입니다.")]
@@ -195,8 +203,14 @@ public class AttackHitbox : MonoBehaviour
         // MiddleSlimeBoss처럼 몸집이 큰 대상인지 한 번만 확인해서, VFX 크기/데미지 숫자 위치 둘 다에 씁니다.
         bool isMiddleSlime = other.GetComponentInParent<MiddleSlimeBoss>() != null;
 
+        // 맞은 몬스터 쪽에 자기 타격음(MonsterStats.hitSfxName)이 설정되어 있으면 그걸 우선 재생하고,
+        // 없으면 이 히트박스(공격 모션) 쪽 기본값을 재생합니다.
+        string resolvedHitSfxName = (targetStats != null && !string.IsNullOrEmpty(targetStats.hitSfxName))
+            ? targetStats.hitSfxName
+            : hitSfxName;
+
         PlayHitVfx(hitPosition, isMiddleSlime);
-        PlayHitSfx(hitPosition);
+        PlayHitSfx(hitPosition, resolvedHitSfxName);
         ShowDamageNumber(hitPosition, result.damage, result.isCrit, isMiddleSlime);
     }
 
@@ -239,11 +253,13 @@ public class AttackHitbox : MonoBehaviour
         spawned.transform.localScale = isMiddleSlime ? Vector3.one * 3f : Vector3.one;
     }
 
-    private void PlayHitSfx(Vector3 hitPosition)
+    /// <summary>sfxName은 OnTriggerEnter()가 이미 "몬스터 쪽 설정 우선, 없으면 이 히트박스의 기본값"으로
+    /// 계산해서 넘겨준 최종 이름입니다.</summary>
+    private void PlayHitSfx(Vector3 hitPosition, string sfxName)
     {
-        if (string.IsNullOrEmpty(hitSfxName)) return;
+        if (string.IsNullOrEmpty(sfxName)) return;
 
-        SoundManager.Instance.PlaySFX(hitSfxName, hitPosition);
+        SoundManager.Instance.PlaySFX(sfxName, hitPosition);
     }
 
     /// <summary>맞은 대상이 MiddleSlimeBoss면 데미지 숫자 위치를 플레이어 쪽으로 수평으로
