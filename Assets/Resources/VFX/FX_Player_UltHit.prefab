@@ -254,8 +254,8 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 3
-      scalar: 0.4
-      minScalar: 0.3
+      scalar: 1.2
+      minScalar: 1
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -9926,8 +9926,8 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 3
-      scalar: 0.07
-      minScalar: 0.03
+      scalar: 0.15
+      minScalar: 0.1
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -14950,7 +14950,7 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 3
+      scalar: 5
       minScalar: 1
       maxCurve:
         serializedVersion: 2
@@ -19747,17 +19747,17 @@ PrefabInstance:
     - target: {fileID: 8525990746615576125, guid: b85d21f3b8fed714bacf0c4fd50fa512,
         type: 3}
       propertyPath: m_LocalScale.x
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8525990746615576125, guid: b85d21f3b8fed714bacf0c4fd50fa512,
         type: 3}
       propertyPath: m_LocalScale.y
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8525990746615576125, guid: b85d21f3b8fed714bacf0c4fd50fa512,
         type: 3}
       propertyPath: m_LocalScale.z
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8525990746615576125, guid: b85d21f3b8fed714bacf0c4fd50fa512,
         type: 3}
@@ -19816,8 +19816,18 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8941974229056258646, guid: b85d21f3b8fed714bacf0c4fd50fa512,
         type: 3}
+      propertyPath: InitialModule.startSize.scalar
+      value: 4.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 8941974229056258646, guid: b85d21f3b8fed714bacf0c4fd50fa512,
+        type: 3}
       propertyPath: CustomDataModule.vector0_1.scalar
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8941974229056258646, guid: b85d21f3b8fed714bacf0c4fd50fa512,
+        type: 3}
+      propertyPath: InitialModule.startSize.minScalar
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 8941974229056258646, guid: b85d21f3b8fed714bacf0c4fd50fa512,
         type: 3}
@@ -19961,8 +19971,18 @@ PrefabInstance:
       objectReference: {fileID: 2100000, guid: 22df6ea84842b434c9b2c6e5008d3db3, type: 2}
     - target: {fileID: 8941974229959612359, guid: b85d21f3b8fed714bacf0c4fd50fa512,
         type: 3}
+      propertyPath: InitialModule.startSize.scalar
+      value: 4.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 8941974229959612359, guid: b85d21f3b8fed714bacf0c4fd50fa512,
+        type: 3}
       propertyPath: CustomDataModule.vector0_1.scalar
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8941974229959612359, guid: b85d21f3b8fed714bacf0c4fd50fa512,
+        type: 3}
+      propertyPath: InitialModule.startSize.minScalar
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 8941974229959612359, guid: b85d21f3b8fed714bacf0c4fd50fa512,
         type: 3}

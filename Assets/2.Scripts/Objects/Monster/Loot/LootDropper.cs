@@ -17,15 +17,21 @@
 //
 // [동작 - 전리품]
 //   DropLoot() 호출 시 lootTable.RollDrops()로 이번에 드롭될 (아이템, 개수) 목록을 뽑고,
-//   각 아이템마다 LootItemData.worldPickupPrefab을 이 오브젝트 위치(+dropHeight)에
-//   Instantiate한 뒤, scatterRadius 안의 무작위 지점을 착지 목표로 LootPickup.Launch()를
-//   호출해 포물선으로 튀어나가는 연출을 시작시킵니다.
+//   각 아이템마다 LootPickup.Spawn()으로 이 오브젝트 위치(+dropHeight)에서 인스턴스를 빌려온 뒤,
+//   scatterRadius 안의 무작위 지점을 착지 목표로 LootPickup.Launch()를 호출해 포물선으로
+//   튀어나가는 연출을 시작시킵니다.
 //
 // [동작 - 경험치/골드]
 //   DropRewards() 호출 시 MonsterStats의 expReward/goldReward를 각각 expOrbCount/goldOrbCount개의
-//   RewardOrb로 나눠서(최대한 균등하게) 같은 방식으로 흩뿌립니다. LootPickup과 달리 RewardOrb는
-//   상호작용 없이 스스로 플레이어에게 날아가 자동으로 흡수됩니다(RewardOrb.cs 참고). 몬스터의
-//   사망 처리에서 DropLoot()와 DropRewards()를 둘 다 호출해주세요.
+//   RewardOrb로 나눠서(최대한 균등하게) 같은 방식(RewardOrb.Spawn())으로 흩뿌립니다. LootPickup과
+//   달리 RewardOrb는 상호작용 없이 스스로 플레이어에게 날아가 자동으로 흡수됩니다(RewardOrb.cs
+//   참고). 몬스터의 사망 처리에서 DropLoot()와 DropRewards()를 둘 다 호출해주세요.
+//
+// [오브젝트 풀링 - LootPickup.cs/RewardOrb.cs 쪽에서 처리]
+//   전리품/보상 오브젝트를 이제 Instantiate로 직접 만들지 않고, 각각의 static 팩토리 메서드
+//   (LootPickup.Spawn()/RewardOrb.Spawn())를 통해 풀에서 빌려옵니다 - 몬스터가 죽을 때마다
+//   여러 개씩 쏟아지는 만큼 풀링 효과가 큽니다. 이 스크립트(LootDropper) 입장에서 바뀐 건
+//   Instantiate 호출을 Spawn 호출로 바꾼 것뿐이고, 나머지 흐름(위치 계산, Launch 호출)은 동일합니다.
 //
 // [드롭 위치를 직접 지정하고 싶다면 - DropLoot(Vector3)/DropRewards(Vector3)]
 //   기본(파라미터 없는) DropLoot()/DropRewards()는 이 오브젝트(몬스터 루트)의 transform.position을
@@ -97,12 +103,7 @@ public class LootDropper : MonoBehaviour
         foreach (LootDropResult drop in drops)
         {
             Vector3 spawnPosition = origin + Vector3.up * dropHeight;
-            GameObject instance = Instantiate(drop.item.worldPickupPrefab, spawnPosition, Quaternion.identity);
-
-            // LootItemData.worldPickupPrefab에는 반드시 LootPickup이 붙어있어야 합니다 - 없으면
-            // 여기서 곧바로 NullReferenceException이 나서, 어떤 아이템 설정이 잘못됐는지 바로 드러납니다.
-            LootPickup pickup = instance.GetComponent<LootPickup>();
-            pickup.Setup(drop.item, drop.amount);
+            LootPickup pickup = LootPickup.Spawn(drop.item, drop.amount, spawnPosition);
             pickup.Launch(GetScatterGroundPosition(origin));
         }
     }
@@ -141,12 +142,7 @@ public class LootDropper : MonoBehaviour
             if (amount <= 0) continue;
 
             Vector3 spawnPosition = origin + Vector3.up * dropHeight;
-            GameObject instance = Instantiate(prefab, spawnPosition, Quaternion.identity);
-
-            // prefab에는 반드시 RewardOrb가 붙어있어야 합니다 - 없으면 여기서 바로
-            // NullReferenceException이 나서, 프리팹 연결을 빠뜨렸다는 게 바로 드러납니다.
-            RewardOrb orb = instance.GetComponent<RewardOrb>();
-            orb.Setup(amount);
+            RewardOrb orb = RewardOrb.Spawn(prefab, amount, spawnPosition);
             orb.Launch(GetScatterGroundPosition(origin));
         }
     }

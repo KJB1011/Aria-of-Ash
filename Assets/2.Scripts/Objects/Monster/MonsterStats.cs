@@ -31,9 +31,14 @@ using UnityEngine;
 
 public class MonsterStats : MonoBehaviour
 {
-    [Header("표시 이름")]
+    [Header("표시 정보")]
     [Tooltip("체력바 등 UI에 표시할 이름입니다. 예: \"슬라임\", \"우드골렘\"")]
     public string displayName = "Monster";
+    [Tooltip("체력바 등 UI에 표시할 레벨입니다(예: 보스 체력바의 \"Lv. 25\"). PlayerStats.level과 달리 " +
+              "순수하게 표시용 숫자일 뿐, HP/공격력/방어력 계산에는 전혀 영향을 주지 않습니다 - 몬스터는 " +
+              "레벨에 따른 스탯 성장 대상이 아닙니다(성장이 필요하면 baseHP 등 기초 스탯 자체를 몬스터마다 " +
+              "다르게 설정하세요).")]
+    public int level = 1;
 
     [Header("퀘스트 식별")]
     [Tooltip("퀘스트 Kill 목표(QuestData.Objective.targetMonsterId)가 이 몬스터를 구분하는 데 쓰는 고유 " +

@@ -2,16 +2,25 @@
 // NPCNameplate.cs
 // ----------------------------------------------------------------------------
 // NPC 머리 위에 이름표(UINPCNameplate 프리팹)를 띄우는 컴포넌트입니다. NPCTalker가 붙은 오브젝트에
-// 이 컴포넌트를 추가하면 됩니다. MonsterHealthBar.cs와 완전히 같은 방식(월드에 별도 Instantiate +
-// LateUpdate에서 위치/빌보드 갱신)입니다 - 체력바 대신 이름만 표시할 뿐입니다.
+// 이 컴포넌트를 추가하면 됩니다. MonsterHealthBar.cs와 완전히 같은 방식(월드에 별도로 인스턴스를
+// 빌려두고 LateUpdate에서 위치/빌보드 갱신)입니다 - 체력바 대신 이름만 표시할 뿐입니다.
 //
 // [동작 방식 - NPC에 직접 자식으로 넣지 않는 이유]
 //   MonsterHealthBar.cs와 같은 이유입니다. 이름표를 NPC Transform의 자식으로 두면 NPC가
 //   회전/스케일될 때(대화 중 플레이어를 바라보며 회전하는 것도 포함) 같이 회전/스케일되어 찌그러지거나
-//   기울어질 수 있습니다. 그래서 이름표 프리팹은 Awake()에서 씬 최상위에 별도로 Instantiate해두고,
+//   기울어질 수 있습니다. 그래서 이름표 프리팹은 Awake()에서 씬 최상위에 별도로 인스턴스를 빌려두고,
 //   매 프레임(LateUpdate) 위치만 "NPC 위치 + worldOffset"으로 직접 옮기고, 회전은 카메라를 정면으로
 //   바라보도록(빌보드) 강제로 맞춥니다 - 부모-자식 관계에 얽매이지 않아 NPC가 어떻게 돌아가든 이름표는
 //   항상 똑바로, 같은 크기로 보입니다.
+//
+// [오브젝트 풀링 - 별도 매니저 없이 이 클래스 안에서 static으로 관리]
+//   이름표 인스턴스는 Instantiate/Destroy를 직접 하지 않고, MonsterHealthBar.cs와 완전히 같은
+//   방식으로 이 클래스의 static Dictionary에 담긴 GameObjectPool(프리팹별로 하나씩)을 통해
+//   빌리고(Get) 반납(Release)합니다. VFXManager/SoundManager처럼 별도의 싱글턴 매니저 컴포넌트로
+//   만들지 않은 이유도 동일합니다 - 이 풀은 오직 이 클래스만 사용하므로, 씬에 매니저 오브젝트를
+//   하나 더 만드는 대신 이 컴포넌트 안에 조용히 숨겨둔 static 상태로 충분합니다. 풀의 부모(poolRoot)도
+//   DontDestroyOnLoad로 표시하지 않은 평범한 빈 오브젝트입니다 - 인게임 플레이 중에는 이 씬이
+//   재로드되지 않는다는 전제입니다.
 //
 // [이름 - NPCTalker.npcName을 그대로 사용]
 //   상호작용 목록 UI에도 쓰이는 NPCTalker.npcName을 그대로 재사용합니다 - 따로 이름을 또 입력할
@@ -34,11 +43,20 @@
 //      충분합니다.
 // ============================================================================
 
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(NPCTalker))]
 public class NPCNameplate : MonoBehaviour
 {
+    private const int PrewarmCountPerPrefab = 5;
+    private const int MaxPoolSizePerPrefab = 50;
+
+    // 프리팹(에셋)별로 풀을 하나씩 관리합니다 - MonsterHealthBar.cs와 같은 패턴입니다. static이라
+    // 씬에 NPC가 몇 명이 있든 딱 하나만 존재하고, 모든 NPCNameplate 인스턴스가 공유합니다.
+    private static readonly Dictionary<UINPCNameplate, GameObjectPool> pools = new Dictionary<UINPCNameplate, GameObjectPool>();
+    private static Transform poolRoot;
+
     [Header("프리팹")]
     [Tooltip("UINPCNameplate.cs가 붙은 World Space Canvas 프리팹입니다.")]
     public UINPCNameplate nameplatePrefab;
@@ -68,7 +86,8 @@ public class NPCNameplate : MonoBehaviour
             return;
         }
 
-        nameplateInstance = Instantiate(nameplatePrefab);
+        GameObject instance = GetOrCreatePool(nameplatePrefab).Get(Vector3.zero, Quaternion.identity);
+        nameplateInstance = instance.GetComponent<UINPCNameplate>();
         nameplateTransform = nameplateInstance.transform;
 
         // 이름은 게임 도중 바뀌지 않으므로 여기서 한 번만 반영합니다.
@@ -102,9 +121,29 @@ public class NPCNameplate : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (nameplateInstance != null)
+        if (nameplateInstance == null || nameplatePrefab == null) return;
+
+        GetOrCreatePool(nameplatePrefab).Release(nameplateInstance.gameObject);
+    }
+
+    /// <summary>nameplatePrefab 하나당 GameObjectPool을 하나씩 만들어(최초 1회) 재사용합니다. 풀의
+    /// 부모로 쓸 poolRoot도 여기서 처음 필요할 때 만듭니다 - 별도 매니저 컴포넌트 없이, 딱 이
+    /// 용도만 하는 빈 오브젝트 하나면 충분합니다. 인게임 플레이 중에는 이 씬이 재로드되지 않는다는
+    /// 전제라 DontDestroyOnLoad는 표시하지 않았습니다.</summary>
+    private static GameObjectPool GetOrCreatePool(UINPCNameplate prefab)
+    {
+        if (poolRoot == null)
         {
-            Destroy(nameplateInstance.gameObject);
+            GameObject rootObject = new GameObject("Pool_NPCNameplate");
+            poolRoot = rootObject.transform;
         }
+
+        if (!pools.TryGetValue(prefab, out GameObjectPool pool))
+        {
+            pool = new GameObjectPool(prefab.gameObject, poolRoot, PrewarmCountPerPrefab, MaxPoolSizePerPrefab);
+            pools[prefab] = pool;
+        }
+
+        return pool;
     }
 }

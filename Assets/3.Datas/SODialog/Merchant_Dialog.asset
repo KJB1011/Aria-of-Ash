@@ -24,6 +24,8 @@ MonoBehaviour:
         m_Calls: []
     playTalkAnimationOnStart: 1
     endsConversation: 0
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
     choices:
     - choiceText: "\uC608.."
       targetIndex: 1
@@ -40,6 +42,8 @@ MonoBehaviour:
         m_Calls: []
     playTalkAnimationOnStart: 0
     endsConversation: 0
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
     choices:
     - choiceText: "\uBB34\uC2A8 \uC77C\uC774\uB77C\uB3C4 \uC788\uC5C8\uB098\uC694?"
       targetIndex: 2
@@ -57,6 +61,8 @@ MonoBehaviour:
         m_Calls: []
     playTalkAnimationOnStart: 0
     endsConversation: 0
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
     choices: []
   - index: 3
     cameraLocalPosition: {x: 2, y: 3, z: 3}
@@ -71,6 +77,8 @@ MonoBehaviour:
         m_Calls: []
     playTalkAnimationOnStart: 0
     endsConversation: 0
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
     choices: []
   - index: 4
     cameraLocalPosition: {x: 2, y: 3, z: 3}
@@ -84,6 +92,8 @@ MonoBehaviour:
         m_Calls: []
     playTalkAnimationOnStart: 0
     endsConversation: 0
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
     choices:
     - choiceText: "\uC81C\uAC00 \uBB38\uC81C\uB97C \uD574\uACB0\uD574\uBCFC\uAC8C\uC694"
       targetIndex: 5
@@ -101,4 +111,29 @@ MonoBehaviour:
         m_Calls: []
     playTalkAnimationOnStart: 1
     endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
     choices: []
+  - index: 11
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uBD80\uC11C\uC9C4 \uBB3C\uC790\uAC00 \uB9CE\uC544\uC11C \uACE0\uC815\uC2DC\uD0AC
+      \uC9C0\uC9C0\uB300\uAC00 \uD544\uC694\uD560\uAC70 \uAC19\uC544. \uB098\uBB47\uAC00\uC9C0
+      5\uAC1C \uC815\uB3C4 \uAD6C\uD574\uB2E4 \uC904\uB798?"
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 0
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices:
+    - choiceText: "\uC608"
+      targetIndex: 0
+      questToGrant: {fileID: 11400000, guid: 3cd2c3ad44a948f47b9eea61a31ce12f, type: 2}
+      questToTurnIn: {fileID: 0}
+    - choiceText: "\uC544\uB1E8"
+      targetIndex: 0
+      questToGrant: {fileID: 0}
+      questToTurnIn: {fileID: 0}

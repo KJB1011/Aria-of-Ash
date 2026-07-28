@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd500b238f1d4bb419645648b573b0ae, type: 3}
   m_Name: Guardian_HelpGetFood
   m_EditorClassIdentifier: 
-  questId: 
-  questName: 
+  questId: HelpGetFood
+  questName: "\uC2DD\uB7C9 \uC870\uB2EC"
   description: 
   objectives: []
   requiresTurnIn: 0

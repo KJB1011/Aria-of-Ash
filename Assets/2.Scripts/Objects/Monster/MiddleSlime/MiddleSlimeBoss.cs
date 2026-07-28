@@ -10,7 +10,7 @@
 //                 대기시간이 다 지나도 플레이어가 detectRange 밖에 있으면 공격을 시작하지 않고
 //                 계속 Idle에 머무릅니다 (플레이어가 범위 안으로 들어오면 즉시 공격 시작).
 //   SwingAttack : 휘두르기 - 플레이어를 따라다니는 원형 범위 표시 → 고정 → 내려찍기
-//   WaveAttack  : 파도보내기 - 차징 + 부채꼴 범위 표시 → 파도 3연발
+//   WaveAttack  : 파도보내기 - 차징 + 부채꼴 범위 표시 → 부채꼴 전체를 waveCount개 방향으로 나눠 동시 발사
 //
 // [피격]
 //   MiddleSlime은 별도의 Hit(피격) 모션이 없습니다. TakeDamage()가 호출되어도 애니메이터
@@ -36,9 +36,12 @@
 //
 // [파도보내기 타이밍]
 //   공격 시작 → (waveChargeDuration초 동안 차징 모션 + 부채꼴 범위 표시)
-//             → 손을 뻗는 순간부터 waveFireInterval초 간격으로 waveCount번 파도 발사
-//   각 파도(ShockwaveWave)는 origin에서 부채꼴을 따라 바깥으로 퍼지며, 높이가
-//   Normal Graph처럼 올라왔다 내려가는 곡선을 그립니다. (ShockwaveWave.cs 참고)
+//             → 손을 뻗는 순간, 부채꼴 전체 각도(waveFanAngle)를 waveCount개 조각으로 균등하게 나눠
+//               각 조각의 중심 방향으로 waveCount개의 파도(ShockwaveWave)가 동시에 발사됩니다.
+//               (예: waveFanAngle=90, waveCount=3이면 왼쪽/가운데/오른쪽 30도씩 3개가 한 번에 나갑니다)
+//   각 파도는 물수제비처럼 자기 방향을 따라 나아가며 burstCount번(기본 3번) 연속으로 터집니다 - 비주얼은
+//   전부 waveTravelVfxName에 연결한 VFX 프리팹이 담당하고, ShockwaveWave.cs는 그 burst 타이밍에 맞춰
+//   데미지 판정만 담당합니다. (ShockwaveWave.cs 참고)
 //
 // [씬 준비]
 //   1) 보스 오브젝트를 원형 필드 중앙에 배치하고 이 스크립트를 붙입니다. (NavMesh 불필요)
@@ -46,9 +49,8 @@
 //   3) Target을 비워두면 Start()에서 태그가 "Player"인 오브젝트를 자동으로 찾습니다.
 //   4) Animator 파라미터: SwingAttack(Trigger), WaveAttack(Trigger), Die(Trigger) - Hit(피격) 트리거는 없습니다.
 //   5) 플레이어 쪽에 IDamageable을 구현한 컴포넌트(체력 스크립트 등)가 있어야 데미지가 실제로 들어갑니다.
-//   6) 인스펙터의 "높이 조절" 섹션(swingHeight/waveHeight/waveMaxHeight/lootDropHeight)에서 각 공격
-//      패턴의 범위 표시/판정 높이, 파도가 솟아오르는 높이, 전리품이 튀어나오기 시작하는 높이를
-//      조절할 수 있습니다.
+//   6) 인스펙터의 "높이 조절" 섹션(swingHeight/waveHeight/lootDropHeight)에서 각 공격 패턴의 범위
+//      표시/판정 높이, 전리품이 튀어나오기 시작하는 높이를 조절할 수 있습니다.
 //   7) 전리품/보상이 튀어나오는 위치를 이 보스의 몸통(transform.position)이 아니라 직접 배치한
 //      지점에서 나오게 하고 싶다면, "참조" 섹션의 Loot Drop Point에 미리 씬에 만들어둔 빈
 //      오브젝트를 연결하세요 - 비워두면 기존처럼 이 보스의 위치를 기준으로 흩뿌립니다.
@@ -114,6 +116,10 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     [Tooltip("Swing/Wave 공격이 적중했을 때 재생할 VFX 이름 (Resources/VFX/ 아래 프리팹 이름과 일치해야 함). " +
               "비워두면 VFX 없이 데미지만 적용됩니다. 예: \"FX_MiddleSlime_Hit\"")]
     public string hitVfxName;
+    [Tooltip("화면에 고정된 보스 체력바 UI입니다(UIBossHPBar.cs, 미리 씬에 배치해둔 Screen Space Canvas). " +
+              "비워두면 콘솔에 경고만 남기고 체력바 갱신을 건너뜁니다 - 데미지/전투 자체는 정상적으로 " +
+              "동작합니다.")]
+    public UIBossHPBar bossHpBar;
 
     [Header("사망 (Die)")]
     [Tooltip("체력이 0이 된 뒤 Die 애니메이션을 재생하고 이 시간(초)이 지나면 오브젝트를 파괴합니다.")]
@@ -138,6 +144,11 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     public float swingDamagePercent = 100f;
     [Tooltip("내려찍기로 데미지가 들어갈 때, 데미지 숫자를 맞은 대상 위로 얼마나 띄울지(미터).")]
     public float swingDamageNumberHeightOffset = 1.2f;
+    [Tooltip("실제로 내려찍는(PerformSwingSlam) 그 순간, swingLockedPosition(범위 표시가 고정된 지점)에서 " +
+              "한 번 재생할 임팩트 VFX 이름입니다(Resources/VFX/ 아래 프리팹 이름과 일치해야 함). hitVfxName과 " +
+              "달리 맞은 대상 수와 무관하게(아무도 못 맞혀도) 항상 한 번만 재생됩니다 - 땅이 갈라지거나 " +
+              "충격파가 퍼지는 등 '내려찍기 그 자체'의 연출용입니다. 비워두면 재생하지 않습니다.")]
+    public string swingSlamVfxName;
 
     [Header("공격 - 파도보내기 (Wave)")]
     [Tooltip("차징(손을 뒤로 보내는) 모션 동안의 시간(초). 이 동안 부채꼴 범위 표시가 보입니다.")]
@@ -145,23 +156,45 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     [Tooltip("부채꼴 범위의 전체 각도(도)")]
     public float waveFanAngle = 90f;
     public float waveFanRadius = 8f;
-    [Tooltip("파도를 몇 번 발사하는지")]
+    [Tooltip("부채꼴 전체(waveFanAngle)를 몇 개의 방향(파도)으로 나눠서 동시에 발사할지입니다. 예: 3이면 " +
+              "waveFanAngle을 3등분해서 왼쪽/가운데/오른쪽 방향으로 3개의 파도가 한 번에 나갑니다 - 각 파도는 " +
+              "자기 몫(waveFanAngle / waveCount)만큼의 폭만 담당하므로, 다 합치면 정확히 부채꼴 전체를 " +
+              "빈틈없이 덮습니다.")]
     public int waveCount = 3;
-    [Tooltip("파도 발사 간격(초)")]
-    public float waveFireInterval = 0.5f;
     [Tooltip("파도 하나가 원점에서 waveFanRadius까지 도달하는 데 걸리는 시간(초)")]
     public float waveTravelDuration = 1f;
     [Tooltip("파도보내기 데미지 배율(%). 최종 데미지는 MonsterStats.CalculateDamage(waveDamagePercent, " +
               "맞은 플레이어의 방어력)로 계산됩니다.")]
     public float waveDamagePercent = 75f;
+    [Tooltip("몇 번 연속으로 burst하는지입니다(ShockwaveWave.burstCount로 전달됩니다). waveTravelVfxName " +
+              "프리팹이 실제로 몇 번 터지는 연출인지에 맞춰 조절하세요 - 예: '물수제비처럼 3번 터지는' " +
+              "VFX라면 3으로 둡니다.")]
+    public int waveBurstCount = 3;
+    [Tooltip("각 burst 지점에서 판정할 반지름입니다(ShockwaveWave.burstRadius로 전달됩니다).")]
+    public float waveBurstRadius = 1.5f;
+    [Tooltip("waveTravelVfxName을 재생할 위치를 waveOrigin(보스 몸통 위치)에서 각 방향으로 이만큼(미터) " +
+              "앞으로 띄웁니다(ShockwaveWave.vfxForwardOffset으로 전달됩니다). 데미지 판정에는 영향이 " +
+              "없습니다 - VFX 프리팹이 재생 지점에서 정해진 길이만큼만 뻗어나가는 형태라면, 보스 모델의 " +
+              "몸통 크기만큼 이 값을 조절해서 VFX가 몸 안에 가려지지 않고 밖에서 재생되도록 하세요.")]
+    public float waveVfxForwardOffset = 1.5f;
+    [Tooltip("파도 하나하나가 origin에서 자기 방향으로 나아가며 burstCount번 연속으로 터지는 연출 전체를 " +
+              "담당하는 VFX 이름입니다(Resources/VFX/ 아래 프리팹 이름과 일치해야 함, " +
+              "ShockwaveWave.travelVfxName으로 전달됩니다). 이 VFX 프리팹 자체가 이미 \"앞으로 나아가며 " +
+              "여러 번 터지는\" 연출을 전부 갖고 있다는 전제로, Launch() 시점에 origin에서 방향을 바라보며 " +
+              "딱 한 번 재생됩니다. 비워두면 판정만 조용히 이뤄지고 화면에는 아무것도 보이지 않습니다.")]
+    public string waveTravelVfxName;
+    [Tooltip("파도 하나하나가 발사되는 그 순간, waveOrigin(고정된 지점)에서 딱 한 번만 재생되는 캐스트 " +
+              "연출용 VFX입니다(Resources/VFX/ 아래 프리팹 이름과 일치해야 함). waveTravelVfxName과 달리 " +
+              "파도를 따라 움직이지 않고 제자리에서 한 번 터지고 끝납니다 - 원형(360도)으로 사방에 퍼지는 " +
+              "충격파처럼, 부채꼴 모양에 맞추기 애매한 VFX(예: Easy Shockwaves 같은 팩)를 쓰고 싶을 때 이 " +
+              "필드에 연결하세요. 비워두면 재생하지 않습니다.")]
+    public string waveCastVfxName;
 
     [Header("높이 조절")]
     [Tooltip("휘두르기(Swing) 범위 표시 및 내려찍기 판정 위치의 높이 오프셋. 보스 위치 기준 위(+)/아래(-)로 조절됩니다. 모델 크기나 원하는 타격 지점에 맞춰 조정하세요.")]
     public float swingHeight = 0f;
     [Tooltip("파도보내기(Wave) 범위 표시 및 파도가 생성되는 기준 높이 오프셋.")]
     public float waveHeight = 0f;
-    [Tooltip("파도가 Normal Graph처럼 솟아올랐다 내려가는 최대 높이. 0으로 하면 땅에 붙어서 이동합니다.")]
-    public float waveMaxHeight = 1.2f;
     [Tooltip("전리품(LootDropper)이 튀어나오기 시작하는 높이 오프셋 - 보스 위치(transform.position) " +
               "기준 위(+)로 얼마나 띄운 지점에서 팝 애니메이션이 시작될지입니다. Awake()에서 이 값을 " +
               "LootDropper.dropHeight에 그대로 넣어주므로, 다른 몬스터와 별도로 이 보스만 따로 큰 값을 " +
@@ -182,9 +215,7 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     private FanAreaIndicator waveIndicator;
     private Vector3 waveOrigin;
     private Vector3 waveForward;
-    private bool waveThrustStarted;
-    private int wavesFired;
-    private float waveFireTimer;
+    private bool waveFired;
 
     private static readonly int SwingAttackParam = Animator.StringToHash("SwingAttack");
     private static readonly int WaveAttackParam = Animator.StringToHash("WaveAttack");
@@ -201,6 +232,20 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         // 전리품 드롭 높이를 이 스크립트의 lootDropHeight 하나로 관리합니다 - LootDropper 컴포넌트를
         // 따로 펼쳐서 Drop Height를 맞출 필요 없이, 다른 높이 조절 필드들처럼 여기서 바로 조절하세요.
         lootDropper.dropHeight = lootDropHeight;
+
+        if (bossHpBar != null)
+        {
+            // 이름/레벨은 전투 중 바뀌지 않으므로(체력과 달리) 여기서 한 번만 반영합니다.
+            bossHpBar.SetInfo(stats.displayName, stats.level);
+            // 탐지범위 밖일 때는 숨겨둡니다 - UpdateBossHpBar()가 매 프레임 탐지범위 여부를 검사해서
+            // 플레이어가 들어오는 순간 자동으로 켜줍니다.
+            bossHpBar.gameObject.SetActive(false);
+        }
+        else
+        {
+            Debug.LogWarning($"[MiddleSlimeBoss] '{name}'에 Boss Hp Bar가 연결되어 있지 않아 화면 고정형 " +
+                              "체력바를 표시할 수 없습니다.", this);
+        }
     }
 
     private void Start()
@@ -220,6 +265,8 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         // 이미 처리했습니다.
         if (currentState == State.Dead) return;
 
+        UpdateBossHpBar();
+
         switch (currentState)
         {
             case State.Idle:
@@ -232,6 +279,27 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
                 UpdateWaveAttack();
                 break;
         }
+    }
+
+    /// <summary>화면 고정형 보스 체력바(bossHpBar)를 매 프레임 갱신합니다. target이 detectRange 안에
+    /// 들어오면 자동으로 켜지고(SwingAttack/WaveAttack 판단 기준인 IsTargetInDetectRange()와 완전히
+    /// 같은 조건입니다), 벗어나면 다시 숨깁니다. 켜져있는 동안에만 Slider도 같이 갱신합니다 - 어차피
+    /// 숨겨진 UI를 갱신할 필요는 없으니까요. Dead 상태에서는 Update()가 이 지점까지 오지 않으므로(맨
+    /// 위에서 이미 리턴) 자동으로 갱신이 멈추고, Die()에서 별도로 숨깁니다.</summary>
+    private void UpdateBossHpBar()
+    {
+        if (bossHpBar == null) return;
+
+        bool shouldShow = IsTargetInDetectRange();
+        if (bossHpBar.gameObject.activeSelf != shouldShow)
+        {
+            bossHpBar.gameObject.SetActive(shouldShow);
+        }
+
+        if (!shouldShow) return;
+
+        float rate = stats.MaxHP > 0f ? stats.CurrentHP / stats.MaxHP : 0f;
+        bossHpBar.SetHealthRate(rate);
     }
 
     // ------------------------------------------------------------------
@@ -302,6 +370,13 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
 
     private void PerformSwingSlam()
     {
+        // 맞은 대상이 있든 없든, 내려찍는 그 순간 항상 한 번만 재생되는 임팩트 연출입니다 -
+        // 대상별로 반복 재생되는 hitVfxName(아래 foreach 안)과는 별개입니다.
+        if (!string.IsNullOrEmpty(swingSlamVfxName))
+        {
+            VFXManager.Instance.Play(swingSlamVfxName, swingLockedPosition, transform.rotation);
+        }
+
         Collider[] hits = Physics.OverlapSphere(swingLockedPosition, swingRadius, hitMask);
         foreach (Collider col in hits)
         {
@@ -343,8 +418,7 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     {
         currentState = State.WaveAttack;
         stateTimer = 0f;
-        waveThrustStarted = false;
-        wavesFired = 0;
+        waveFired = false;
 
         waveForward = Flatten(target.position - transform.position);
         if (waveForward.sqrMagnitude < 0.0001f) waveForward = transform.forward;
@@ -367,37 +441,55 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
 
         if (stateTimer < waveChargeDuration) return;
 
-        if (!waveThrustStarted)
+        if (!waveFired)
         {
-            waveThrustStarted = true;
-            waveFireTimer = 0f; // 손을 뻗는 순간 첫 파도가 바로 나가도록
+            waveFired = true;
+            FireWaveFan();
         }
 
-        waveFireTimer -= Time.deltaTime;
-        if (wavesFired < waveCount && waveFireTimer <= 0f)
-        {
-            FireWave();
-            wavesFired++;
-            waveFireTimer = waveFireInterval;
-        }
-
-        if (wavesFired >= waveCount)
-        {
-            DestroyWaveIndicator();
-            EnterIdle();
-        }
+        DestroyWaveIndicator();
+        EnterIdle();
     }
 
-    private void FireWave()
+    /// <summary>부채꼴 전체(waveFanAngle)를 waveCount개의 조각으로 균등하게 나눠, 각 조각의 중심
+    /// 방향으로 waveCount개의 ShockwaveWave를 동시에 발사합니다. 예: waveFanAngle=90, waveCount=3이면
+    /// -30도/0도/+30도(waveForward 기준) 방향으로 각각 폭 30도짜리 파도가 한 번에 나가서, 다 합치면
+    /// 빈틈없이 90도 부채꼴 전체를 덮습니다.</summary>
+    private void FireWaveFan()
     {
-        GameObject go = new GameObject("ShockwaveWave");
-        ShockwaveWave wave = go.AddComponent<ShockwaveWave>();
-        wave.damagePercent = waveDamagePercent;
-        wave.sourceStats = stats;
-        wave.hitMask = hitMask;
-        wave.maxHeight = waveMaxHeight;
-        wave.hitVfxName = hitVfxName;
-        wave.Launch(waveOrigin, waveForward, waveFanAngle * 0.5f, waveFanRadius, waveTravelDuration);
+        // 부채꼴 전체에 대해 발사 순간 원점(waveOrigin)에서 한 번만 재생되는 캐스트 연출입니다 -
+        // 방향마다 반복 재생하면 같은 위치에 겹쳐 재생되어 낭비이므로 여기서 딱 한 번만 호출합니다.
+        // ShockwaveWave.travelVfxName(각 파도를 따라 움직이는 VFX)과는 별개로, 제자리에서 터지는
+        // 원형 충격파 등을 붙이고 싶을 때 씁니다.
+        if (!string.IsNullOrEmpty(waveCastVfxName))
+        {
+            VFXManager.Instance.Play(waveCastVfxName, waveOrigin, Quaternion.LookRotation(waveForward));
+        }
+
+        float sliceAngle = waveFanAngle / waveCount; // 조각 하나의 전체 각도
+        float halfSliceAngle = sliceAngle * 0.5f;    // 조각 하나의 반각 - ShockwaveWave가 이 폭 전체를 판정합니다.
+
+        for (int i = 0; i < waveCount; i++)
+        {
+            // -waveFanAngle/2 ~ +waveFanAngle/2 범위를 waveCount개 조각으로 나눈 뒤, 각 조각의
+            // 중심 각도를 구합니다 (예: waveCount=3, waveFanAngle=90 → -30, 0, +30).
+            float centerAngle = -waveFanAngle * 0.5f + sliceAngle * (i + 0.5f);
+            Vector3 direction = Quaternion.AngleAxis(centerAngle, Vector3.up) * waveForward;
+
+            GameObject go = new GameObject($"ShockwaveWave_{i}");
+            ShockwaveWave wave = go.AddComponent<ShockwaveWave>();
+            wave.damagePercent = waveDamagePercent;
+            wave.sourceStats = stats;
+            wave.hitMask = hitMask;
+            wave.hitVfxName = hitVfxName;
+            wave.travelVfxName = waveTravelVfxName;
+            wave.burstCount = waveBurstCount;
+            wave.burstRadius = waveBurstRadius;
+            wave.vfxForwardOffset = waveVfxForwardOffset;
+            // halfSliceAngle을 넘겨서, 이 조각의 폭 전체(정중앙뿐 아니라 양옆까지)를 판정하도록 합니다 -
+            // 정중앙 한 점만 판정하면 거리가 멀어질수록 넓어지는 폭을 놓치는 문제가 있었습니다.
+            wave.Launch(waveOrigin, direction, halfSliceAngle, waveFanRadius, waveTravelDuration);
+        }
     }
 
     private void DestroyWaveIndicator()
@@ -435,6 +527,10 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         DestroyWaveIndicator();
         DisableColliders(); // 죽은 직후 콜라이더를 꺼서, dieDelay 동안 시체가 남아있는 사이 또 공격 판정에
                             // 맞아 데미지/이펙트/데미지 숫자가 중복으로 발생하지 않게 합니다.
+
+        // 화면 고정형 체력바도 더 이상 갱신되지 않으니(위 UpdateBossHpBar 참고) 같이 숨겨서, 0으로
+        // 채워진 채 화면에 계속 남아있는 어색한 모습을 막습니다.
+        if (bossHpBar != null) bossHpBar.gameObject.SetActive(false);
 
         // 일반 몬스터는 "드롭할 전리품 없음"이 정상적인 설정이라 LootDropper가 조용히 넘어가지만,
         // 보스는 거의 항상 전리품이 있어야 하므로 Loot Table을 깜빡 연결 안 한 경우를 바로 알 수 있도록

@@ -1355,6 +1355,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 4477475767824200575}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: bee23816fc2c33a45903dc0d390e7505,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9002566203115324790}
   m_SourcePrefab: {fileID: 100100000, guid: bee23816fc2c33a45903dc0d390e7505, type: 3}
 --- !u!4 &1319918574928264016 stripped
 Transform:
@@ -1381,6 +1385,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   displayName: "\uC911\uAE09 \uC2AC\uB77C\uC784"
+  level: 1
   monsterId: MiddleSlime
   baseHP: 10000
   baseAttackPower: 300
@@ -1409,7 +1414,8 @@ MonoBehaviour:
   hitMask:
     serializedVersion: 2
     m_Bits: 1048576
-  hitVfxName: FX_SmallSlime_Hit
+  hitVfxName: FX_MiddleSlime_Hit
+  bossHpBar: {fileID: 0}
   dieDelay: 2
   detectRange: 17
   idleDurationMin: 1.5
@@ -1419,16 +1425,19 @@ MonoBehaviour:
   swingRadius: 2.5
   swingDamagePercent: 100
   swingDamageNumberHeightOffset: 1.2
+  swingSlamVfxName: FX_MiddleSlime_Attack1
   waveChargeDuration: 1
   waveFanAngle: 90
   waveFanRadius: 14
   waveCount: 3
-  waveFireInterval: 0.5
   waveTravelDuration: 1
   waveDamagePercent: 75
+  waveBurstCount: 3
+  waveBurstRadius: 1.5
+  waveTravelVfxName: FX_MiddleSlime_Attack2
+  waveCastVfxName: 
   swingHeight: 9
   waveHeight: 9
-  waveMaxHeight: 1.2
   lootDropHeight: 1
 --- !u!95 &-6638846885996690223
 Animator:
@@ -1527,3 +1536,15 @@ MonoBehaviour:
   goldOrbPrefab: {fileID: 6891731630739529407, guid: 7cc3ef6822e7b914eb0025b6a9825ddd,
     type: 3}
   goldOrbCount: 3
+--- !u!114 &9002566203115324790
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1808927936472523242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: facfd87d05569e74e9bf3e9a02d605fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

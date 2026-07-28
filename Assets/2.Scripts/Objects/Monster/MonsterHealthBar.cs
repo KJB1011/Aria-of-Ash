@@ -9,10 +9,26 @@
 //   등 별도 UI로 다룰 가능성이 높아서 우선 제외했습니다. MonsterStats만 있으면 동작하는 구조라
 //   기술적으로는 붙여도 컴파일/실행에는 문제없지만, 기획상 지금은 제외해주세요.
 //
+// [오브젝트 풀링 - 별도 매니저 없이 이 클래스 안에서 static으로 관리]
+//   체력바 인스턴스는 Instantiate/Destroy를 직접 하지 않고, 이 클래스의 static Dictionary에 담긴
+//   GameObjectPool(프리팹별로 하나씩)을 통해 빌리고(Get) 반납(Release)합니다. 몬스터가 필드에서
+//   계속 스폰/사망을 반복하는 오픈월드 구조에서 매번 새 체력바를 Instantiate/Destroy하면 그때마다
+//   GC 비용이 쌓여 프레임 드랍의 원인이 됩니다 - VFXManager 등이 쓰는 것과 같은 GameObjectPool을
+//   재사용합니다.
+//   VFXManager/SoundManager처럼 별도의 싱글턴 매니저 컴포넌트로 만들지 않은 이유는, 이 풀을
+//   실제로 쓰는 곳이 오직 이 클래스(MonsterHealthBar) 자신뿐이기 때문입니다 - 프로젝트 여기저기
+//   흩어진 다른 스크립트들이 "MonsterHealthBarManager.Instance.Get(...)"을 직접 호출할 일이
+//   없으므로, 인스펙터로 노출되는 매니저 오브젝트 하나를 씬에 더 만드는 대신 이 컴포넌트 안에
+//   조용히 숨겨둔 static 상태로 충분합니다. 풀이 붙어있을 부모(poolRoot)는 이 씬 안에서만
+//   쓰이는 평범한 빈 오브젝트로, 처음 필요할 때 만듭니다(스크립트는 안 붙어있고, 그냥 자리를
+//   잡아주는 용도입니다) - DontDestroyOnLoad로 표시하지 않았으므로, 플레이 중 이 씬을 다시
+//   로드/전환하는 기능을 나중에 추가한다면 그 시점에 정적 캐시(pools, poolRoot)를 초기화해주는
+//   처리가 별도로 필요합니다(지금은 게임 플레이 도중 이 씬이 재로드되지 않는다는 전제입니다).
+//
 // [동작 방식 - 몬스터에 직접 자식으로 넣지 않는 이유]
 //   체력바를 몬스터 Transform의 자식으로 두면 몬스터가 회전/스케일될 때 같이 회전/스케일되어
 //   찌그러지거나 기울어질 수 있습니다(특히 몬스터 크기가 1이 아니거나, 넘어지는 연출 등으로 X/Z축
-//   회전이 생기면). 그래서 체력바 프리팹은 Awake()에서 씬 최상위에 별도로 Instantiate해두고,
+//   회전이 생기면). 그래서 체력바 프리팹은 Awake()에서 씬 최상위에 별도로 인스턴스를 빌려두고,
 //   매 프레임(LateUpdate) 위치만 "몬스터 위치 + worldOffset"으로 직접 옮기고, 회전은 카메라를
 //   정면으로 바라보도록(빌보드) 강제로 맞춰줍니다 - 부모-자식 관계에 얽매이지 않아 항상 똑바로,
 //   같은 크기로 보입니다.
@@ -25,7 +41,7 @@
 //   MonsterFSM은 체력이 0이 되어도 Die 애니메이션 재생을 위해 dieDelay(기본 2초)초 뒤에야
 //   실제로 Destroy(gameObject)합니다. 체력바가 그동안 0으로 채워진 채 계속 떠 있으면 어색하므로,
 //   CurrentHP가 0이 되는 즉시 체력바를 숨깁니다(SetActive(false)). 몬스터 오브젝트 자체가 결국
-//   파괴되면 OnDestroy()에서 체력바 인스턴스도 함께 파괴해 씬에 남지 않게 합니다.
+//   파괴되면 OnDestroy()에서 체력바 인스턴스를 풀로 반납해 씬에 남지 않게 합니다.
 //
 // [씬 준비]
 //   1) 몬스터 프리팹(SlimeFSM/WoodGolemFSM 등이 붙은 오브젝트)에 이 컴포넌트를 추가하세요.
@@ -39,11 +55,21 @@
 //      Awake() 시점에 그 값을 그대로 체력바에 반영합니다.
 // ============================================================================
 
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(MonsterStats))]
 public class MonsterHealthBar : MonoBehaviour
 {
+    private const int PrewarmCountPerPrefab = 5;
+    private const int MaxPoolSizePerPrefab = 50;
+
+    // 프리팹(에셋)별로 풀을 하나씩 관리합니다 - 몬스터 종류마다 다른 체력바 프리팹을 쓰더라도
+    // 자동으로 각각 별도의 풀이 만들어집니다. static이라 씬에 몬스터가 몇 마리가 있든 딱 하나만
+    // 존재하고, 모든 MonsterHealthBar 인스턴스가 공유합니다.
+    private static readonly Dictionary<UIMonsterHealthBar, GameObjectPool> pools = new Dictionary<UIMonsterHealthBar, GameObjectPool>();
+    private static Transform poolRoot;
+
     [Header("프리팹")]
     [Tooltip("UIMonsterHealthBar.cs가 붙은 World Space Canvas 프리팹입니다.")]
     public UIMonsterHealthBar barPrefab;
@@ -78,7 +104,8 @@ public class MonsterHealthBar : MonoBehaviour
             return;
         }
 
-        barInstance = Instantiate(barPrefab);
+        GameObject instance = GetOrCreatePool(barPrefab).Get(Vector3.zero, Quaternion.identity);
+        barInstance = instance.GetComponent<UIMonsterHealthBar>();
         barTransform = barInstance.transform;
 
         // 이름은 대화 중 바뀌지 않으므로(체력과 달리) 여기서 한 번만 반영합니다.
@@ -122,9 +149,29 @@ public class MonsterHealthBar : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (barInstance != null)
+        if (barInstance == null || barPrefab == null) return;
+
+        GetOrCreatePool(barPrefab).Release(barInstance.gameObject);
+    }
+
+    /// <summary>barPrefab 하나당 GameObjectPool을 하나씩 만들어(최초 1회) 재사용합니다. 풀의 부모로
+    /// 쓸 poolRoot도 여기서 처음 필요할 때 만듭니다 - 별도 매니저 컴포넌트 없이, 딱 이 용도만 하는
+    /// 빈 오브젝트 하나면 충분합니다. 인게임 플레이 중에는 이 씬이 재로드되지 않는다는 전제라
+    /// DontDestroyOnLoad는 표시하지 않았습니다.</summary>
+    private static GameObjectPool GetOrCreatePool(UIMonsterHealthBar prefab)
+    {
+        if (poolRoot == null)
         {
-            Destroy(barInstance.gameObject);
+            GameObject rootObject = new GameObject("Pool_MonsterHealthBar");
+            poolRoot = rootObject.transform;
         }
+
+        if (!pools.TryGetValue(prefab, out GameObjectPool pool))
+        {
+            pool = new GameObjectPool(prefab.gameObject, poolRoot, PrewarmCountPerPrefab, MaxPoolSizePerPrefab);
+            pools[prefab] = pool;
+        }
+
+        return pool;
     }
 }

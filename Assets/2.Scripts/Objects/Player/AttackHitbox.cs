@@ -89,6 +89,11 @@ public class AttackHitbox : MonoBehaviour
     [Tooltip("데미지 숫자가 뜨는 위치를 맞은 지점에서 위로 얼마나 띄울지(미터). 발밑이 아니라 " +
               "몸통 근처에서 뜨도록 하기 위한 값입니다.")]
     public float damageNumberHeightOffset = 0.8f;
+    [Tooltip("맞은 대상이 MiddleSlimeBoss일 때, 데미지 숫자 위치를 플레이어 쪽으로 수평으로 이만큼(미터) " +
+              "끌어옵니다. MiddleSlimeBoss는 몸집이 커서 맞은 지점(bounds.center, 콜라이더 바운딩 박스 " +
+              "중심)이 몸통 한가운데 깊숙한 곳이라, 높이를 더 띄우는 대신 플레이어(카메라) 쪽으로 당겨서 " +
+              "몸 앞으로 나오게 합니다. 높이(damageNumberHeightOffset)에는 영향을 주지 않습니다.")]
+    public float middleSlimeDamageNumberForwardOffset = 1f;
     [Tooltip("이 판정이 적중했을 때 충전되는 필살기 에너지량입니다. 기본 공격 1타/2타=5, 3타=10, 스킬=30처럼 " +
               "모션별로 다르게 설정하세요. Open()된 뒤 여러 대상을 동시에 맞혀도(광역 공격 등) 한 번만 " +
               "충전됩니다. 필살기(UltSkill)처럼 에너지를 소모해서 쓰는 모션은 0으로 두세요.")]
@@ -187,9 +192,12 @@ public class AttackHitbox : MonoBehaviour
         ChargeEnergyOnce();
         ReduceSkillCooldownIfPassiveUpgraded();
 
-        PlayHitVfx(hitPosition);
+        // MiddleSlimeBoss처럼 몸집이 큰 대상인지 한 번만 확인해서, VFX 크기/데미지 숫자 위치 둘 다에 씁니다.
+        bool isMiddleSlime = other.GetComponentInParent<MiddleSlimeBoss>() != null;
+
+        PlayHitVfx(hitPosition, isMiddleSlime);
         PlayHitSfx(hitPosition);
-        ShowDamageNumber(hitPosition, result.damage, result.isCrit);
+        ShowDamageNumber(hitPosition, result.damage, result.isCrit, isMiddleSlime);
     }
 
     /// <summary>패시브강화(SkillInfo)가 해제되어 있고 이 히트박스가 기본 공격이면, 적중할 때마다 우클릭
@@ -215,12 +223,20 @@ public class AttackHitbox : MonoBehaviour
         energyChargedThisOpen = true;
     }
 
-    private void PlayHitVfx(Vector3 hitPosition)
+    /// <summary>맞은 대상이 MiddleSlimeBoss면 히트 VFX 크기를 3배로 키워서 재생합니다 - 덩치가
+    /// 큰 보스에 비해 일반 몬스터용 히트 이펙트가 상대적으로 작아 보이는 걸 보완하기 위함입니다.
+    /// VFXManager는 오브젝트 풀링으로 인스턴스를 재사용하므로, MiddleSlime이 아닌 경우에도 매번 크기를
+    /// 명시적으로 원래 크기(Vector3.one)로 되돌려줍니다 - 그렇지 않으면 직전에 MiddleSlime을 맞혀서 3배로
+    /// 키워졌던 같은 인스턴스가 다음에 일반 몬스터를 맞힐 때도 커진 채로 재사용되는 문제가 생깁니다.</summary>
+    private void PlayHitVfx(Vector3 hitPosition, bool isMiddleSlime)
     {
         if (string.IsNullOrEmpty(hitVfxName)) return;
 
         // 회전은 히트박스 자신의 회전(각 Attack 모션마다 스윙 방향에 맞춰 설정해둔 값)을 그대로 사용합니다.
-        VFXManager.Instance.Play(hitVfxName, hitPosition, transform.rotation);
+        GameObject spawned = VFXManager.Instance.Play(hitVfxName, hitPosition, transform.rotation);
+        if (spawned == null) return;
+
+        spawned.transform.localScale = isMiddleSlime ? Vector3.one * 3f : Vector3.one;
     }
 
     private void PlayHitSfx(Vector3 hitPosition)
@@ -230,9 +246,25 @@ public class AttackHitbox : MonoBehaviour
         SoundManager.Instance.PlaySFX(hitSfxName, hitPosition);
     }
 
-    private void ShowDamageNumber(Vector3 hitPosition, float damage, bool isCrit)
+    /// <summary>맞은 대상이 MiddleSlimeBoss면 데미지 숫자 위치를 플레이어 쪽으로 수평으로
+    /// middleSlimeDamageNumberForwardOffset만큼 끌어옵니다 - hitPosition(bounds.center)이 몸집이 큰
+    /// 보스의 몸통 한가운데 깊숙한 곳이라, 높이를 더 띄우는 대신 플레이어(카메라) 쪽으로 당겨서 몸
+    /// 앞으로 나오게 하는 방식으로 가려짐을 막습니다. 높이(damageNumberHeightOffset)는 그대로입니다.</summary>
+    private void ShowDamageNumber(Vector3 hitPosition, float damage, bool isCrit, bool isMiddleSlime)
     {
         Vector3 position = hitPosition + Vector3.up * damageNumberHeightOffset;
+
+        if (isMiddleSlime && playerStats != null)
+        {
+            Vector3 towardPlayer = playerStats.transform.position - hitPosition;
+            towardPlayer.y = 0f; // 수평 방향으로만 당겨옵니다 - 높이는 위 damageNumberHeightOffset가 그대로 담당합니다.
+
+            if (towardPlayer.sqrMagnitude > 0.0001f)
+            {
+                position += towardPlayer.normalized * middleSlimeDamageNumberForwardOffset;
+            }
+        }
+
         DamageNumberManager.Instance.Show(damage, position, isCrit, DamageNumberTeam.Enemy);
     }
 

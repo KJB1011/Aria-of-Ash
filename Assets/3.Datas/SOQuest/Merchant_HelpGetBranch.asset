@@ -12,12 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd500b238f1d4bb419645648b573b0ae, type: 3}
   m_Name: Merchant_HelpGetBranch
   m_EditorClassIdentifier: 
-  questId: 
-  questName: 
-  description: 
-  objectives: []
-  requiresTurnIn: 0
+  questId: HelpGetBranch
+  questName: "\uB098\uBB47\uAC00\uC9C0 \uC218\uC9D1"
+  description: "\uC232\uC5D0 \uC788\uB294 \uC6B0\uB4DC\uACE8\uB818\uC744 \uCC98\uCE58\uD558\uACE0
+    \uB098\uBB47\uAC00\uC9C0\uB97C 5\uAC1C \uD68D\uB4DD\uD558\uC790"
+  objectives:
+  - type: 1
+    targetMonsterId: 
+    targetItem: {fileID: 11400000, guid: d86ba1727d42264449d30a4f15c0cbcf, type: 2}
+    targetNpcId: 
+    targetQuest: {fileID: 0}
+    targetCount: 5
+    description: "\uB098\uBB47\uAC00\uC9C0 5\uAC1C \uBAA8\uC73C\uAE30"
+  requiresTurnIn: 1
   prerequisiteQuests: []
-  rewardExp: 0
-  rewardGold: 0
-  rewardItems: []
+  rewardExp: 300
+  rewardGold: 100
+  rewardItems:
+  - item: {fileID: 11400000, guid: 60d3e301a9cee5b4e92e95190c09d7b4, type: 2}
+    amount: 5

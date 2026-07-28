@@ -21,21 +21,21 @@ MonoBehaviour:
     targetMonsterId: 
     targetItem: {fileID: 0}
     targetNpcId: 
-    targetQuest: {fileID: 0}
+    targetQuest: {fileID: 11400000, guid: e180b68e24470e449ba057cbf30613b4, type: 2}
     targetCount: 1
     description: 
   - type: 3
     targetMonsterId: 
     targetItem: {fileID: 0}
     targetNpcId: 
-    targetQuest: {fileID: 0}
+    targetQuest: {fileID: 11400000, guid: 3cd2c3ad44a948f47b9eea61a31ce12f, type: 2}
     targetCount: 1
     description: 
   - type: 3
     targetMonsterId: 
     targetItem: {fileID: 0}
     targetNpcId: 
-    targetQuest: {fileID: 0}
+    targetQuest: {fileID: 11400000, guid: 2d347a2b6d12cce4aafbfb33b2440edf, type: 2}
     targetCount: 1
     description: 
   requiresTurnIn: 1

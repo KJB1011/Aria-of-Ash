@@ -6,6 +6,16 @@
 // 자동으로 흡수됩니다. 흡수되는 순간 실제 보상(경험치/골드)이 적용되고, 전리품을 주울 때처럼
 // 화면 왼쪽 로그(UIIngameLoot)에도 표시됩니다.
 //
+// [오브젝트 풀링 - 별도 매니저 없이 이 클래스 안에서 static으로 관리]
+//   LootDropper가 더 이상 Instantiate를 직접 호출하지 않고, 대신 이 클래스의 static 팩토리
+//   메서드 RewardOrb.Spawn(prefab, amount, position)을 호출합니다. 내부적으로 프리팹(Exp Orb/Gold
+//   Orb 각각)별로 GameObjectPool을 하나씩 관리하다가, 흡수된 뒤(Absorb())에는 Destroy 대신 그
+//   풀로 되돌아갑니다. 몬스터가 죽을 때마다 여러 개씩(expOrbCount/goldOrbCount) 쏟아지기 때문에
+//   LootPickup보다도 스폰 빈도가 높습니다 - LootPickup.cs/MonsterHealthBar.cs와 같은 이유, 같은
+//   패턴(별도 매니저 컴포넌트 없이 static Dictionary + 평범한 빈 부모 오브젝트 하나)입니다. 풀의
+//   부모(poolRoot)는 DontDestroyOnLoad로 표시하지 않았습니다 - 인게임 플레이 중에는 이 씬이
+//   재로드되지 않는다는 전제입니다.
+//
 // [프리팹 준비 - 경험치용/골드용 각각 하나씩]
 //   1) Type을 Experience 또는 Gold로 지정하세요.
 //   2) Icon과 Display Name Prefix를 채우세요 (예: Experience → 이름 "경험치", Gold → 이름 "골드").
@@ -23,9 +33,10 @@
 //   2) 착지 후 seekDelay초 동안 가만히 있습니다.
 //   3) 그 뒤로는 매 프레임 플레이어 쪽으로 날아갑니다. 시간이 지날수록(seekAcceleration)
 //      점점 빨라져서, 플레이어가 멀리 있어도 결국 따라잡습니다.
-//   4) 플레이어와의 거리가 absorbDistance 이하가 되면 흡수됩니다 - 보상 적용 + 로그 표시 + 파괴.
+//   4) 플레이어와의 거리가 absorbDistance 이하가 되면 흡수됩니다 - 보상 적용 + 로그 표시 + 풀 반납.
 // ============================================================================
 
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum RewardOrbType
@@ -37,6 +48,14 @@ public enum RewardOrbType
 [RequireComponent(typeof(Collider))]
 public class RewardOrb : MonoBehaviour
 {
+    private const int PrewarmCountPerPrefab = 5;
+    private const int MaxPoolSizePerPrefab = 50;
+
+    // 프리팹(에셋)별로 풀을 하나씩 관리합니다. Exp Orb/Gold Orb가 서로 다른 프리팹이면 자동으로
+    // 각각 별도의 풀이 만들어집니다.
+    private static readonly Dictionary<GameObject, GameObjectPool> pools = new Dictionary<GameObject, GameObjectPool>();
+    private static Transform poolRoot;
+
     [Header("보상 종류")]
     public RewardOrbType type = RewardOrbType.Experience;
     public Sprite icon;
@@ -64,6 +83,7 @@ public class RewardOrb : MonoBehaviour
 
     private int amount;
     private Transform playerTransform;
+    private GameObject sourcePrefab; // 반납할 때 어느 풀로 돌려줘야 하는지 기억해둡니다 (Spawn()이 설정).
 
     private Vector3 startPosition;
     private Vector3 targetPosition;
@@ -72,12 +92,48 @@ public class RewardOrb : MonoBehaviour
     private float seekTimer;
     private float currentSeekSpeed;
 
+    // ------------------------------------------------------------------
+    // 풀에서 빌려오기 - LootDropper가 이 메서드를 통해서만 생성합니다.
+    // ------------------------------------------------------------------
+
+    /// <summary>prefab 풀에서 인스턴스를 빌려와 position에 배치하고, 보상 수치(Setup)까지 설정해서
+    /// 돌려줍니다. LootDropper.SpawnOrbs()에서 Instantiate 대신 이 메서드를 호출하세요. 반환된
+    /// 인스턴스에 Launch()를 호출해 팝 연출을 시작시켜야 합니다.</summary>
+    public static RewardOrb Spawn(GameObject prefab, int amount, Vector3 position)
+    {
+        GameObject instance = GetOrCreatePool(prefab).Get(position, Quaternion.identity);
+
+        // prefab에는 반드시 RewardOrb가 붙어있어야 합니다 - 없으면 여기서 바로
+        // NullReferenceException이 나서, 프리팹 연결을 빠뜨렸다는 게 바로 드러납니다.
+        RewardOrb orb = instance.GetComponent<RewardOrb>();
+        orb.sourcePrefab = prefab;
+        orb.Setup(amount);
+        return orb;
+    }
+
+    private static GameObjectPool GetOrCreatePool(GameObject prefab)
+    {
+        if (poolRoot == null)
+        {
+            GameObject rootObject = new GameObject("Pool_RewardOrb");
+            poolRoot = rootObject.transform;
+        }
+
+        if (!pools.TryGetValue(prefab, out GameObjectPool pool))
+        {
+            pool = new GameObjectPool(prefab, poolRoot, PrewarmCountPerPrefab, MaxPoolSizePerPrefab);
+            pools[prefab] = pool;
+        }
+
+        return pool;
+    }
+
     private void Awake()
     {
         GetComponent<Collider>().isTrigger = true;
     }
 
-    /// <summary>이 오브젝트가 지급할 보상 수치를 설정합니다. LootDropper가 Instantiate 직후 호출합니다.</summary>
+    /// <summary>이 오브젝트가 지급할 보상 수치를 설정합니다. Spawn()이 내부적으로 호출합니다.</summary>
     public void Setup(int amount)
     {
         this.amount = amount;
@@ -158,12 +214,25 @@ public class RewardOrb : MonoBehaviour
 
         UIIngameLoot.Instance.AddLoot(icon, $"{displayNamePrefix} x{amount}");
         PlayPickupSfx();
-        Destroy(gameObject);
+        ReleaseToPool();
     }
 
     private void PlayPickupSfx()
     {
         if (string.IsNullOrEmpty(pickupSfxName)) return;
         SoundManager.Instance.PlaySFX(pickupSfxName, transform.position);
+    }
+
+    /// <summary>Spawn()으로 빌려온 풀로 되돌립니다. Spawn()을 거치지 않고 씬에 직접 배치되는 등
+    /// sourcePrefab을 모르는 경우(정상적인 흐름에서는 발생하지 않습니다)에는 안전하게 그냥 파괴합니다.</summary>
+    private void ReleaseToPool()
+    {
+        if (sourcePrefab == null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        GetOrCreatePool(sourcePrefab).Release(gameObject);
     }
 }
