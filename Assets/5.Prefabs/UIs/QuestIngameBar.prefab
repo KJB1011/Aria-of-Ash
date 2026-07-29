@@ -484,6 +484,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _txtQuestName: {fileID: 8138712631566867696}
   _txtObjectives: {fileID: 1804062085002278395}
+  _questMark: {fileID: 1285693111876597982}
   _imgCheckmark: {fileID: 6411118244574062286}
   _clearImage: {fileID: 5138448992481258465}
   clearImageMoveDuration: 0.4
