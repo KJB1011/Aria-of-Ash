@@ -14,10 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   questId: HelpGetFood
   questName: "\uC2DD\uB7C9 \uC870\uB2EC"
-  description: 
-  objectives: []
-  requiresTurnIn: 0
+  description: "\uC6B0\uB4DC\uACE8\uB818\uC744 \uCC98\uCE58\uD558\uACE0 \uBC84\uC12F\uC744
+    \uD68D\uB4DD\uD558\uC790"
+  objectives:
+  - type: 1
+    targetMonsterId: 
+    targetItem: {fileID: 11400000, guid: 60d3e301a9cee5b4e92e95190c09d7b4, type: 2}
+    targetNpcId: 
+    targetQuest: {fileID: 0}
+    targetCount: 4
+    description: "\uBC84\uC12F \uD68D\uB4DD"
+  requiresTurnIn: 1
   prerequisiteQuests: []
-  rewardExp: 0
-  rewardGold: 0
-  rewardItems: []
+  rewardExp: 300
+  rewardGold: 100
+  rewardItems:
+  - item: {fileID: 11400000, guid: 60d3e301a9cee5b4e92e95190c09d7b4, type: 2}
+    amount: 2

@@ -569,7 +569,7 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         DestroySwingIndicator();
         DestroyWaveIndicator();
         DisableColliders(); // 죽은 직후 콜라이더를 꺼서, dieDelay 동안 시체가 남아있는 사이 또 공격 판정에
-                            // 맞아 데미지/이펙트/데미지 숫자가 중복으로 발생하지 않게 합니다.
+                             // 맞아 데미지/이펙트/데미지 숫자가 중복으로 발생하지 않게 합니다.
 
         // 화면 고정형 체력바도 더 이상 갱신되지 않으니(위 UpdateBossHpBar 참고) 같이 숨겨서, 0으로
         // 채워진 채 화면에 계속 남아있는 어색한 모습을 막습니다.

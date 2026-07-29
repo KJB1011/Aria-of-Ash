@@ -10092,6 +10092,10 @@ MonoBehaviour:
   damageVariancePercent: 1
   expReward: 10
   goldReward: 20
+  enableOutOfCombatRegen: 1
+  outOfCombatDelay: 15
+  regenPercentPerSecond: 10
+  debugLogRegen: 0
 --- !u!114 &1337775172579520384
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10239,7 +10243,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lootTable: {fileID: 11400000, guid: a1ecf08f03149004dbb301f3a9249e9c, type: 2}
   scatterRadius: 1.5
-  dropHeight: 0.5
+  dropHeight: 2
   groundRaycastDistance: 5
   groundMask:
     serializedVersion: 2

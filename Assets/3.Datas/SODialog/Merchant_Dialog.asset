@@ -114,6 +114,19 @@ MonoBehaviour:
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
     choices: []
+  - index: 9
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uC5B4\uC11C \uCD0C\uC7A5\uD55C\uD14C \uAC00\uBD10."
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices: []
   - index: 11
     cameraLocalPosition: {x: 2, y: 3, z: 3}
     cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
@@ -130,10 +143,106 @@ MonoBehaviour:
     questToTurnIn: {fileID: 0}
     choices:
     - choiceText: "\uC608"
-      targetIndex: 0
+      targetIndex: 12
       questToGrant: {fileID: 11400000, guid: 3cd2c3ad44a948f47b9eea61a31ce12f, type: 2}
       questToTurnIn: {fileID: 0}
     - choiceText: "\uC544\uB1E8"
-      targetIndex: 0
+      targetIndex: -1
       questToGrant: {fileID: 0}
       questToTurnIn: {fileID: 0}
+  - index: 12
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uACE0\uB9C8\uC6CC. \uBD80\uD0C1\uD560\uAC8C."
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 0
+    endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices: []
+  - index: 21
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uC5B4\uB54C? \uB098\uBB47\uAC00\uC9C0\uB294 \uBAA8\uC544\uC654\uC5B4?"
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 0
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices:
+    - choiceText: "\uC9C4\uD589 \uBCF4\uACE0"
+      targetIndex: 22
+      questToGrant: {fileID: 0}
+      questToTurnIn: {fileID: 11400000, guid: 3cd2c3ad44a948f47b9eea61a31ce12f, type: 2}
+    - choiceText: "\uC544\uC9C1.."
+      targetIndex: -1
+      questToGrant: {fileID: 0}
+      questToTurnIn: {fileID: 0}
+  - index: 22
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uAC2F\uC218\uAC00 \uBD80\uC871\uD55C\uAC70 \uAC19\uC740\uB370?
+      \uB098\uBB47\uAC00\uC9C0 5\uAC1C\uAC00 \uD544\uC694\uD574."
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices: []
+  - index: 25
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uC5B4\uB54C? \uB098\uBB47\uAC00\uC9C0\uB294 \uBAA8\uC544\uC654\uC5B4?\n"
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices:
+    - choiceText: "\uC9C4\uD589 \uBCF4\uACE0"
+      targetIndex: 26
+      questToGrant: {fileID: 0}
+      questToTurnIn: {fileID: 11400000, guid: 3cd2c3ad44a948f47b9eea61a31ce12f, type: 2}
+    - choiceText: "\uC544\uC9C1.."
+      targetIndex: -1
+      questToGrant: {fileID: 0}
+      questToTurnIn: {fileID: 0}
+  - index: 26
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uC815\uB9D0 \uACE0\uB9C8\uC6CC! \uB108 \uBCF4\uAE30\uBCF4\uB2E4
+      \uC2E4\uB825\uC774 \uC788\uAD6C\uB098?"
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 0
+    endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices: []
+  - index: 31
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uC0C1\uC778"
+    dialogueText: "\uBC18\uAC00\uC6CC. \uC774\uBC29\uC778!"
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices: []

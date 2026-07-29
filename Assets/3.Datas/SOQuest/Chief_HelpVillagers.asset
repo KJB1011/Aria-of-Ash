@@ -23,22 +23,22 @@ MonoBehaviour:
     targetNpcId: 
     targetQuest: {fileID: 11400000, guid: e180b68e24470e449ba057cbf30613b4, type: 2}
     targetCount: 1
-    description: 
+    description: "\uCCAD\uB144\uC758 \uC758\uB8B0\uB97C \uD574\uACB0"
   - type: 3
     targetMonsterId: 
     targetItem: {fileID: 0}
     targetNpcId: 
     targetQuest: {fileID: 11400000, guid: 3cd2c3ad44a948f47b9eea61a31ce12f, type: 2}
     targetCount: 1
-    description: 
+    description: "\uC0C1\uC778\uC758 \uC758\uB8B0\uB97C \uD574\uACB0"
   - type: 3
     targetMonsterId: 
     targetItem: {fileID: 0}
     targetNpcId: 
     targetQuest: {fileID: 11400000, guid: 2d347a2b6d12cce4aafbfb33b2440edf, type: 2}
     targetCount: 1
-    description: 
-  requiresTurnIn: 1
+    description: "\uBB38\uC9C0\uAE30\uC758 \uC758\uB8B0\uB97C \uD574\uACB0"
+  requiresTurnIn: 0
   prerequisiteQuests: []
   rewardExp: 300
   rewardGold: 200

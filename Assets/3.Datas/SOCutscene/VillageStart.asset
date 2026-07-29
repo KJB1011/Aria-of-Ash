@@ -160,7 +160,7 @@ MonoBehaviour:
     teleportPointKey: 
   - type: 2
     label: "\uD50C\uB808\uC774\uC5B4 \uC774\uB3D9 \uB300\uAE30"
-    duration: 3
+    duration: 2.5
     hudVisible: 0
     showLocationTitle: 1
     locationTitleSprite: {fileID: 0}
@@ -193,7 +193,7 @@ MonoBehaviour:
     teleportPointKey: 
   - type: 2
     label: "\uB208 \uB9C8\uC8FC\uBCF4\uACE0 \uC7A0\uAE50 \uB300\uAE30"
-    duration: 1
+    duration: 0.5
     hudVisible: 0
     showLocationTitle: 1
     locationTitleSprite: {fileID: 0}

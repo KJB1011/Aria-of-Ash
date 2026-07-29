@@ -17,18 +17,33 @@ MonoBehaviour:
     cameraLocalPosition: {x: 2, y: 3, z: 3}
     cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
     speakerName: "\uCD0C\uC7A5"
+    dialogueText: "\uC774\uBC29\uC778\uC774\uAD70. \uD658\uC601\uD55C\uB2E4."
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices: []
+  - index: 1
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uCD0C\uC7A5"
     dialogueText: "\uC678\uBD80\uC778\uC774\uAD70. \uBB34\uC2A8 \uC77C\uC774\uC9C0?"
     onTalkStart:
       m_PersistentCalls:
         m_Calls: []
     playTalkAnimationOnStart: 1
     endsConversation: 0
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
     choices:
     - choiceText: "\uB9C8\uC744\uC758 \uC0C1\uD669\uC5D0 \uB300\uD574.."
-      targetIndex: 1
+      targetIndex: 2
       questToGrant: {fileID: 0}
       questToTurnIn: {fileID: 0}
-  - index: 1
+  - index: 2
     cameraLocalPosition: {x: 2, y: 3, z: 3}
     cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
     speakerName: "\uCD0C\uC7A5"
@@ -40,12 +55,14 @@ MonoBehaviour:
         m_Calls: []
     playTalkAnimationOnStart: 0
     endsConversation: 0
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
     choices:
     - choiceText: "\uD55C \uBC88\uB9CC \uBBFF\uC5B4\uBD10\uC694."
-      targetIndex: 2
+      targetIndex: 3
       questToGrant: {fileID: 11400000, guid: ffaf13dc11e8db74bbab6745137e7620, type: 2}
       questToTurnIn: {fileID: 0}
-  - index: 2
+  - index: 3
     cameraLocalPosition: {x: 2, y: 3, z: 3}
     cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
     speakerName: "\uCD0C\uC7A5"
@@ -56,4 +73,33 @@ MonoBehaviour:
         m_Calls: []
     playTalkAnimationOnStart: 0
     endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices: []
+  - index: 11
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uCD0C\uC7A5"
+    dialogueText: "\uB9C8\uC744 \uC0AC\uB78C\uB4E4\uC758 \uC2E0\uB8B0\uB97C \uC5BB\uACE0
+      \uC624\uB3C4\uB85D."
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
+    choices: []
+  - index: 21
+    cameraLocalPosition: {x: 2, y: 3, z: 3}
+    cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
+    speakerName: "\uCD0C\uC7A5"
+    dialogueText: "\uC774\uBC29\uC778\uC774\uAD70. \uC798 \uC9C0\uB0B4\uB098?"
+    onTalkStart:
+      m_PersistentCalls:
+        m_Calls: []
+    playTalkAnimationOnStart: 1
+    endsConversation: 1
+    questToGrant: {fileID: 0}
+    questToTurnIn: {fileID: 0}
     choices: []

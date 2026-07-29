@@ -48,22 +48,39 @@
 //   커서를 풀기 때문에 InteractionDetector가 동작하지 않음) 이 NPC가 대화하는 도중 다른 NPC의
 //   Interact()가 불려서 상태가 꼬이는 일은 없습니다.
 //
-// [다른 퀘스트의 완료 여부로 대사 분기 - Quest Completion Overrides]
-//   "사전 퀘스트를 깨야 다음 퀘스트를 주는 NPC"를 만들 때 쓰는 기능입니다 - relatedQuest(이 NPC가
-//   주는 퀘스트, 예: 퀘스트 B)를 아직 받지 않은 상태에서만 확인하고, relatedQuest를 이미 받았다면
-//   (진행 중/완료 보고 대기/완료 중 하나) 이 배열은 아예 확인하지 않고 곧바로 relatedQuest 기반
-//   4개 index로 넘어갑니다 - 즉 우선순위는:
-//     1) relatedQuest를 이미 받은 상태 → relatedQuest 기반 4개 index(완료 → 완료 보고 대기 →
-//        진행 중 순서)를 그대로 사용합니다(퀘스트를 준 뒤에는 사전 퀘스트 완료 여부를 더 이상
-//        신경 쓰지 않습니다).
-//     2) relatedQuest를 아직 안 받은 상태 → questCompletionOverrides를 배열 순서대로 확인해서
-//        완료된 퀘스트(예: 사전 퀘스트 A)를 가진 첫 번째 항목이 있으면 그 talkIndex로 시작합니다
-//        (보통 이 Talks에서 relatedQuest를 주는 선택지를 답니다 - Choice.questToGrant).
-//     3) 그마저도 없으면(사전 퀘스트도 아직 안 끝났거나, relatedQuest 자체가 없는 NPC) 맨 처음
-//        기본 대사(relatedQuest가 있다면 notStartedTalkIndex, 없으면 talks[0])로 시작합니다.
-//   relatedQuest와 무관하게 그냥 "다른 퀘스트를 깨면 특별한 대사"만 보여주고 싶은 NPC(예: relatedQuest를
-//   비워둔 마을 주민)에도 questCompletionOverrides를 그대로 쓸 수 있습니다 - relatedQuest가
-//   비어있으면 "아직 안 받은 상태"로 취급해 항상 2)/3) 단계로 넘어갑니다.
+// [대사 시작 index 결정 - 4단계 우선순위 (ResolveStartTalkIndex() 참고)]
+//   relatedQuests(배열)와 questCompletionOverrides를 같이 쓸 때 헷갈리기 쉬워서, 순서를 명확히
+//   정리합니다. 매 상호작용마다 아래 4단계를 순서대로 검사해서, 맨 처음으로 조건에 맞는 것 하나만
+//   씁니다:
+//     1단계) "지금 당장 처리해야 할 용무" 우선 - relatedQuests를 배열 순서대로 훑어서 진행
+//            중(Active)이거나 완료 보고를 기다리는 중(ReadyToTurnIn)인 첫 번째 항목을 즉시
+//            사용합니다. 이미 완료된 항목은 여기서 건너뜁니다.
+//     2단계) 1단계에 아무 것도 안 걸렸으면(진행 중인 게 하나도 없으면), questCompletionOverrides를
+//            배열 순서대로 확인해서 완료된 퀘스트를 가진 첫 번째 항목의 talkIndex를 씁니다 - "사전
+//            퀘스트(A)가 막 완료되어 다음 퀘스트(B)를 새로 제안해야 하는 순간"이 정확히 여기서
+//            잡힙니다.
+//     3단계) 2단계에서도 새로 제안할 게 없었으면, relatedQuests를 이번엔 "배열 역순으로"(마지막
+//            항목부터 거꾸로) 훑어서 이미 완료된 첫 번째 항목의 마무리 대사(completedTalkIndex)를
+//            씁니다. relatedQuests는 보통 진행 순서(가장 먼저 받는 퀘스트가 [0])대로 등록해두므로,
+//            역순으로 찾아야 "가장 나중 단계까지 완료된" 항목이 먼저 걸립니다 - 정순으로 찾으면
+//            체인을 끝까지 다 깨도 항상 맨 처음 퀘스트의 완료 대사로 돌아가 버립니다.
+//     4단계) 그마저도 없으면(전부 아직 안 받은 완전히 처음 상태) relatedQuests[0]의
+//            notStartedTalkIndex(맨 처음 기본 대사)를 씁니다 - 그래서 relatedQuests[0]에는 항상
+//            체인에서 가장 먼저 받는 퀘스트를 넣어야 합니다.
+//   [예시] relatedQuests = [A, B] (진행 순서 그대로 - A가 먼저, B가 나중), questCompletionOverrides =
+//   [{quest: A, talkIndex: "B를 제안하는 대사"}] 로 설정한 A→B 체인 NPC라면:
+//     - A를 안 받았을 때: 1단계 통과(진행 중인 게 없음), 2단계도 통과(A가 아직 완료 안 됨), 3단계도
+//       통과(완료된 것도 없음) → 4단계로 relatedQuests[0]인 A의 notStartedTalkIndex.
+//     - A 진행 중: 1단계에서 A가 Active로 걸려 A의 inProgressTalkIndex.
+//     - A 완료, B 아직 안 받음: 1단계는 아무 것도 안 걸림(둘 다 진행 중이 아님) → 2단계에서
+//       questCompletionOverrides의 A 완료 조건이 걸려 "B를 제안하는 대사".
+//     - B 진행 중(A는 당연히 완료 상태): 1단계에서 B가 Active로 걸려 B의 inProgressTalkIndex(A는
+//       확인하지도 않음 - 배열 순서상 A가 먼저 검사되지만 A는 이미 완료라 1단계 조건에 안 걸림).
+//     - B 완료: 1단계 통과, 2단계 통과(B 완료를 걸어둔 override가 없다면), 3단계에서 relatedQuests를
+//       "역순으로"(B → A 순서로) 훑어 B가 먼저 걸려 B의 completedTalkIndex(정순이었다면 A가 먼저
+//       걸려 A의 완료 대사로 잘못 되돌아갔을 것입니다).
+//   relatedQuests와 무관하게 그냥 "다른 퀘스트를 깨면 특별한 대사"만 보여주고 싶은 NPC(예:
+//   relatedQuests를 비워둔 마을 주민)에도 questCompletionOverrides를 그대로 쓸 수 있습니다.
 //
 // [씬 준비]
 //   1) NPC 오브젝트(Collider가 이미 있는 것 - 보통 CapsuleCollider 등 물리 충돌용)에 이
@@ -104,6 +121,25 @@ public class NPCTalker : MonoBehaviour, IInteractable
         public int talkIndex;
     }
 
+    [System.Serializable]
+    public class RelatedQuestEntry
+    {
+        [Tooltip("이 항목이 추적할 퀘스트입니다.")]
+        public QuestData quest;
+        [Tooltip("quest를 아직 받지 않았고(그리고 relatedQuests 배열에서 이보다 앞선 다른 항목도 아직 " +
+                  "안 받았고) questCompletionOverrides에도 걸리는 게 없을 때 시작할 Talks.index입니다. " +
+                  "사전 퀘스트를 완료한 뒤 이 quest를 제안하는 대사를 따로 보여주고 싶다면, 그건 여기가 " +
+                  "아니라 questCompletionOverrides에 등록하세요.")]
+        public int notStartedTalkIndex;
+        [Tooltip("quest를 받아서 진행 중이지만 아직 목표를 다 채우지 못했을 때 시작할 Talks.index입니다.")]
+        public int inProgressTalkIndex;
+        [Tooltip("quest의 목표를 다 채워 완료 보고를 기다리는 중일 때 시작할 Talks.index입니다(보통 이 " +
+                  "Talks의 선택지에 Choice.questToTurnIn으로 quest를 연결해 여기서 보고받으세요).")]
+        public int readyToTurnInTalkIndex;
+        [Tooltip("quest가 이미 완료됐을 때 시작할 Talks.index입니다.")]
+        public int completedTalkIndex;
+    }
+
     [Header("상호작용 표시")]
     [Tooltip("상호작용 목록 UI에 표시할 이름입니다. 예: \"마을 주민\"")]
     public string npcName = "NPC";
@@ -121,30 +157,22 @@ public class NPCTalker : MonoBehaviour, IInteractable
     public TalkScript talkScript;
 
     [Header("퀘스트 연동 (선택사항 - 비워두면 항상 talks[0]부터 시작 = 기존과 동일)")]
-    [Tooltip("이 NPC의 대사를 이 퀘스트의 진행 상태(안 받음/진행 중/완료 보고 대기/완료)에 따라 다르게 " +
-              "시작하고 싶으면 연결하세요. 비워두면 퀘스트 상태를 전혀 확인하지 않고 항상 talks[0]부터 " +
-              "시작합니다(기존 NPC와 완전히 동일하게 동작 - 아래 4개 index 필드도 전부 무시됩니다).")]
-    public QuestData relatedQuest;
-    [Tooltip("relatedQuest를 아직 받지 않았고, questCompletionOverrides에도 걸리는 게 없을 때(사전 " +
-              "퀘스트가 아직 안 끝났거나 애초에 설정 안 함) 시작할 맨 처음 기본 Talks.index입니다. " +
-              "사전 퀘스트를 완료한 뒤 relatedQuest를 제안하는 대사를 따로 보여주고 싶다면, 그건 여기가 " +
-              "아니라 questCompletionOverrides에 등록하세요.")]
-    public int notStartedTalkIndex = 0;
-    [Tooltip("relatedQuest를 받아서 진행 중이지만 아직 목표를 다 채우지 못했을 때 시작할 Talks.index입니다.")]
-    public int inProgressTalkIndex = 0;
-    [Tooltip("relatedQuest의 목표를 다 채워 완료 보고를 기다리는 중일 때 시작할 Talks.index입니다(보통 " +
-              "이 Talks의 선택지에 Choice.questToTurnIn으로 relatedQuest를 연결해 여기서 보고받으세요).")]
-    public int readyToTurnInTalkIndex = 0;
-    [Tooltip("relatedQuest가 이미 완료됐을 때 시작할 Talks.index입니다.")]
-    public int completedTalkIndex = 0;
+    [Tooltip("이 NPC가 추적/제공하는 퀘스트들입니다. 배열 순서가 곧 우선순위입니다 - 여러 개 중 이미 " +
+              "받은(진행 중/완료 보고 대기/완료) 항목이 여러 개 있으면 배열에서 더 앞쪽에 있는 항목을 " +
+              "우선합니다. 퀘스트 체인(A를 깬 뒤 B를 받는 식)이 있다면, 나중 단계 퀘스트(B)를 배열 " +
+              "앞쪽에, 이전 단계 퀘스트(A)를 뒤쪽에 두는 걸 권장합니다 - 그래야 B를 이미 받은 뒤에는 A " +
+              "관련 대사로 되돌아가지 않습니다. 비워두면 퀘스트 상태를 전혀 확인하지 않고 항상 " +
+              "talks[0]부터 시작합니다(기존과 동일하게 동작).")]
+    public RelatedQuestEntry[] relatedQuests = new RelatedQuestEntry[0];
 
-    [Header("사전 퀘스트 완료 여부로 대사 분기 (선택사항 - relatedQuest를 아직 안 받았을 때만 확인)")]
-    [Tooltip("relatedQuest를 아직 받지 않은 상태에서만 확인합니다(relatedQuest를 이미 받았다면 이 " +
-              "배열은 무시하고 곧바로 relatedQuest 기반 4개 index로 넘어갑니다). 다른 퀘스트(보통 사전 " +
+    [Header("사전 퀘스트 완료 여부로 대사 분기 (선택사항 - relatedQuests를 아직 하나도 안 받았을 때만 확인)")]
+    [Tooltip("relatedQuests 중 어느 것도 아직 받지 않은 상태에서만 확인합니다(하나라도 이미 받았다면 이 " +
+              "배열은 무시하고 곧바로 relatedQuests 기반 index로 넘어갑니다). 다른 퀘스트(보통 사전 " +
               "퀘스트)가 완료됐을 때 특정 Talks.index로 대화를 시작하고 싶으면 등록하세요 - 예: 퀘스트 " +
               "A를 깨야 이 NPC가 퀘스트 B를 제안하는 경우, quest에 A를, talkIndex에 B를 제안하는 " +
               "Talks.index를 넣으세요. 배열 순서대로 확인해서 완료된 퀘스트를 가진 첫 번째 항목을 " +
-              "사용하며, 아무 것도 완료되지 않았으면 notStartedTalkIndex(맨 처음 기본 대사)로 넘어갑니다.")]
+              "사용하며, 아무 것도 완료되지 않았으면 relatedQuests[0].notStartedTalkIndex(맨 처음 기본 " +
+              "대사)로 넘어갑니다.")]
     public QuestCompletionOverride[] questCompletionOverrides = new QuestCompletionOverride[0];
 
     [Header("카메라 기준점 (즉시 스냅 회전)")]
@@ -357,34 +385,41 @@ public class NPCTalker : MonoBehaviour, IInteractable
         return Quaternion.LookRotation(direction);
     }
 
-    /// <summary>이번 대화가 시작할 Talks.index를 결정합니다. 우선순위(파일 상단 [다른 퀘스트의 완료
-    /// 여부로 대사 분기] 참고):
-    ///   1) relatedQuest를 이미 받은 상태(진행 중/완료 보고 대기/완료)라면 questCompletionOverrides는
-    ///      아예 확인하지 않고 곧바로 relatedQuest 기반 index(완료 → 완료 보고 대기 → 진행 중 순서로
-    ///      확인, 먼저 맞는 상태 우선)를 반환합니다 - 퀘스트를 이미 받았다면 사전 퀘스트 완료 여부는
-    ///      더 이상 상관없기 때문입니다.
-    ///   2) relatedQuest를 아직 안 받은 상태라면 questCompletionOverrides를 배열 순서대로 확인해서
-    ///      완료된 퀘스트를 가진 첫 번째 항목의 talkIndex를 반환합니다(사전 퀘스트를 깨서 이 NPC가
-    ///      relatedQuest를 제안하는 대사).
-    ///   3) 그마저도 없으면 relatedQuest가 있는 경우 notStartedTalkIndex(맨 처음 기본 대사)를,
-    ///      relatedQuest도 없거나 씬에 QuestManager가 없으면 -1을 반환해서 TalkManager.StartTalk()가
-    ///      기존과 동일하게 배열 맨 처음(talks[0])부터 시작하게 합니다.</summary>
+    /// <summary>이번 대화가 시작할 Talks.index를 결정합니다. 4단계 우선순위(파일 상단 [여러 퀘스트를
+    /// 추적]/[다른 퀘스트의 완료 여부로 대사 분기] 참고):
+    ///   1) "지금 당장 처리해야 할 용무"가 최우선입니다 - relatedQuests를 배열 순서대로 훑어서,
+    ///      진행 중(Active)이거나 완료 보고를 기다리는 중(ReadyToTurnIn)인 첫 번째 항목을 즉시
+    ///      반환합니다. 이미 완료된 항목은 여기서 건너뜁니다(더 이상 "당장 처리할 용무"가
+    ///      아니므로) - 이게 이전 버전과 다른 핵심 차이입니다.
+    ///   2) 1단계에서 아무 것도 안 걸렸다면(진행 중인 relatedQuests가 하나도 없다면),
+    ///      questCompletionOverrides를 배열 순서대로 확인해서 완료된 퀘스트를 가진 첫 번째 항목의
+    ///      talkIndex를 반환합니다 - "사전 퀘스트(A)가 막 완료되어 다음 퀘스트(B)를 새로 제안해야
+    ///      하는 순간"이 정확히 여기서 잡힙니다.
+    ///   3) 2단계에서도 새로 제안할 게 없었다면, relatedQuests를 이번엔 "배열 역순으로"(마지막
+    ///      항목부터 거꾸로) 훑어서 이미 완료된 첫 번째 항목의 completedTalkIndex를 반환합니다(더
+    ///      이상 진행 중인 것도, 새로 제안할 것도 없는 "다 끝난" 상태의 마무리 대사). 역순으로 찾는
+    ///      이유는 relatedQuests가 보통 진행 순서대로 등록되어 있어서, 정순으로 찾으면 체인을 끝까지
+    ///      다 깨도 항상 맨 처음 퀘스트의 완료 대사로 돌아가 버리기 때문입니다.
+    ///   4) 그마저도 없으면(전부 아직 안 받은 상태) relatedQuests가 비어있지 않은 경우
+    ///      relatedQuests[0].notStartedTalkIndex(맨 처음 기본 대사)를, relatedQuests가 비어있거나
+    ///      씬에 QuestManager가 없으면 -1을 반환해서 TalkManager.StartTalk()가 기존과 동일하게
+    ///      배열 맨 처음(talks[0])부터 시작하게 합니다.</summary>
     private int ResolveStartTalkIndex()
     {
-        bool relatedQuestAlreadyGranted = relatedQuest != null && QuestManager.Instance != null &&
-            (QuestManager.Instance.IsQuestCompleted(relatedQuest) ||
-             QuestManager.Instance.IsQuestReadyToTurnIn(relatedQuest) ||
-             QuestManager.Instance.IsQuestActive(relatedQuest));
-
-        if (relatedQuestAlreadyGranted)
+        // 1단계: 진행 중이거나 완료 보고를 기다리는 relatedQuests가 있으면 항상 최우선입니다.
+        if (QuestManager.Instance != null && relatedQuests != null)
         {
-            if (QuestManager.Instance.IsQuestCompleted(relatedQuest)) return completedTalkIndex;
-            if (QuestManager.Instance.IsQuestReadyToTurnIn(relatedQuest)) return readyToTurnInTalkIndex;
-            return inProgressTalkIndex;
+            foreach (RelatedQuestEntry entry in relatedQuests)
+            {
+                if (entry.quest == null) continue;
+
+                if (QuestManager.Instance.IsQuestReadyToTurnIn(entry.quest)) return entry.readyToTurnInTalkIndex;
+                if (QuestManager.Instance.IsQuestActive(entry.quest)) return entry.inProgressTalkIndex;
+            }
         }
 
-        // relatedQuest를 아직 안 받은 상태(또는 relatedQuest 자체가 없는 NPC)입니다 - 사전 퀘스트
-        // 완료 여부로 분기할 차례입니다.
+        // 2단계: 지금 당장 진행 중인 relatedQuests가 없습니다 - 사전 퀘스트가 막 완료되어 새로
+        // 제안할 게 있는지 확인합니다(예: A가 막 완료되어 B를 제안해야 하는 순간).
         if (QuestManager.Instance != null && questCompletionOverrides != null)
         {
             foreach (QuestCompletionOverride overrideEntry in questCompletionOverrides)
@@ -396,9 +431,27 @@ public class NPCTalker : MonoBehaviour, IInteractable
             }
         }
 
-        if (relatedQuest == null || QuestManager.Instance == null) return -1;
+        // 3단계: 새로 제안할 것도 없습니다 - relatedQuests 중 완료된 게 있으면(체인이 여기서 끝난
+        // 경우 등) 마무리 대사를 보여줘야 하는데, 이때는 배열을 "뒤에서부터" 훑습니다 - relatedQuests를
+        // 보통 진행 순서(A, B, C...)대로 등록해두므로, 뒤에서부터 찾아야 "가장 나중 단계까지 완료된"
+        // 항목이 먼저 걸립니다(안 그러면 체인을 끝까지 다 깨도 맨 처음 단계의 완료 대사로 돌아가
+        // 버립니다).
+        if (QuestManager.Instance != null && relatedQuests != null)
+        {
+            for (int i = relatedQuests.Length - 1; i >= 0; i--)
+            {
+                RelatedQuestEntry entry = relatedQuests[i];
+                if (entry.quest != null && QuestManager.Instance.IsQuestCompleted(entry.quest))
+                {
+                    return entry.completedTalkIndex;
+                }
+            }
+        }
 
-        return notStartedTalkIndex;
+        // 4단계: 정말 아무 것도 해당하지 않으면(전부 아직 안 받은 상태) 맨 처음 기본 대사입니다.
+        if (relatedQuests == null || relatedQuests.Length == 0 || QuestManager.Instance == null) return -1;
+
+        return relatedQuests[0].notStartedTalkIndex;
     }
 
     // ------------------------------------------------------------------

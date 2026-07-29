@@ -73,12 +73,14 @@ MonoBehaviour:
   npcName: "\uC0C1\uC778"
   npcId: Merchant
   talkScript: {fileID: 11400000, guid: 7ed96a9d91bbc2b469f158f6ff49fdfe, type: 2}
-  relatedQuest: {fileID: 11400000, guid: e180b68e24470e449ba057cbf30613b4, type: 2}
+  relatedQuest: {fileID: 11400000, guid: 3cd2c3ad44a948f47b9eea61a31ce12f, type: 2}
   notStartedTalkIndex: 0
-  inProgressTalkIndex: 11
-  readyToTurnInTalkIndex: 21
+  inProgressTalkIndex: 21
+  readyToTurnInTalkIndex: 25
   completedTalkIndex: 31
-  questCompletionOverrides: []
+  questCompletionOverrides:
+  - quest: {fileID: 11400000, guid: fb5a6387d1f702d42ab3da982b99dcff, type: 2}
+    talkIndex: 11
   cameraAnchor: {fileID: 0}
   modelTransform: {fileID: 0}
   talkRotationSpeed: 180

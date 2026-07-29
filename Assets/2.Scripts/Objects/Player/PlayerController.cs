@@ -952,6 +952,9 @@ public class PlayerController : MonoBehaviour
     /// 쿨타임과 별개로 마나(skillManaCost/ultManaCost)와, 필살기는 에너지(ultEnergyCost)까지 충분해야
     /// 실제로 사용됩니다 - 셋 중 하나라도 부족하면 입력은 그냥 무시됩니다(쿨타임이 남아있을 때와 동일).
     /// 사용하는 순간 PlayerStats.SpendMana()/SpendEnergy()로 즉시 소모합니다.
+    /// [마나 부족 안내] 쿨타임은 다 됐는데 마나만 부족해서 못 쓰는 경우에는(쿨타임이 원인일 때는 표시하지
+    /// 않습니다), FloatingTextManager.Instance.Show()로 화면에 "마나가 부족하여 스킬(필살기)을 사용할 수
+    /// 없습니다." 안내를 띄웁니다. 에너지 부족에 대한 안내는 아직 없습니다.
     /// ultSkillGrantsInvincibility가 켜져있으면 필살기 모션이 재생되는 동안(isUsingSkill이 꺼질 때까지)
     /// 대시와 같은 방식으로 무적입니다(EnterInvincible() 재사용) - 일반 스킬(우클릭)에는 적용되지 않습니다.</summary>
     private void HandleSkills()
@@ -990,38 +993,56 @@ public class PlayerController : MonoBehaviour
         bool ultReady = ultCooldownTimer <= 0f
             && playerStats.CurrentMP >= ultManaCost
             && playerStats.CurrentEnergy >= ultEnergyCost;
-        if (ultSkillAction.WasPressedThisFrame() && ultReady)
+        if (ultSkillAction.WasPressedThisFrame())
         {
-            CancelAttack(); // 기본 공격 콤보 중이었다면 캔슬하고 필살기로 전환합니다.
-            StartSkill(UltSkillParam, ultSkillDuration);
-            isUsingUltSkill = true;
-            ultCooldownTimer = ultCooldown;
-            playerStats.SpendMana(ultManaCost);
-            playerStats.SpendEnergy(ultEnergyCost);
-            if (ultSkillGrantsInvincibility)
+            if (ultReady)
             {
-                EndUltInvincibilityGraceIfActive(); // 혹시 이전 필살기의 무적 여유 시간이 아직 안 끝났다면 취소하고, 새 무적을 깨끗하게 시작합니다.
-                EnterInvincible();
+                CancelAttack(); // 기본 공격 콤보 중이었다면 캔슬하고 필살기로 전환합니다.
+                StartSkill(UltSkillParam, ultSkillDuration);
+                isUsingUltSkill = true;
+                ultCooldownTimer = ultCooldown;
+                playerStats.SpendMana(ultManaCost);
+                playerStats.SpendEnergy(ultEnergyCost);
+                if (ultSkillGrantsInvincibility)
+                {
+                    EndUltInvincibilityGraceIfActive(); // 혹시 이전 필살기의 무적 여유 시간이 아직 안 끝났다면 취소하고, 새 무적을 깨끗하게 시작합니다.
+                    EnterInvincible();
+                }
+                // 필살기 카메라 연출(정면샷 → 뒤쪽 시점)을 시작합니다 - StartSkill() 안에서 이미
+                // FaceNearestTargetIfAny()로 회전을 끝낸 뒤라 카메라 계산 시점엔 이미 올바른 방향을
+                // 보고 있습니다(NPCTalker의 회전-후-카메라 순서와 같은 이유). 씬에
+                // UltSkillEffector가 없어도 안전하게 아무 일도 하지 않습니다.
+                UltSkillEffector.Instance?.PlayFaceShot();
+                // 칼에 기를 모으는 차지 VFX/SFX도 같은 순간 시작합니다 - OnUltSlamImpact()(실제 내려찍는
+                // 프레임)에서 정리됩니다.
+                PlayUltChargeVfx();
+                PlayUltChargeSfx();
             }
-            // 필살기 카메라 연출(정면샷 → 뒤쪽 시점)을 시작합니다 - StartSkill() 안에서 이미
-            // FaceNearestTargetIfAny()로 회전을 끝낸 뒤라 카메라 계산 시점엔 이미 올바른 방향을
-            // 보고 있습니다(NPCTalker의 회전-후-카메라 순서와 같은 이유). 씬에
-            // UltSkillEffector가 없어도 안전하게 아무 일도 하지 않습니다.
-            UltSkillEffector.Instance?.PlayFaceShot();
-            // 칼에 기를 모으는 차지 VFX/SFX도 같은 순간 시작합니다 - OnUltSlamImpact()(실제 내려찍는
-            // 프레임)에서 정리됩니다.
-            PlayUltChargeVfx();
-            PlayUltChargeSfx();
+            // 쿨타임은 다 됐는데 마나만 부족해서 못 쓰는 경우에만 안내 메세지를 띄웁니다 - 쿨타임이
+            // 남아있는 동안은(마나가 충분해도 어차피 못 쓰므로) 굳이 마나 부족 메세지로 혼동을 주지
+            // 않습니다. 에너지 부족은 아직 별도 안내가 없습니다(요청받은 범위가 마나뿐이라서입니다).
+            else if (ultCooldownTimer <= 0f && playerStats.CurrentMP < ultManaCost)
+            {
+                FloatingTextManager.Instance.Show("마나가 부족하여 필살기를 사용할 수 없습니다.");
+            }
             return;
         }
 
         bool skillReady = skillCooldownTimer <= 0f && playerStats.CurrentMP >= skillManaCost;
-        if (skillAction.WasPressedThisFrame() && skillReady)
+        if (skillAction.WasPressedThisFrame())
         {
-            CancelAttack();
-            StartSkill(SkillParam, skillDuration);
-            skillCooldownTimer = skillCooldown;
-            playerStats.SpendMana(skillManaCost);
+            if (skillReady)
+            {
+                CancelAttack();
+                StartSkill(SkillParam, skillDuration);
+                skillCooldownTimer = skillCooldown;
+                playerStats.SpendMana(skillManaCost);
+            }
+            // 위 필살기 쪽과 같은 이유로, 쿨타임은 다 됐는데 마나만 부족한 경우에만 안내합니다.
+            else if (skillCooldownTimer <= 0f && playerStats.CurrentMP < skillManaCost)
+            {
+                FloatingTextManager.Instance.Show("마나가 부족하여 스킬을 사용할 수 없습니다.");
+            }
         }
     }
 

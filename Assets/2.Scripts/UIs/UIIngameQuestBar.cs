@@ -44,6 +44,11 @@ public class UIIngameQuestBar : MonoBehaviour
 {
     [SerializeField] TextMeshProUGUI _txtQuestName;
     [SerializeField] TextMeshProUGUI _txtObjectives;
+    [Tooltip("평소(진행 중이고 아직 완료 보고 대기가 아닐 때)에 켜져있는 표시입니다. 완료 보고 대기 " +
+              "상태가 되거나 퀘스트가 완전히 완료되면 꺼지고 Img Checkmark가 대신 켜집니다.")]
+    [SerializeField] GameObject _questMark;
+    [Tooltip("완료 보고 대기 상태이거나 퀘스트가 완전히 완료됐을 때 켜지는 표시입니다(Quest Mark와 " +
+              "정확히 반대로 켜/꺼집니다).")]
     [SerializeField] Image _imgCheckmark;
 
     [Header("완료 연출 - ClearImage")]
@@ -106,18 +111,28 @@ public class UIIngameQuestBar : MonoBehaviour
 
         _txtObjectives.text = builder.ToString();
 
-        if (_imgCheckmark != null)
-        {
-            _imgCheckmark.gameObject.SetActive(readyToTurnIn);
-        }
+        SetMarkState(readyToTurnIn);
     }
 
-    /// <summary>퀘스트가 완료된 순간 UIIngameQuest가 호출합니다. ClearImage를 원래 자리에서
-    /// clearImageStartOffset만큼 떨어진 곳으로 옮겨뒀다가, 다시 원래 자리(중앙)까지 부드럽게
-    /// 슬라이드시킵니다. Clear Image가 연결되어 있지 않으면 아무 것도 하지 않고 null을 돌려줍니다 -
-    /// 호출하는 쪽(UIIngameQuest)은 null이면 곧바로 대기 단계로 넘어가면 됩니다.</summary>
+    /// <summary>Quest Mark(평소)/Img Checkmark(완료 보고 대기 또는 완전 완료) 표시를 서로 반대로
+    /// 켜고 끕니다. showCheckmark가 true면 Checkmark를 켜고 Quest Mark를 끕니다.</summary>
+    private void SetMarkState(bool showCheckmark)
+    {
+        if (_questMark != null) _questMark.SetActive(!showCheckmark);
+        if (_imgCheckmark != null) _imgCheckmark.enabled = showCheckmark;
+    }
+
+    /// <summary>퀘스트가 완료된 순간 UIIngameQuest가 호출합니다. Quest Mark/Checkmark를 항상 "완료"
+    /// 상태(Checkmark 켜짐)로 고정한 뒤, ClearImage를 원래 자리에서 clearImageStartOffset만큼 떨어진
+    /// 곳으로 옮겨뒀다가 다시 원래 자리(중앙)까지 부드럽게 슬라이드시킵니다. requiresTurnIn이 없는
+    /// 퀘스트는 완료 보고 대기 상태를 거치지 않고 곧장 완료될 수 있어서(Setup()이 한 번도 Checkmark로
+    /// 바꿔줄 기회가 없었을 수 있음), 여기서 한 번 더 강제로 맞춰줍니다. Clear Image가 연결되어 있지
+    /// 않으면 슬라이드 연출 없이 null을 돌려줍니다 - 호출하는 쪽(UIIngameQuest)은 null이면 곧바로 대기
+    /// 단계로 넘어가면 됩니다.</summary>
     public Tween PlayCompletedEffect()
     {
+        SetMarkState(true);
+
         if (_clearImage == null) return null;
 
         _clearImage.gameObject.SetActive(true);

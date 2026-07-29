@@ -7,8 +7,10 @@
 //
 // [표시 규칙]
 //   진행 중인 퀘스트(QuestManager.ActiveQuests)가 하나도 없으면 자동으로 숨겨지고, 하나라도 생기면
-//   페이드인으로 나타납니다 - UIIngameInteraction의 Show()/Hide() 패턴과 동일합니다. 클릭 대상이
-//   아니므로 CanvasGroup의 interactable/blocksRaycasts는 항상 꺼둡니다(순수 표시 전용 HUD).
+//   페이드인으로 나타납니다 - UIIngameInteraction의 Show()/Hide() 패턴과 동일합니다. 버튼 등 클릭
+//   대상은 없는 순수 표시용 HUD라 interactable은 항상 꺼둡니다. 다만 ScrollRect 스크롤(드래그/휠)은
+//   그 자체가 레이캐스트 이벤트를 받아야 동작하므로, blocksRaycasts는 보이는 동안(Show())만 켜고
+//   숨겨지면(Hide()) 다시 꺼서 뒤쪽 게임 화면 클릭을 막지 않도록 합니다.
 //
 // [완료 연출 - OnQuestCompleted만 따로 처리]
 //   OnQuestAdded/OnQuestProgressChanged/OnQuestReadyToTurnIn은 그대로 HandleQuestChanged()가
@@ -167,6 +169,15 @@ public class UIIngameQuest : MonoBehaviour
         if (isVisible) return;
         isVisible = true;
 
+        // ScrollRect로 스크롤하려면 마우스 드래그/휠 이벤트가 EventSystem의 레이캐스트를 통해
+        // 이 안의 ScrollRect까지 전달되어야 하는데, blocksRaycasts가 꺼져있으면(Awake의 기본값)
+        // 레이캐스트가 이 오브젝트와 그 자식들(ScrollRect 포함)을 아예 통과해버려서 스크롤 관련
+        // 이벤트(OnBeginDrag/OnDrag/OnScroll)가 하나도 도착하지 않습니다 - 그래서 보이는 동안만
+        // 켜줍니다. interactable은 그대로 꺼둬도 됩니다(ScrollRect는 Selectable이 아니라서 드래그
+        // 스크롤에 영향이 없습니다 - 단, 실제 Scrollbar를 손잡이로 드래그하게 만들어뒀다면
+        // Scrollbar는 Selectable이라 interactable도 같이 true로 켜야 손잡이를 움직일 수 있습니다).
+        canvasGroup.blocksRaycasts = true;
+
         fadeTween?.Kill();
         fadeTween = canvasGroup.DOFade(1f, fadeDuration).SetUpdate(true); // 다른 팝업이 게임을 멈춰도(Time.timeScale = 0) 이 페이드는 얼어붙지 않습니다.
     }
@@ -175,6 +186,10 @@ public class UIIngameQuest : MonoBehaviour
     {
         if (!isVisible) return;
         isVisible = false;
+
+        // 다시 숨겨지면 원래대로 클릭/스크롤이 이 패널을 통과해서 뒤쪽(게임 화면)으로 가도록
+        // 되돌립니다 - 순수 표시용 HUD가 보이지도 않는데 계속 레이캐스트를 막고 있으면 안 되므로.
+        canvasGroup.blocksRaycasts = false;
 
         fadeTween?.Kill();
         fadeTween = canvasGroup.DOFade(0f, fadeDuration).SetUpdate(true);

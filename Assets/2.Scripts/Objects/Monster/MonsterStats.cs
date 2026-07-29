@@ -25,6 +25,21 @@
 //   설정해주세요. (기존에 MonsterFSM/MiddleSlimeBoss 인스펙터에 있던 Max Health 값을 쓰고
 //   계셨다면, 그 값을 이 컴포넌트의 Base HP로 옮겨서 다시 입력해주세요 - 필드 위치만 바뀌었을 뿐
 //   의미는 같습니다.)
+//
+// [전투 이탈 후 자동 회복]
+//   플레이어에게 마지막으로 맞은 지 outOfCombatDelay초(기본 10초)가 지나면, 초당 MaxHP의
+//   regenPercentPerSecond%씩(기본 10% = 10초면 완전 회복) 자동으로 체력을 회복합니다. "전투 중"의
+//   기준은 오직 "TakeDamage()로 데미지를 받은 시점"입니다 - 몬스터가 플레이어를 쫓아다니거나
+//   공격 모션을 쓰는 것 자체는 이 타이머에 영향을 주지 않습니다(플레이어가 거리를 벌려 딜을 못 넣는
+//   동안 몬스터가 회복해버리는, 흔히 말하는 "리쉬 회복" 디자인과 같은 기준입니다). 다시 맞는 순간
+//   회복은 즉시 멈추고 타이머가 리셋됩니다. enableOutOfCombatRegen을 꺼두면 이 몬스터는 이 기능 자체가
+//   적용되지 않습니다(보스 등 특정 몬스터만 빼고 싶을 때 사용하세요). MonsterFSM/MiddleSlimeBoss 양쪽
+//   다 TakeDamage()를 이 컴포넌트에 위임하고 있어서, 이 컴포넌트 하나만 고치면 모든 몬스터 종류에
+//   동일하게 적용됩니다.
+//   [확장하고 싶다면] 몬스터가 실제로 공격을 맞히지 못했더라도(추격/공격 모션만 하는 중이어도)
+//   회복을 막고 싶다면, MarkCombatActive()를 public으로 열어뒀으니 MonsterFSM.EvaluateCombatState()나
+//   MiddleSlimeBoss의 공격 시작 지점에서 호출하도록 연결하면 됩니다(지금은 기본으로 연결되어 있지
+//   않습니다).
 // ============================================================================
 
 using UnityEngine;
@@ -86,7 +101,21 @@ public class MonsterStats : MonoBehaviour
               "골드 오브젝트 여러 개로 나눠서 드롭합니다.")]
     public int goldReward = 5;
 
+    [Header("전투 이탈 후 자동 회복")]
+    [Tooltip("켜두면, 마지막으로 데미지를 받은 지 outOfCombatDelay초가 지났을 때 자동으로 체력을 " +
+              "회복하기 시작합니다. 이 몬스터에는 적용하고 싶지 않다면(예: 보스) 꺼두세요.")]
+    public bool enableOutOfCombatRegen = true;
+    [Tooltip("마지막으로 데미지를 받은 뒤 이 시간(초)이 지나야 회복이 시작됩니다.")]
+    public float outOfCombatDelay = 10f;
+    [Tooltip("회복이 시작된 뒤, 초당 MaxHP의 이 비율(%)만큼 회복합니다. 예: 10이면 10초 만에 완전히 " +
+              "회복됩니다(\"빠른 회복\"의 기준을 여기서 조절하세요).")]
+    public float regenPercentPerSecond = 10f;
+    [Tooltip("켜두면 회복이 시작/중단될 때마다 콘솔에 로그를 남깁니다.")]
+    public bool debugLogRegen = false;
+
     private float currentHP;
+    private float lastCombatTime;
+    private bool isRegenerating;
 
     // ------------------------------------------------------------------
     // 계산된 총 스탯 - 캐싱하지 않고 매번 bonus 값을 반영해서 계산합니다.
@@ -102,13 +131,61 @@ public class MonsterStats : MonoBehaviour
     private void Awake()
     {
         currentHP = TotalHP;
+        lastCombatTime = Time.time;
+    }
+
+    /// <summary>enableOutOfCombatRegen이 켜져있고, 마지막 전투 활동(데미지를 받은 시점)으로부터
+    /// outOfCombatDelay초가 지났고, 아직 죽지 않았고, 체력이 이미 가득 차지 않았다면 매 프레임
+    /// regenPercentPerSecond%씩 체력을 회복합니다.</summary>
+    private void Update()
+    {
+        if (!enableOutOfCombatRegen) return;
+        if (currentHP <= 0f) return; // 이미 죽은 상태(dieDelay 동안 시체가 남아있는 사이)에는 회복하지 않습니다.
+        if (currentHP >= TotalHP) return; // 이미 가득 찼으면 할 일이 없습니다.
+
+        bool outOfCombat = Time.time - lastCombatTime >= outOfCombatDelay;
+        if (!outOfCombat)
+        {
+            SetRegenerating(false);
+            return;
+        }
+
+        SetRegenerating(true);
+        float regenAmount = TotalHP * (regenPercentPerSecond / 100f) * Time.deltaTime;
+        Heal(regenAmount);
+    }
+
+    /// <summary>isRegenerating 상태가 바뀔 때만(매 프레임이 아니라) 로그를 남기기 위한 헬퍼입니다.</summary>
+    private void SetRegenerating(bool value)
+    {
+        if (isRegenerating == value) return;
+        isRegenerating = value;
+
+        if (debugLogRegen)
+        {
+            Debug.Log(value
+                ? $"[MonsterStats] '{name}' 전투 이탈 회복 시작 (마지막 전투로부터 {outOfCombatDelay}초 경과)"
+                : $"[MonsterStats] '{name}' 전투 이탈 회복 중단", this);
+        }
     }
 
     /// <summary>순수하게 수치만 깎습니다 (0 밑으로 내려가지 않음). Hit/Die 상태 전환 여부는
-    /// 이 컴포넌트를 갖고 있는 MonsterFSM/MiddleSlimeBoss가 반환된 CurrentHP를 보고 직접 판단합니다.</summary>
+    /// 이 컴포넌트를 갖고 있는 MonsterFSM/MiddleSlimeBoss가 반환된 CurrentHP를 보고 직접 판단합니다.
+    /// 데미지를 받는 것 자체가 "전투 중"이라는 뜻이므로, 여기서 자동으로 MarkCombatActive()를 호출해
+    /// 전투 이탈 회복 타이머를 리셋합니다.</summary>
     public void TakeDamage(float amount)
     {
+        MarkCombatActive();
         currentHP = Mathf.Max(0f, currentHP - amount);
+    }
+
+    /// <summary>지금 이 순간을 "마지막 전투 활동 시점"으로 기록해서 전투 이탈 회복 타이머를 리셋합니다.
+    /// TakeDamage()에서 자동으로 호출되므로 보통 직접 호출할 일은 없지만, 데미지를 받지 않는 다른
+    /// 전투 활동(예: 공격 모션 시작)도 회복을 막고 싶다면 그 시점에서 이 메서드를 호출하도록 확장할 수
+    /// 있습니다.</summary>
+    public void MarkCombatActive()
+    {
+        lastCombatTime = Time.time;
     }
 
     /// <summary>회복 스킬 등에서 쓸 수 있는 함수입니다 (몬스터의 자가 회복, 힐러 몬스터 등). MaxHP를 넘지 않습니다.</summary>
