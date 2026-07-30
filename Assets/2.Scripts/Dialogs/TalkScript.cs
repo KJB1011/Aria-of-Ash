@@ -60,6 +60,24 @@
 // onTalkStart 자체는 씬 오브젝트가 아니라 "다른 애셋"이나 정적인 무언가를 다루는 용도로 남겨뒀지만,
 // 실전에서 거의 쓸 일이 없다면 지워도 무방합니다. 비워두면 아무 것도 실행하지 않습니다.
 //
+// [대화가 끝나면 이어서 컷씬 재생 - Talks.cutsceneToPlay / Choice.cutsceneToPlay]
+//   "NPC와 대화하다가 컷씬이 재생되게 하고 싶다"는 요청은 대부분 정확히는 "대화가 끝나는 그 순간
+//   이어서 컷씬이 재생되길 원한다"는 뜻입니다 - 대화 도중(대화 UI가 아직 떠 있고 TalkManager의
+//   대화 전용 카메라가 아직 활성 상태인 동안)에 컷씬을 동시에 시작하면 대화 UI와 컷씬 카메라/연출이
+//   화면에서 서로 겹쳐버리기 때문입니다. 그래서 CutsceneData는 onTalkStart처럼 임의의 시점에
+//   실행되는 게 아니라, "이 Talks/Choice가 대화를 끝내는 바로 그 순간"에만 재생되도록 설계했습니다:
+//     - 선택지가 있는 Talks라면 각 Choice.cutsceneToPlay를 쓰세요 - 그 선택지가 대화를 끝낼 때만
+//       (Target Index가 -1일 때만) 재생되고, 다른 Talks로 계속 이어지는 선택지라면 무시됩니다.
+//       (예: "그와 함께 가겠다" 선택지에만 컷씬을 연결해서, "생각해볼게" 선택지로는 컷씬이 재생되지
+//       않게 할 수 있습니다.)
+//     - 선택지 없이 자동으로(배열 맨 끝 도달, 또는 End Conversation) 끝나는 Talks라면
+//       Talks.cutsceneToPlay를 쓰세요.
+//   CutsceneData는 이 TalkScript와 마찬가지로 애셋이라, QuestData(questToGrant/questToTurnIn)와 같은
+//   이유로 여기 안전하게 직접 연결할 수 있습니다(애셋-애셋 참조) - 실제 재생은 TalkManager가 대화
+//   종료 처리를 마친 직후 CutsceneManager.Instance.Play()를 호출하는 방식입니다(TalkManager.cs의
+//   FinishTalk() 참고). 재생될 컷씬 쪽에서 필요한 카메라/NPC/오브젝트 등은 평소와 마찬가지로
+//   CutsceneManager에 등록되어 있어야 합니다(CutsceneManager.cs 참고).
+//
 // [애셋 만들기]
 //   Project 창에서 우클릭 → Create → Dialogue > Talk Script 로 새 대화 애셋을 만드세요.
 // ============================================================================
@@ -94,6 +112,16 @@ public class TalkScript : ScriptableObject
                   "TalkManager.SelectChoice()가 코드에서 QuestManager.Instance.TurnInQuest()를 호출하는 " +
                   "방식입니다.")]
         public QuestData questToTurnIn;
+
+        [Tooltip("이 선택지를 고르면(그리고 Target Index가 -1이라 대화가 바로 여기서 끝나면) 대화가 " +
+                  "완전히 끝난 직후 재생할 컷씬입니다(비워두면 아무 컷씬도 재생하지 않습니다). " +
+                  "CutsceneData도 TalkScript와 마찬가지로 애셋이라, questToGrant/questToTurnIn과 완전히 " +
+                  "같은 이유로 여기 안전하게 연결할 수 있습니다(애셋-애셋 참조 - onTalkStart처럼 씬 " +
+                  "오브젝트를 직접 참조하는 게 아닙니다) - 실제 재생은 TalkManager.SelectChoice()가 " +
+                  "대화를 끝낸 직후 코드에서 CutsceneManager.Instance.Play()를 호출하는 방식입니다. " +
+                  "Target Index가 -1이 아니라 다른 Talks로 계속 이어지는 선택지라면 이 필드는 " +
+                  "무시됩니다(그 선택으로는 대화가 아직 끝나지 않으므로).")]
+        public CutsceneData cutsceneToPlay;
     }
 
     [Serializable]
@@ -140,6 +168,15 @@ public class TalkScript : ScriptableObject
                   "QuestManager.Instance.TurnInQuest()가 호출됩니다. requiresTurnIn 조건(목표를 다 " +
                   "채운 상태)을 아직 못 채웠다면 QuestManager가 경고만 남기고 조용히 무시합니다.")]
         public QuestData questToTurnIn;
+
+        [Header("컷씬 - 이 Talks가 대화를 끝내는 경우에만 (선택지가 있으면 각 Choice 쪽을 대신 쓰세요)")]
+        [Tooltip("이 Talks에서 선택지 없이 대화가 끝나는 경우(배열 맨 끝이거나 End Conversation이 " +
+                  "켜진 경우) 대화가 완전히 끝난 직후 재생할 컷씬입니다(비워두면 아무 컷씬도 재생하지 " +
+                  "않습니다). 이 Talks에 선택지가 있으면(HasChoices) 어느 선택지를 골랐는지에 따라 " +
+                  "재생 여부가 달라질 수 있으므로 이 필드 대신 각 Choice.Cutscene To Play를 " +
+                  "사용하세요(이 필드는 무시됩니다) - CutsceneData는 애셋이라 Choice.cutsceneToPlay와 " +
+                  "같은 이유로 여기 안전하게 연결할 수 있습니다.")]
+        public CutsceneData cutsceneToPlay;
 
         [Header("선택지 (최대 3개 권장, 비어있으면 다음 Talks로 자동 진행)")]
         public Choice[] choices = new Choice[0];

@@ -24,10 +24,11 @@ MonoBehaviour:
     targetQuest: {fileID: 0}
     targetCount: 1
     description: "\uC911\uAE09 \uC2AC\uB77C\uC784 \uCC98\uCE58"
-  requiresTurnIn: 1
+  requiresTurnIn: 0
   prerequisiteQuests: []
   rewardExp: 1000
   rewardGold: 500
   rewardItems:
   - item: {fileID: 11400000, guid: d86ba1727d42264449d30a4f15c0cbcf, type: 2}
     amount: 0
+  cutsceneOnComplete: {fileID: 11400000, guid: 985c75cca607a0548bac17e3cb733116, type: 2}

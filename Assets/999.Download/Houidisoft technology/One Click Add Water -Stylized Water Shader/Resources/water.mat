@@ -175,6 +175,7 @@ Material:
     - _OcclusionStrength: 1
     - _Parallax: 0.005
     - _Peak_Sharpness: 0.01
+    - _PurifyAlpha: 1
     - _QueueControl: 1
     - _QueueOffset: 2
     - _ReceiveShadows: 1

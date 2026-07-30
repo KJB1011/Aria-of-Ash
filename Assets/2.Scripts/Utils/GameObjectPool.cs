@@ -68,7 +68,7 @@ public class GameObjectPool
     /// 지정하므로 부모를 poolRoot로 유지해도 월드 좌표에는 영향이 없습니다.</summary>
     public GameObject Get(Vector3 position, Quaternion rotation, Transform parent = null)
     {
-        GameObject instance = inactivePool.Count > 0 ? inactivePool.Pop() : CreateNew();
+        GameObject instance = PopValidInstanceOrNull() ?? CreateNew();
 
         Transform t = instance.transform;
         t.SetParent(parent != null ? parent : poolRoot, false);
@@ -109,6 +109,27 @@ public class GameObjectPool
             if (instance != null) Object.Destroy(instance);
             TotalCreatedCount--;
         }
+    }
+
+    /// <summary>대기 풀(inactivePool)에서 실제로 살아있는 인스턴스를 하나 꺼냅니다. 이 풀을 캐싱해두고
+    /// 재사용하는 쪽(NPCNameplate 등)이 씬 재시작 등으로 정적 캐시를 제때 비워주지 못한 경우, 이
+    /// Stack 안에 이미 Unity가 파괴한(그러나 C# 참조 자체는 null이 아닌, 이른바 "가짜 null") 인스턴스가
+    /// 남아있을 수 있습니다 - 그걸 그대로 꺼내 쓰면 이 파일이 겪었던 것과 같은
+    /// MissingReferenceException이 납니다. 그래서 하나씩 꺼내보며 Unity의 오버로드된 null 비교로
+    /// 진짜 파괴 여부를 확인하고, 죽은 것은 조용히 버리면서(TotalCreatedCount도 함께 맞춰줌) 살아있는
+    /// 것을 찾을 때까지 계속 시도합니다. 전부 죽어있었거나 애초에 비어있었으면 null을 반환해서
+    /// Get()이 CreateNew()로 새로 만들게 합니다.</summary>
+    private GameObject PopValidInstanceOrNull()
+    {
+        while (inactivePool.Count > 0)
+        {
+            GameObject instance = inactivePool.Pop();
+            if (instance != null) return instance;
+
+            TotalCreatedCount--; // 이미 Unity가 파괴한 죽은 참조였으므로 실제 살아있는 개수에서 제외합니다.
+        }
+
+        return null;
     }
 
     private GameObject CreateNew()

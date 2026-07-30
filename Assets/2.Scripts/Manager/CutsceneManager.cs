@@ -51,19 +51,56 @@
 //   4) Npcs에 컷씬이 끝나고 바로 대화를 시작할 수 있는 NPCTalker들을(Key + Npc Talker) 등록하세요.
 //   5) Teleport Points에 플레이어를 순간이동시킬 지점들을(Key + Point) 등록하세요 - 빈 오브젝트를
 //      원하는 위치/회전에 놓아두고 그 Transform을 연결하면 됩니다.
-//   6) SetLocationTitleVisible 스텝을 쓰려면 Location Title Canvas Group을 준비하세요 - Canvas
-//      하위에 빈 오브젝트를 만들고 CanvasGroup을 붙인 뒤 Location Title Canvas Group 필드에
-//      연결하고, 그 안에 Image를 만들어 Location Title Image 필드에 연결하세요(다른 UI보다 위에
-//      그려지도록 Sort Order를 적당히 높게 잡으세요). 어떤 스프라이트를 보여줄지는 Image 쪽에 미리
-//      정해두는 게 아니라 각 CutsceneData 스텝의 Location Title Sprite 필드에서 그때그때 지정합니다
-//      (지역마다 다른 로고를 같은 Image 하나로 재사용). 이 스크립트는 CanvasGroup의 알파만 조절하므로
-//      Image 하위에 다른 장식(배경 등)을 더 넣어도 함께 페이드인/아웃됩니다.
+//   6) TriggerEvent 스텝으로 "한 번 실행되고 끝나는" 연출(보스 애니메이터 트리거, 연출용 공격,
+//      오브젝트 SetActive 등)을 쓰려면 Trigger Events 리스트에 항목을 추가하고 Key를 정한 뒤, 그
+//      옆의 UnityEvent(+ 버튼으로 항목 추가)에 실제로 호출하고 싶은 씬 오브젝트의 public 메서드를
+//      인스펙터에서 드래그 앤 드롭으로 연결하세요(예: MiddleSlimeBoss.PlayAppearAnimation(),
+//      MiddleSlimeBoss.PlayShockwaveForCutscene(), 어떤 GameObject의 SetActive(false) 등). 이렇게
+//      해두면 앞으로 비슷한 "일회성 연출" 기능이 필요할 때마다 이 스크립트나 CutsceneData.cs를 전혀
+//      건드리지 않고 인스펙터 등록만으로 계속 늘려갈 수 있습니다 - 반드시 대기(duration)가 필요하거나
+//      결과값을 돌려받아야 하는 스텝(예: WalkPlayerToWaypoints, FacePlayerAndNpc처럼 진행 상태를
+//      추적해야 하는 경우)만 예외적으로 새 StepType을 만들어 추가하세요.
+//   7) SetTitleCardVisible 스텝(지역 이름 로고, 보스 등장 이름 카드 등 화면에 잠깐 띄웠다 내리는
+//      연출)을 쓰려면 Title Cards 리스트에 항목을 추가하고 Key를 정한 뒤, Title Card Object에 씬
+//      오브젝트를 연결하세요. 두 가지 방식 중 원하는 대로 만들면 됩니다:
+//        - 단순 로고 이미지 카드: Canvas 하위에 빈 오브젝트를 만들고 CanvasGroup + Image를 붙여서
+//          연결하세요(다른 UI보다 위에 그려지도록 Sort Order를 적당히 높게 잡으세요) - 이 스크립트가
+//          CanvasGroup의 알파를 duration초에 걸쳐 조절해서 페이드인/아웃해줍니다. 어떤 스프라이트를
+//          보여줄지는 Image 쪽에 미리 정해두는 게 아니라 각 CutsceneData 스텝의 Title Card Sprite
+//          Override 필드에서 그때그때 지정할 수 있습니다(같은 카드를 지역마다 다른 로고로 재사용).
+//        - 자체 연출이 있는 카드(예: 글씨에 파티클/셰이더 이펙트가 들어간 보스 이름 카드): CanvasGroup
+//          없이 Animator/Particle System 등으로 원하는 등장 연출을 직접 구성하세요 - 이 스크립트는
+//          duration과 무관하게 즉시 SetActive(true/false)만 해주고, 오브젝트 자신의 OnEnable 등에서
+//          인트로 연출이 알아서 재생되도록 만들면 됩니다.
+//   8) GrantQuest 스텝은 이 씬에 등록할 게 없습니다 - CutsceneData.cs의 해당 스텝 Quest To Grant
+//      필드에 QuestData 애셋을 직접 연결해두면, 이 컷씬이 어느 씬에서 재생되든 항상 그 퀘스트를
+//      지급합니다(TriggerEvent처럼 이 스크립트의 리스트에 문자열 키로 등록하는 과정이 필요 없습니다 -
+//      자세한 이유는 CutsceneData.cs 상단 [스텝 종류] GrantQuest 항목 참고).
+//   9) SetFogDensity 스텝도 이 씬에 등록할 게 없습니다 - RenderSettings.fogDensity(Lighting →
+//      Environment → Fog)를 직접 건드리므로, CutsceneData 쪽 스텝에 목표 Density/시간만 지정하면
+//      됩니다. [참고] 두 오브젝트를 부드럽게 서로 바꿔치기하고 싶을 때(예: 오염된 바다 → 깨끗한
+//      바다)는 SeaPurifyTransition.cs처럼 크로스페이드 로직을 담은 작은 컴포넌트를 만들어 그 씬
+//      오브젝트에 붙이고, Trigger Events 리스트에 그 컴포넌트의 매개변수 없는 public 메서드(예:
+//      BeginPurifyTransition())를 등록하세요 - TriggerEvent 자체는 즉시 다음 스텝으로 넘어가므로,
+//      전환에 걸리는 시간만큼 바로 뒤에 Wait 스텝을 넣어 자연스럽게 기다리게 하면 됩니다
+//      (WalkPlayerToWaypoints/PlayShockwaveForCutscene()과 같은 "TriggerEvent + Wait" 패턴).
+//
+// [컷씬 강제 종료 - StopCutscene()]
+//   스킵 버튼 등 컷씬을 끝까지 다 보지 않고 중간에 끊어야 할 때는 StopCutscene()을 호출하세요.
+//   지금 실행 중인 스텝(Wait/FacePlayerAndNpc처럼 대기 중이든, WalkPlayerToWaypoints처럼 백그라운드로
+//   진행 중이든)을 그 자리에서 즉시 멈추고, 정상적으로 모든 스텝을 다 마쳤을 때와 똑같은 정리
+//   작업(카메라 Priority 원복, 플레이어 조작권 반환, IsAnyCutscenePlaying 해제)을 수행합니다 -
+//   public이라 UI 버튼의 OnClick이나 TriggerEvent의 UnityEvent에도 그대로 연결할 수 있습니다. 다만
+//   화면이 FadeOut 도중이었다면 화면이 그 밝기 상태로 남는 등, 끊긴 시점의 화면/연출 상태까지 자동으로
+//   되돌려주지는 않으므로 필요하면 호출 전후에 직접 FadeIn 등을 넣어 정리하세요.
 // ============================================================================
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 using Unity.Cinemachine;
 
@@ -97,6 +134,29 @@ public class CutsceneManager : MonoBehaviour
         public Transform point;
     }
 
+    /// <summary>TriggerEvent 스텝 전용 등록 항목입니다. key는 CutsceneData.Step.eventKey가 참조하고,
+    /// onTrigger는 실제로 실행할 내용입니다 - 인스펙터에서 아무 씬 오브젝트의 public 메서드나(인자
+    /// 없는 메서드) 연결하면 됩니다. 여러 개를 등록해두면 한 번에 모두 호출됩니다(예: 애니메이터
+    /// 트리거 재생 + 사운드 재생을 같은 키 하나로 묶어서).</summary>
+    [Serializable]
+    public class TriggerEventEntry
+    {
+        public string key;
+        public UnityEvent onTrigger;
+    }
+
+    /// <summary>SetTitleCardVisible 스텝 전용 등록 항목입니다. key는 CutsceneData.Step.titleCardKey가
+    /// 참조하고, titleCardObject는 실제로 켜고 끌 씬 오브젝트입니다 - CanvasGroup이 붙어있으면 단순
+    /// 로고 이미지 카드로 취급해서 duration초에 걸쳐 페이드인/아웃하고, 없으면 Animator/Particle
+    /// System 등 자체 연출을 가진 오브젝트로 취급해서 즉시 SetActive만 토글합니다(파일 상단 [씬
+    /// 준비] 7번 참고).</summary>
+    [Serializable]
+    public class TitleCardEntry
+    {
+        public string key;
+        public GameObject titleCardObject;
+    }
+
     /// <summary>씬에 하나만 있는 컴포넌트라, 다른 스크립트(CutsceneZoneTrigger 등)에서 여기로 바로 접근합니다.</summary>
     public static CutsceneManager Instance { get; private set; }
 
@@ -122,20 +182,17 @@ public class CutsceneManager : MonoBehaviour
     public NpcEntry[] npcs = new NpcEntry[0];
     [Header("등록 - 순간이동 지점 (CutsceneData.Step.teleportPointKey가 이 Key를 참조합니다)")]
     public TeleportPointEntry[] teleportPoints = new TeleportPointEntry[0];
-
-    [Header("지역 이름 타이틀 (SetLocationTitleVisible 전용)")]
-    [Tooltip("화면에 지역 이름을 잠깐 띄우는 타이틀 카드의 CanvasGroup입니다 - SetLocationTitleVisible " +
-              "스텝이 이 알파를 0(안 보임)~1(다 보임) 사이로 페이드시킵니다. 파일 상단 [씬 준비] 6번 참고.")]
-    public CanvasGroup locationTitleCanvasGroup;
-    [Tooltip("지역 이름 로고/타이틀 이미지를 표시할 Image입니다 - locationTitleCanvasGroup 하위에 두세요. " +
-              "각 컷씬 스텝(CutsceneData.Step.locationTitleSprite)에서 지정한 스프라이트로 매번 바뀝니다. " +
-              "비워두면 이미지 없이 CanvasGroup 안의 다른 내용만 페이드됩니다.")]
-    public Image locationTitleImage;
+    [Header("등록 - 트리거 이벤트 (CutsceneData.Step.eventKey가 이 Key를 참조합니다 - 파일 상단 [씬 준비] 6번 참고)")]
+    public TriggerEventEntry[] triggerEvents = new TriggerEventEntry[0];
+    [Header("등록 - 타이틀 카드 (CutsceneData.Step.titleCardKey가 이 Key를 참조합니다 - 파일 상단 [씬 준비] 7번 참고)")]
+    public TitleCardEntry[] titleCards = new TitleCardEntry[0];
 
     private bool isPlaying;
+    private Coroutine activePlayCoroutine;
+    private PlayerController currentPlayer;
     private CinemachineCamera activeCamera;
     private Coroutine activeWalkCoroutine;
-    private Tween locationTitleFadeTween;
+    private readonly Dictionary<string, Tween> titleCardFadeTweens = new Dictionary<string, Tween>();
 
     private void Awake()
     {
@@ -146,11 +203,25 @@ public class CutsceneManager : MonoBehaviour
             if (entry.camera != null) entry.camera.Priority = idleCameraPriority;
         }
 
-        if (locationTitleCanvasGroup != null)
+        // 타이틀 카드는 CanvasGroup이 있으면 알파를 0으로(오브젝트 자체는 활성 유지 - SetTitleCardVisible이
+        // 계속 알파만 조절합니다), CanvasGroup이 없으면(자체 연출을 가진 오브젝트) SetActive(false)로
+        // 시작부터 확실히 숨겨둡니다 - 에디터에서 미리보기용으로 켜둔 채로 깜빡하고 저장하는 실수를
+        // 방지합니다.
+        foreach (TitleCardEntry entry in titleCards)
         {
-            locationTitleCanvasGroup.alpha = 0f;
-            locationTitleCanvasGroup.interactable = false;
-            locationTitleCanvasGroup.blocksRaycasts = false;
+            if (entry.titleCardObject == null) continue;
+
+            CanvasGroup canvasGroup = entry.titleCardObject.GetComponent<CanvasGroup>();
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 0f;
+                canvasGroup.interactable = false;
+                canvasGroup.blocksRaycasts = false;
+            }
+            else
+            {
+                entry.titleCardObject.SetActive(false);
+            }
         }
     }
 
@@ -180,7 +251,23 @@ public class CutsceneManager : MonoBehaviour
             return;
         }
 
-        StartCoroutine(PlayRoutine(data, player));
+        activePlayCoroutine = StartCoroutine(PlayRoutine(data, player));
+    }
+
+    /// <summary>지금 재생 중인 컷씬을 즉시 중단합니다(파일 상단 [컷씬 강제 종료] 참고) - 남은 스텝을
+    /// 전부 건너뛰고 곧바로 FinishCutscene()으로 정리합니다. 재생 중이 아니면 아무 것도 하지
+    /// 않습니다.</summary>
+    public void StopCutscene()
+    {
+        if (!isPlaying) return;
+
+        if (activePlayCoroutine != null)
+        {
+            StopCoroutine(activePlayCoroutine);
+            activePlayCoroutine = null;
+        }
+
+        FinishCutscene();
     }
 
     private static PlayerController ResolvePlayerController()
@@ -193,6 +280,7 @@ public class CutsceneManager : MonoBehaviour
     {
         isPlaying = true;
         IsAnyCutscenePlaying = true;
+        currentPlayer = player; // StopCutscene()이 나중에 조작권을 돌려줄 때 필요합니다.
 
         // 트리거되는 순간 즉시 조작을 넘겨받습니다(TalkManager 등과 같은 인터럽트 세이프티넷 타이밍) -
         // 첫 스텝(보통 FadeOut)이 끝나기 전까지 남아있던 이동 입력 등이 어색하게 섞여 들어가지
@@ -205,6 +293,15 @@ public class CutsceneManager : MonoBehaviour
             yield return RunStep(step, player);
         }
 
+        FinishCutscene();
+    }
+
+    /// <summary>컷씬이 끝나는 모든 경로(PlayRoutine()이 모든 스텝을 정상적으로 다 마쳤을 때, 또는
+    /// StopCutscene()으로 강제 종료했을 때)가 공통으로 거치는 정리 작업입니다 - 활성 카메라를
+    /// idleCameraPriority로 내리고, 백그라운드로 계속 걷던 WalkPlayerToWaypoints 코루틴을 멈추고,
+    /// 플레이어에게 조작권을 돌려준 뒤, 재생 상태 플래그를 전부 원래대로 되돌립니다.</summary>
+    private void FinishCutscene()
+    {
         if (activeCamera != null)
         {
             activeCamera.Priority = idleCameraPriority;
@@ -222,10 +319,12 @@ public class CutsceneManager : MonoBehaviour
             activeWalkCoroutine = null;
         }
 
-        player.EndCutsceneControl();
+        if (currentPlayer != null) currentPlayer.EndCutsceneControl();
 
         isPlaying = false;
         IsAnyCutscenePlaying = false;
+        activePlayCoroutine = null;
+        currentPlayer = null;
     }
 
     private IEnumerator RunStep(CutsceneData.Step step, PlayerController player)
@@ -276,39 +375,125 @@ public class CutsceneManager : MonoBehaviour
                 yield return FacePlayerAndNpc(step, player);
                 break;
 
-            case CutsceneData.StepType.SetLocationTitleVisible:
-                yield return SetLocationTitleVisible(step);
+            case CutsceneData.StepType.SetTitleCardVisible:
+                yield return SetTitleCardVisible(step);
+                break;
+
+            case CutsceneData.StepType.TriggerEvent:
+                InvokeTriggerEvent(step);
+                break;
+
+            case CutsceneData.StepType.GrantQuest:
+                GrantQuest(step);
+                break;
+
+            case CutsceneData.StepType.SetFogDensity:
+                yield return SetFogDensity(step);
                 break;
         }
     }
 
-    /// <summary>화면에 지역 이름 로고/타이틀 이미지를 잠깐 띄우는 카드(locationTitleCanvasGroup)를 켜거나
-    /// 끕니다. 보여줄 때는 step.locationTitleSprite를 locationTitleImage에 반영한 뒤 페이드인합니다.
-    /// GameManager.FadeOut/FadeIn과 같은 방식(CanvasGroup + DOTween, .SetUpdate(true)라 다른 팝업이
-    /// Time.timeScale을 0으로 만들어도 계속 페이드됩니다)이고, FadeOut/FadeIn 스텝과 같은 "duration초
-    /// 동안 대기" 패턴이라 완전히 페이드인/아웃될 때까지 다음 스텝으로 넘어가지 않습니다.
-    /// locationTitleCanvasGroup이 연결되어 있지 않으면 경고만 남기고 아무 것도 하지 않습니다.</summary>
-    private IEnumerator SetLocationTitleVisible(CutsceneData.Step step)
+    /// <summary>eventKey로 등록된 UnityEvent를 그대로 Invoke()합니다 - 무엇을 실행할지는 이 코드가
+    /// 아니라 Trigger Events 리스트의 인스펙터 연결로 결정됩니다(파일 상단 [씬 준비] 7번 참고). 즉시
+    /// 스텝이라 yield 없이 바로 다음 스텝으로 넘어갑니다.</summary>
+    private void InvokeTriggerEvent(CutsceneData.Step step)
     {
-        if (locationTitleCanvasGroup == null)
+        TriggerEventEntry entry = FindTriggerEvent(step.eventKey);
+        if (entry == null)
         {
-            Debug.LogWarning("[CutsceneManager] Location Title Canvas Group이 연결되어 있지 않아 지역 이름 타이틀을 표시할 수 없습니다.", this);
+            Debug.LogWarning($"[CutsceneManager] 트리거 이벤트 키 '{step.eventKey}'를 찾지 못했습니다 - Trigger Events 리스트에 등록되어 있는지 확인하세요.", this);
+            return;
+        }
+
+        entry.onTrigger?.Invoke();
+    }
+
+    /// <summary>step.questToGrant를 QuestManager.Instance.AddQuest()로 그대로 지급합니다 - TriggerEvent와
+    /// 달리 문자열 키로 이 씬에 등록해둔 항목을 찾는 게 아니라, CutsceneData 애셋에 직접 연결된
+    /// QuestData를 사용합니다(CutsceneData.cs 상단 [스텝 종류] GrantQuest 항목 참고) - 그래서 이 씬에
+    /// 별도로 등록해둘 필요가 없습니다. 즉시 스텝이라 yield 없이 바로 다음 스텝으로 넘어갑니다.
+    /// AddQuest() 자체가 이미 중복/선행조건 미충족을 조용히(경고만 남기고) 걸러내므로, 여기서는 그
+    /// 결과를 다시 검사하지 않습니다.</summary>
+    private void GrantQuest(CutsceneData.Step step)
+    {
+        if (step.questToGrant == null)
+        {
+            Debug.LogWarning("[CutsceneManager] GrantQuest 스텝에 Quest To Grant가 연결되어 있지 않습니다.", this);
+            return;
+        }
+
+        QuestManager.Instance?.AddQuest(step.questToGrant);
+    }
+
+    /// <summary>RenderSettings.fogDensity(Lighting → Environment → Fog)를 지금 값에서
+    /// step.targetFogDensity까지 step.duration초에 걸쳐 부드럽게 변화시킵니다 - SetTitleCardVisible의
+    /// CanvasGroup 페이드와 같은 방식(DOTween + .SetUpdate(true), 다른 팝업이 Time.timeScale을 0으로
+    /// 만들어도 계속 진행됩니다)으로, 다 바뀔 때까지 다음 스텝으로 넘어가지 않습니다.
+    /// step.duration이 0 이하면 대기 없이 즉시 그 값으로 바꾸고 곧바로 다음 스텝으로 넘어갑니다.</summary>
+    private IEnumerator SetFogDensity(CutsceneData.Step step)
+    {
+        if (step.duration <= 0f)
+        {
+            RenderSettings.fogDensity = step.targetFogDensity;
             yield break;
         }
 
-        locationTitleFadeTween?.Kill();
+        Tween tween = DOTween.To(() => RenderSettings.fogDensity, x => RenderSettings.fogDensity = x, step.targetFogDensity, step.duration)
+            .SetUpdate(true);
 
-        if (step.showLocationTitle)
+        yield return tween.WaitForCompletion();
+    }
+
+    /// <summary>titleCardKey로 등록된 타이틀 카드 오브젝트를 켜거나 끕니다(지역 이름 로고, 보스 등장
+    /// 이름 카드 등 공용 - CutsceneManager.cs 상단 [씬 준비] 7번 참고). 등록된 오브젝트에 CanvasGroup이
+    /// 있으면 GameManager.FadeOut/FadeIn과 같은 방식(DOTween + .SetUpdate(true), 다른 팝업이
+    /// Time.timeScale을 0으로 만들어도 계속 페이드됨)으로 duration초에 걸쳐 페이드인/아웃하고,
+    /// FadeOut/FadeIn 스텝처럼 완전히 끝날 때까지 다음 스텝으로 넘어가지 않습니다 - 표시(켤 때)만
+    /// step.titleCardSpriteOverride가 있으면 자식의 Image에 반영합니다. CanvasGroup이 없는(자체 연출을
+    /// 가진) 오브젝트라면 duration을 무시하고 즉시 SetActive만 토글한 뒤 곧바로 다음 스텝으로
+    /// 넘어갑니다 - 오브젝트 자신의 OnEnable 등에서 인트로 연출이 알아서 재생되도록 구성하세요.
+    /// titleCardKey를 찾지 못하면 경고만 남기고 아무 것도 하지 않습니다.</summary>
+    private IEnumerator SetTitleCardVisible(CutsceneData.Step step)
+    {
+        TitleCardEntry entry = FindTitleCard(step.titleCardKey);
+        if (entry == null || entry.titleCardObject == null)
         {
-            if (locationTitleImage != null) locationTitleImage.sprite = step.locationTitleSprite;
-            locationTitleFadeTween = locationTitleCanvasGroup.DOFade(1f, step.duration).SetUpdate(true);
-        }
-        else
-        {
-            locationTitleFadeTween = locationTitleCanvasGroup.DOFade(0f, step.duration).SetUpdate(true);
+            Debug.LogWarning($"[CutsceneManager] 타이틀 카드 키 '{step.titleCardKey}'를 찾지 못했습니다 - Title Cards 리스트에 등록되어 있는지 확인하세요.", this);
+            yield break;
         }
 
-        yield return locationTitleFadeTween.WaitForCompletion();
+        GameObject cardObject = entry.titleCardObject;
+        CanvasGroup canvasGroup = cardObject.GetComponent<CanvasGroup>();
+
+        if (canvasGroup == null)
+        {
+            // 자체 연출(Animator/Particle System 등)을 가진 카드는 duration과 무관하게 즉시
+            // SetActive만 토글합니다 - 인트로 연출은 오브젝트 자신의 OnEnable 등에서 알아서 재생됩니다.
+            cardObject.SetActive(step.titleCardVisible);
+            yield break;
+        }
+
+        if (step.titleCardVisible && step.titleCardSpriteOverride != null)
+        {
+            Image image = cardObject.GetComponentInChildren<Image>(true);
+            if (image != null) image.sprite = step.titleCardSpriteOverride;
+        }
+
+        if (!cardObject.activeSelf) cardObject.SetActive(true);
+
+        if (titleCardFadeTweens.TryGetValue(step.titleCardKey, out Tween existingTween))
+        {
+            existingTween?.Kill();
+        }
+
+        float targetAlpha = step.titleCardVisible ? 1f : 0f;
+        Tween tween = canvasGroup.DOFade(targetAlpha, step.duration).SetUpdate(true);
+        titleCardFadeTweens[step.titleCardKey] = tween;
+
+        canvasGroup.interactable = step.titleCardVisible;
+        canvasGroup.blocksRaycasts = step.titleCardVisible;
+
+        yield return tween.WaitForCompletion();
     }
 
     /// <summary>플레이어를 teleportPointKey로 등록된 위치/회전으로 즉시 순간이동시킵니다(시간이 걸리지
@@ -473,6 +658,24 @@ public class CutsceneManager : MonoBehaviour
         foreach (TeleportPointEntry entry in teleportPoints)
         {
             if (entry.key == key) return entry.point;
+        }
+        return null;
+    }
+
+    private TriggerEventEntry FindTriggerEvent(string key)
+    {
+        foreach (TriggerEventEntry entry in triggerEvents)
+        {
+            if (entry.key == key) return entry;
+        }
+        return null;
+    }
+
+    private TitleCardEntry FindTitleCard(string key)
+    {
+        foreach (TitleCardEntry entry in titleCards)
+        {
+            if (entry.key == key) return entry;
         }
         return null;
     }

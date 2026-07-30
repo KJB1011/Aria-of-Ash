@@ -146,4 +146,17 @@ public class NPCNameplate : MonoBehaviour
 
         return pool;
     }
+
+    /// <summary>씬이 다시 로드될 때(예: 게임 오버 후 재시작) 호출하세요. 이전 씬의 poolRoot와 그 안에
+    /// 대기 중이던 이름표 인스턴스들은 씬이 내려가며 이미 파괴된 상태이므로, 그 죽은 참조들을 계속
+    /// 들고 있는 정적 캐시(pools, poolRoot)를 비워서 다음 GetOrCreatePool() 호출 때 새 씬 안에
+    /// poolRoot/풀을 처음부터 다시 만들도록 합니다 - 비우지 않으면 GameObjectPool.Get()이 이미 파괴된
+    /// 인스턴스를 꺼내 쓰려다 MissingReferenceException을 던집니다. GameManager가
+    /// SceneManager.sceneLoaded를 구독해서 자동으로 호출해줍니다(GameManager.cs 참고) - 직접 호출할
+    /// 일은 거의 없습니다.</summary>
+    public static void ResetStaticPools()
+    {
+        pools.Clear();
+        poolRoot = null;
+    }
 }

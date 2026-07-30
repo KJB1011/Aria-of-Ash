@@ -128,6 +128,16 @@ public class RewardOrb : MonoBehaviour
         return pool;
     }
 
+    /// <summary>씬이 다시 로드될 때(예: 게임 오버 후 재시작) 호출하세요. NPCNameplate.ResetStaticPools()와
+    /// 완전히 같은 이유입니다 - 이전 씬의 poolRoot/대기 중이던 오브젝트들은 이미 파괴된 상태이므로, 그
+    /// 죽은 참조를 들고 있는 정적 캐시를 비워서 새 씬에서 깨끗하게 다시 만들어지도록 합니다.
+    /// GameManager가 SceneManager.sceneLoaded를 구독해서 자동으로 호출해줍니다(GameManager.cs 참고).</summary>
+    public static void ResetStaticPools()
+    {
+        pools.Clear();
+        poolRoot = null;
+    }
+
     private void Awake()
     {
         GetComponent<Collider>().isTrigger = true;

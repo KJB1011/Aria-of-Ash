@@ -45,6 +45,16 @@
 //   다른 대사로 넘어가고 싶다면) QuestManager.CanStartQuest(data)를 미리 물어보고 분기하세요. 비워두면
 //   선행조건 없이 언제든 받을 수 있습니다(기존 퀘스트와 동일하게 동작).
 //
+// [완료 시 컷씬 재생 - cutsceneOnComplete]
+//   비워두지 않으면, 이 퀘스트가 완료되는 순간(QuestManager.CompleteQuest() 내부 - 자동 완료든
+//   requiresTurnIn을 통한 보고 완료든 경로에 상관없이 항상 이 지점을 지나갑니다) 자동으로
+//   CutsceneManager.Instance.Play(cutsceneOnComplete)가 호출됩니다. TalkScript.Choice.questToGrant와
+//   같은 이유로(둘 다 ScriptableObject 애셋이라 씬에 안전하게 참조를 들고 있을 수 있음) CutsceneData를
+//   직접 필드로 들고 있습니다. [주의] CompleteQuest 목표를 통해 다른 퀘스트가 연쇄적으로 함께
+//   완료되는 경우(QuestManager.CheckDependentQuestObjectives), 그 연쇄 완료가 먼저 Play()를 호출해서
+//   "선점"할 수 있습니다 - CutsceneManager는 이미 컷씬이 재생 중이면 새 Play() 요청을 조용히 무시하므로,
+//   여러 퀘스트에 동시에 cutsceneOnComplete를 걸어두는 구성은 피하는 게 안전합니다.
+//
 // [애셋 만들기]
 //   Project 창에서 우클릭 → Create → Quest > Quest Data 로 새 퀘스트 애셋을 만드세요.
 // ============================================================================
@@ -124,4 +134,9 @@ public class QuestData : ScriptableObject
     public int rewardExp = 0;
     public int rewardGold = 0;
     public RewardItem[] rewardItems = new RewardItem[0];
+
+    [Header("컷씬 (완료 시 재생 - 선택사항)")]
+    [Tooltip("비워두지 않으면 이 퀘스트가 완료되는 순간 CutsceneManager.Instance.Play(cutsceneOnComplete)가 " +
+              "자동으로 호출됩니다. 자세한 설명/주의사항은 파일 상단 주석 참고.")]
+    public CutsceneData cutsceneOnComplete;
 }

@@ -1484,8 +1484,9 @@ public class PlayerController : MonoBehaviour
     /// 재생하고, 이후 모든 조작(이동/회전/공격/스킬/대시/피격)을 영구히 막습니다. 자신(과 자식
     /// 오브젝트)의 모든 Collider(CharacterController 포함)도 꺼서, 죽은 뒤에는 몬스터의 공격 판정
     /// (OverlapSphere, 투사체 트리거 등)에 더 이상 걸리지 않습니다 - 몬스터의 DisableColliders()와
-    /// 같은 이유입니다. 부활/리스폰 로직은 아직 없으니 필요하면 이어서 만들어드릴 수 있습니다.
-    /// 이미 사망한 상태면 아무것도 하지 않습니다.</summary>
+    /// 같은 이유입니다. 마지막으로 GameManager.TriggerGameOver()를 호출해서 화면 페이드 아웃 →
+    /// 게임 오버 화면 순서로 이어지게 합니다(GameManager.cs/UIGameOver.cs 참고). 부활/리스폰 로직은
+    /// 아직 없으니 필요하면 이어서 만들어드릴 수 있습니다. 이미 사망한 상태면 아무것도 하지 않습니다.</summary>
     public void Die()
     {
         if (isDead) return;
@@ -1496,7 +1497,7 @@ public class PlayerController : MonoBehaviour
         isUsingSkill = false;
         isDashing = false;
         EndUltInvincibilityGraceIfActive(); // 무적 여유 시간이 진행 중이었다면 취소합니다 - 사망했으니 즉시 풀어야 합니다.
-        ExitInvincible(); // 어차피 DisableColliders()로 콜라이더 자체를 끄지만, 레이어도 깔끔하게 되돌려둡니다.
+        ExitInvincible(); // 어차피 DisableColliders()로 콜라이더 자체를 끄지만, 레이어도 깔끔하게 되돌립니다.
         EndUltCameraIfActive(); // 필살기 도중 사망했다면 카메라 연출도 즉시 게임플레이 카메라로 되돌립니다.
         EndUltChargeVfxIfActive(); // 차지 VFX도 함께 정리합니다.
         comboIndex = 0;
@@ -1507,6 +1508,8 @@ public class PlayerController : MonoBehaviour
         DisableColliders();
 
         if (animator != null) animator.SetTrigger(DieParam);
+
+        GameManager.Instance?.TriggerGameOver();
     }
 
     /// <summary>자신(과 자식 오브젝트) 위의 모든 Collider를 꺼서 더 이상 물리 판정에 걸리지 않도록 합니다.

@@ -40,6 +40,15 @@
 //   일부러 연동하지 않았습니다 - 중요한 스토리 대화가 실수로 Escape 한 번에 통째로 스킵되는 걸 막기
 //   위해서입니다(스킵 기능이 필요해지면 나중에 별도 버튼/조건으로 추가하는 걸 추천합니다).
 //
+// [대화가 끝나면 이어서 컷씬 재생]
+//   TalkScript.Talks.cutsceneToPlay / TalkScript.Choice.cutsceneToPlay에 CutsceneData가 연결되어
+//   있으면, 그 Talks/Choice가 실제로 "대화를 끝내는" 순간(FinishTalk() 참고)에 OnTalkEnded 이벤트를
+//   먼저 발행해 대화 UI를 닫은 뒤, 이어서 CutsceneManager.Instance.Play()를 호출합니다 - 대화 UI와
+//   컷씬 연출이 화면에서 겹치지 않도록 반드시 "대화가 완전히 끝난 다음"에만 재생됩니다(TalkScript.cs
+//   상단 주석 참고). public EndTalk()(UI 등 바깥에서 대화를 강제로 닫을 때 호출하는 버전)는 컷씬을
+//   재생하지 않습니다 - Advance()/SelectChoice()가 스스로 대화를 끝내는 "자연스러운 종료" 경로에서만
+//   컷씬이 재생됩니다.
+//
 // [씬 준비]
 //   1) 빈 오브젝트에 이 스크립트를 붙이세요. 씬에 정확히 하나만 있어야 합니다.
 //   2) GameObject > Cinemachine > Camera로 대화 전용 카메라를 하나 만들고, Body/Aim을 전부
@@ -49,6 +58,8 @@
 //      기본값(Normal Game Time) 그대로 둬도 카메라 블렌드가 끊기지 않습니다.
 //   4) 실제 대화창 UI는 별도로 만들어서, 이 스크립트의 OnTalkChanged/OnTalkEnded 이벤트를 구독해
 //      텍스트/선택지를 그리면 됩니다(다음 단계에서 만들 예정).
+//   5) 대화가 끝나면서 이어서 컷씬을 재생하고 싶다면, 씬에 CutsceneManager가 있어야 하고 그 컷씬이
+//      참조하는 카메라/NPC/오브젝트 등이 미리 등록되어 있어야 합니다(CutsceneManager.cs 참고).
 // ============================================================================
 
 using System;
@@ -201,17 +212,18 @@ public class TalkManager : MonoBehaviour
 
         // 여러 퀘스트 상태별 대화 묶음을 하나의 talks[] 배열에 이어붙여둔 경우, 이 묶음이 배열 끝이
         // 아닌 중간에서 끝나야 할 수 있습니다(TalkScript.cs의 endsConversation 설명 참고) - 이 값이
-        // 켜져 있으면 선택지 없이도 여기서 바로 대화를 종료합니다.
+        // 켜져 있으면 선택지 없이도 여기서 바로 대화를 종료합니다. 이 Talks에 연결된 컷씬이 있으면
+        // (cutsceneToPlay) 대화가 끝난 직후 이어서 재생합니다(FinishTalk() 참고).
         if (CurrentTalk.endsConversation)
         {
-            EndTalk();
+            FinishTalk(CurrentTalk.cutsceneToPlay);
             return;
         }
 
         int nextPosition = currentPosition + 1;
         if (nextPosition >= currentScript.talks.Length)
         {
-            EndTalk();
+            FinishTalk(CurrentTalk.cutsceneToPlay);
             return;
         }
 
@@ -244,14 +256,17 @@ public class TalkManager : MonoBehaviour
         int targetIndex = choice.targetIndex;
         if (targetIndex < 0)
         {
-            EndTalk();
+            // 이 선택지가 대화를 끝냅니다 - 이 선택지에 연결된 컷씬이 있으면(cutsceneToPlay) 대화가
+            // 끝난 직후 이어서 재생합니다(FinishTalk() 참고).
+            FinishTalk(choice.cutsceneToPlay);
             return;
         }
 
         if (!indexToPosition.TryGetValue(targetIndex, out int targetPosition))
         {
             Debug.LogWarning($"[TalkManager] index {targetIndex}를 가진 Talks를 찾을 수 없어 대화를 종료합니다.", currentScript);
-            EndTalk();
+            // 의도한 정상 종료가 아니라 설정 오류로 인한 안전장치성 종료이므로 컷씬은 재생하지 않습니다.
+            FinishTalk(null);
             return;
         }
 
@@ -259,8 +274,21 @@ public class TalkManager : MonoBehaviour
     }
 
     /// <summary>대화를 즉시 종료합니다. 카메라/커서/타임스케일을 대화 시작 전 상태로 되돌립니다.
-    /// 대화 중이 아니면 아무 것도 하지 않습니다.</summary>
+    /// 대화 중이 아니면 아무 것도 하지 않습니다. UI 등 바깥에서 대화를 강제로 닫을 때 호출하는
+    /// 용도라 컷씬을 재생하지 않습니다 - Advance()/SelectChoice()가 스스로 대화를 끝내는 자연스러운
+    /// 종료 경로에서만 FinishTalk(CutsceneData)를 통해 컷씬이 재생됩니다(TalkScript.cs의
+    /// [대화가 끝나면 이어서 컷씬 재생] 참고).</summary>
     public void EndTalk()
+    {
+        FinishTalk(null);
+    }
+
+    /// <summary>실제 대화 종료 처리입니다. cutsceneToPlayAfter가 있으면(그 Talks/Choice에 연결해둔
+    /// CutsceneData) OnTalkEnded를 먼저 발행해 대화 UI가 닫히도록 한 뒤(대화 UI와 컷씬 연출이 화면에서
+    /// 겹치지 않도록) 이어서 CutsceneManager.Instance.Play()를 호출합니다. 씬에 CutsceneManager가
+    /// 없거나 이미 다른 컷씬이 재생 중이면 CutsceneManager.Play() 쪽이 알아서 경고만 남기고 조용히
+    /// 무시합니다.</summary>
+    private void FinishTalk(CutsceneData cutsceneToPlayAfter)
     {
         if (!IsTalking) return;
         IsTalking = false;
@@ -278,6 +306,11 @@ public class TalkManager : MonoBehaviour
         currentAnchor = null;
 
         OnTalkEnded?.Invoke();
+
+        if (cutsceneToPlayAfter != null)
+        {
+            CutsceneManager.Instance?.Play(cutsceneToPlayAfter);
+        }
     }
 
     private void GoToPosition(int position)

@@ -12,4 +12,199 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 13cb09ea5bc971d44a94b59325849814, type: 3}
   m_Name: VictoryMiddleSlime
   m_EditorClassIdentifier: 
-  steps: []
+  steps:
+  - type: 0
+    label: "\uD654\uBA74 \uD328\uC774\uB4DC \uC544\uC6C3"
+    duration: 1
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0
+  - type: 3
+    label: "UI \uAC00\uB9AC\uAE30"
+    duration: 0
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0
+  - type: 4
+    label: "\uCE74\uBA54\uB77C \uC804\uD658"
+    duration: 0
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: Cam_PurifyView
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0
+  - type: 1
+    label: "\uD654\uBA74 \uD398\uC774\uB4DC\uC778"
+    duration: 1
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0
+  - type: 10
+    label: "\uBC14\uB2E4 \uC815\uD654"
+    duration: 0
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: PurifySea
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0
+  - type: 12
+    label: "\uC548\uAC1C \uC815\uD654"
+    duration: 3
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.002
+  - type: 2
+    label: "\uC7A0\uC2DC \uB300\uAE30"
+    duration: 3
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0
+  - type: 0
+    label: "\uD654\uBA74 \uD398\uC774\uB4DC \uC544\uC6C3"
+    duration: 1
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0
+  - type: 4
+    label: "\uC8FC\uC778\uACF5 \uC2DC\uC810 \uCE74\uBA54\uB77C\uB85C \uC804\uD658"
+    duration: 0
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: Cam_PurifyAfterMC
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0
+  - type: 3
+    label: "UI \uBCF4\uC774\uAE30"
+    duration: 0
+    hudVisible: 1
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0
+  - type: 1
+    label: "\uD654\uBA74 \uD398\uC774\uB4DC \uC778"
+    duration: 1
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0
+  - type: 11
+    label: "\uC644\uB8CC\uBCF4\uACE0 \uD018\uC2A4\uD2B8 \uBD80\uC5EC"
+    duration: 0
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: 
+    questToGrant: {fileID: 11400000, guid: 9bedbfba26a28c54487467a2f2f263d8, type: 2}
+    targetFogDensity: 0
+  - type: 10
+    label: "\uCEF7\uC52C \uC885\uB8CC"
+    duration: 0
+    hudVisible: 0
+    titleCardKey: 
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
+    cameraKey: 
+    waypointGroupKey: 
+    arriveDistance: 0
+    npcKey: 
+    teleportPointKey: 
+    eventKey: FinishCutscene
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0

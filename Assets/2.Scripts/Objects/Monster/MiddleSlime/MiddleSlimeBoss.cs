@@ -64,6 +64,13 @@
 //   7) 전리품/보상이 튀어나오는 위치를 이 보스의 몸통(transform.position)이 아니라 직접 배치한
 //      지점에서 나오게 하고 싶다면, "참조" 섹션의 Loot Drop Point에 미리 씬에 만들어둔 빈
 //      오브젝트를 연결하세요 - 비워두면 기존처럼 이 보스의 위치를 기준으로 흩뿌립니다.
+//   8) 등장 컷씬으로 이 보스를 "Appear하기 전까지 비활성화"해두고 싶다면, 씬에 배치할 때 이
+//      오브젝트를(Hierarchy에서 체크박스 해제로) 처음부터 비활성 상태로 두세요. 컷씬에서
+//      PlayAppearAnimation()을 호출하면(TriggerEvent로 CutsceneManager에 등록 - CutsceneData.cs
+//      참고) 그 즉시 자동으로 SetActive(true) + Appear 트리거 재생이 함께 처리됩니다 - 비활성화된
+//      동안에는 콜라이더/렌더러/Update 루프가 전부 멈춰있어서 화면에도 안 보이고 피격도 안 되고
+//      AI도 동작하지 않으므로, 별도의 "등장 전" 상태를 코드에서 관리할 필요가 없습니다
+//      (PlayAppearAnimation() 참고).
 //
 // [전리품이 안 나올 때 확인할 것 - LootDropper]
 //   전리품 드롭은 이 스크립트가 아니라 [RequireComponent]로 자동으로 붙는 LootDropper가 담당합니다
@@ -239,6 +246,7 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     private static readonly int SwingAttackParam = Animator.StringToHash("SwingAttack");
     private static readonly int WaveAttackParam = Animator.StringToHash("WaveAttack");
     private static readonly int DieParam = Animator.StringToHash("Die");
+    private static readonly int AppearParam = Animator.StringToHash("Appear");
 
     private void Awake()
     {
@@ -333,6 +341,14 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
 
     private void UpdateIdleState()
     {
+        // 컷씬 재생 중(등장 컷씬 포함)에는 이 보스가 스스로 판단해서 공격을 시작하지 않습니다 -
+        // NPCNameplate.cs가 컷씬 중 이름표를 숨기는 것과 같은 이유로 CutsceneManager.IsAnyCutscenePlaying만
+        // 확인하면 됩니다. 그렇지 않으면 등장 컷씬 도중 이 보스가 감지범위 안의 플레이어를 보고 혼자
+        // 진짜 공격을 시작해버려서, 컷씬 전용 Shockwave 연출과 겹치거나 플레이어가 실제로 맞아버리는
+        // 문제가 생깁니다. 컷씬이 끝나면(IsAnyCutscenePlaying이 다시 false가 되면) 자동으로 원래대로
+        // 판단을 재개합니다 - 이 흐름을 다시 켜기 위해 별도로 호출해야 하는 함수는 없습니다.
+        if (CutsceneManager.IsAnyCutscenePlaying) return;
+
         stateTimer -= Time.deltaTime;
         if (stateTimer > 0f) return;
         if (target == null) return; // 타겟이 없으면 계속 대기
@@ -490,23 +506,35 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     /// <summary>부채꼴 전체(waveFanAngle)를 waveCount개의 조각으로 균등하게 나눠, 각 조각의 중심
     /// 방향으로 waveCount개의 ShockwaveWave를 동시에 발사합니다. 예: waveFanAngle=90, waveCount=3이면
     /// -30도/0도/+30도(waveForward 기준) 방향으로 각각 폭 30도짜리 파도가 한 번에 나가서, 다 합치면
-    /// 빈틈없이 90도 부채꼴 전체를 덮습니다.</summary>
+    /// 빈틈없이 90도 부채꼴 전체를 덮습니다. 실제 전투용 판정이라 hitMask/waveDamagePercent를 그대로
+    /// 씁니다 - 컷씬 전용 연출은 PlayShockwaveForCutscene()을 참고하세요(같은 핵심 로직인
+    /// FireWaveFanCore()를 damagePercent 0 + hitMask 없음으로 재사용합니다).</summary>
     private void FireWaveFan()
     {
-        // 부채꼴 전체에 대해 발사 순간 원점(waveOrigin)에서 한 번만 재생되는 캐스트 연출입니다 -
+        FireWaveFanCore(waveOrigin, waveForward, hitMask, waveDamagePercent);
+    }
+
+    /// <summary>FireWaveFan()과 PlayShockwaveForCutscene()이 공유하는 핵심 로직입니다. origin/forward를
+    /// 기준으로 부채꼴 전체(waveFanAngle)를 waveCount개의 ShockwaveWave로 나눠 발사합니다 -
+    /// hitMaskToUse/damagePercentToUse만 호출하는 쪽에 따라 다르게 넘겨받습니다(실제 전투는 이 보스의
+    /// hitMask/waveDamagePercent 그대로, 컷씬 연출은 0/빈 마스크로 데미지가 전혀 발생하지 않게).</summary>
+    private void FireWaveFanCore(Vector3 origin, Vector3 forward, LayerMask hitMaskToUse, float damagePercentToUse)
+    {
+        // 부채꼴 전체에 대해 발사 순간 원점(origin)에서 한 번만 재생되는 캐스트 연출입니다 -
         // 방향마다 반복 재생하면 같은 위치에 겹쳐 재생되어 낭비이므로 여기서 딱 한 번만 호출합니다.
         // ShockwaveWave.travelVfxName(각 파도를 따라 움직이는 VFX)과는 별개로, 제자리에서 터지는
         // 원형 충격파 등을 붙이고 싶을 때 씁니다.
         if (!string.IsNullOrEmpty(waveCastVfxName))
         {
-            VFXManager.Instance.Play(waveCastVfxName, waveOrigin, Quaternion.LookRotation(waveForward));
+            VFXManager.Instance.Play(waveCastVfxName, origin, Quaternion.LookRotation(forward));
         }
 
-        // 범위 표시가 사라지고(UpdateWaveAttack()에서 이 메서드 직후 호출되는 DestroyWaveIndicator())
-        // VFX가 재생되는 이 순간, 딱 한 번만 재생되는 시전 효과음입니다.
+        // 범위 표시가 사라지고(UpdateWaveAttack()에서 FireWaveFan() 직후 호출되는 DestroyWaveIndicator())
+        // VFX가 재생되는 이 순간, 딱 한 번만 재생되는 시전 효과음입니다. 컷씬 연출(범위 표시 자체가
+        // 없음)에서도 그대로 재생됩니다.
         if (!string.IsNullOrEmpty(waveCastSfxName))
         {
-            SoundManager.Instance.PlaySFX(waveCastSfxName, waveOrigin);
+            SoundManager.Instance.PlaySFX(waveCastSfxName, origin);
         }
 
         float sliceAngle = waveFanAngle / waveCount; // 조각 하나의 전체 각도
@@ -517,13 +545,13 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
             // -waveFanAngle/2 ~ +waveFanAngle/2 범위를 waveCount개 조각으로 나눈 뒤, 각 조각의
             // 중심 각도를 구합니다 (예: waveCount=3, waveFanAngle=90 → -30, 0, +30).
             float centerAngle = -waveFanAngle * 0.5f + sliceAngle * (i + 0.5f);
-            Vector3 direction = Quaternion.AngleAxis(centerAngle, Vector3.up) * waveForward;
+            Vector3 direction = Quaternion.AngleAxis(centerAngle, Vector3.up) * forward;
 
             GameObject go = new GameObject($"ShockwaveWave_{i}");
             ShockwaveWave wave = go.AddComponent<ShockwaveWave>();
-            wave.damagePercent = waveDamagePercent;
+            wave.damagePercent = damagePercentToUse;
             wave.sourceStats = stats;
-            wave.hitMask = hitMask;
+            wave.hitMask = hitMaskToUse;
             wave.hitVfxName = hitVfxName;
             wave.travelVfxName = waveTravelVfxName;
             wave.burstCount = waveBurstCount;
@@ -531,7 +559,7 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
             wave.vfxForwardOffset = waveVfxForwardOffset;
             // halfSliceAngle을 넘겨서, 이 조각의 폭 전체(정중앙뿐 아니라 양옆까지)를 판정하도록 합니다 -
             // 정중앙 한 점만 판정하면 거리가 멀어질수록 넓어지는 폭을 놓치는 문제가 있었습니다.
-            wave.Launch(waveOrigin, direction, halfSliceAngle, waveFanRadius, waveTravelDuration);
+            wave.Launch(origin, direction, halfSliceAngle, waveFanRadius, waveTravelDuration);
         }
     }
 
@@ -539,6 +567,71 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     {
         if (waveIndicator != null) Destroy(waveIndicator.gameObject);
         waveIndicator = null;
+    }
+
+    // ------------------------------------------------------------------
+    // 컷씬 연출 전용 - CutsceneManager.RunStep()이 호출합니다(CutsceneData.cs 참고)
+    // ------------------------------------------------------------------
+
+    /// <summary>등장 컷씬 등에서 "Appear" 애니메이터 트리거를 재생합니다. FSM 상태/타겟과 완전히
+    /// 무관하며, 그 자체로는 아무 판정도 발생하지 않습니다 - 순수하게 모션 재생용입니다. Animator에
+    /// "Appear"(Trigger) 파라미터를 추가하고 원하는 등장 모션으로 전환되는 State를 만들어두세요
+    /// (SwingAttack/WaveAttack/Die와 같은 방식). [등장 전 비활성화] 이 보스를 "Appear하기 전까지
+    /// 비활성화"해두고 싶다면, 씬에 배치할 때 이 오브젝트를 처음부터 비활성 상태(체크 해제)로 두세요 -
+    /// 이 메서드가 호출되는 순간 자동으로 SetActive(true)까지 함께 처리하므로, 컷씬 쪽에서는
+    /// TriggerEvent로 이 메서드 하나만 호출하면 등장(활성화 + 애니메이션)이 한 번에 끝납니다. 콜라이더/
+    /// 렌더러/Update 루프 전부가 비활성 상태에서는 완전히 멈춰있으므로, 등장 전에는 화면에도 안
+    /// 보이고 피격도 되지 않고 AI도 전혀 동작하지 않습니다 - 별도의 "등장 전 상태" 플래그를 코드에서
+    /// 따로 관리할 필요가 없습니다.</summary>
+    public void PlayAppearAnimation()
+    {
+        // SetActive(true)는 (아직 한 번도 활성화된 적 없는 오브젝트라면) Awake()를 그 즉시 동기적으로
+        // 호출하므로, 바로 아래 animator 참조는 이미 준비되어 있음이 보장됩니다 - Start()는 이 프레임
+        // 뒤쪽에서 별도로 호출되지만, currentState의 기본값이 이미 State.Idle(0)이라 그 사이에도
+        // 안전합니다.
+        if (!gameObject.activeSelf) gameObject.SetActive(true);
+
+        if (animator != null) animator.SetTrigger(AppearParam);
+    }
+
+    /// <summary>컷씬 연출 전용 - 실제 전투(FSM 상태/타겟/데미지)와 완전히 무관하게, Wave(파도보내기)
+    /// 공격의 시각 연출(waveCastVfxName/waveTravelVfxName/waveCastSfxName)과 함께 WaveAttack
+    /// 애니메이터 트리거도 같이 재생합니다(EnterWaveAttack()의 실제 전투용 공격과 똑같은 모션이 재생되어,
+    /// 손을 뻗는 등 공격 동작과 시각 연출이 서로 어긋나지 않습니다). FireWaveFanCore()를 damagePercent
+    /// 0 + 빈 hitMask(default(LayerMask), 아무 레이어도 포함하지 않음)로 호출하므로,
+    /// ShockwaveWave.CheckHitsAt()의 Physics.OverlapSphere가 항상 빈 결과만 반환합니다 - 데미지/피격
+    /// VFX/피격 SFX/데미지 숫자가 전혀 발생하지 않는, 순수하게 "보여주기 위한" 파도입니다.
+    /// [매개변수 없는 오버로드가 따로 있는 이유] CutsceneManager의 Trigger Events는 UnityEvent(인자
+    /// 없음)라 인스펙터의 드롭다운에는 "매개변수가 0개인" public 메서드만 나타납니다 - 예전처럼
+    /// direction에 기본값(Vector3 direction = default)만 줘서 매개변수를 "생략 가능"하게 만들어도,
+    /// C# 컴파일러 관점에서는 여전히 매개변수가 1개인 메서드라서 목록에 아예 뜨지 않았습니다(직접
+    /// 코드에서 인자 없이 호출하는 건 문제없지만, 유니티 에디터의 UnityEvent 드롭다운은 반영하지
+    /// 않습니다). 그래서 컷씬(TriggerEvent)에서 등록할 땐 아래의 매개변수 없는 PlayShockwaveForCutscene()를
+    /// 사용하고, 코드에서 특정 방향을 직접 지정하고 싶을 때만 PlayShockwaveForCutscene(Vector3)를
+    /// 쓰세요.</summary>
+    public void PlayShockwaveForCutscene()
+    {
+        PlayShockwaveForCutscene(Vector3.zero);
+    }
+
+    /// <summary>PlayShockwaveForCutscene()와 같은 연출이되, direction으로 발사 방향을 직접 지정할 수
+    /// 있습니다. direction을 Vector3.zero로 넘기면(또는 위 매개변수 없는 오버로드를 쓰면) 이 보스의
+    /// 현재 transform.forward 방향으로 발사합니다 - 등장 컷씬처럼 아직 target이 정해지지 않았거나
+    /// (플레이어가 아직 멀리 있는 등) 신경 쓸 필요 없이, 보스를 원하는 방향으로 미리 회전시켜두기만
+    /// 하면 그 방향으로 나갑니다. [주의] 이 오버로드는 매개변수가 있어 UnityEvent(TriggerEvent) 인스펙터
+    /// 드롭다운에는 나타나지 않습니다 - 인스펙터에서 등록하려면 위 매개변수 없는 오버로드를 쓰세요.</summary>
+    public void PlayShockwaveForCutscene(Vector3 direction)
+    {
+        Vector3 forward = Flatten(direction);
+        if (forward.sqrMagnitude < 0.0001f) forward = Flatten(transform.forward);
+        if (forward.sqrMagnitude < 0.0001f) forward = Vector3.forward;
+        forward.Normalize();
+
+        Vector3 origin = transform.position + Vector3.up * waveHeight;
+
+        if (animator != null) animator.SetTrigger(WaveAttackParam);
+
+        FireWaveFanCore(origin, forward, default, 0f);
     }
 
     // ------------------------------------------------------------------
@@ -569,7 +662,7 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         DestroySwingIndicator();
         DestroyWaveIndicator();
         DisableColliders(); // 죽은 직후 콜라이더를 꺼서, dieDelay 동안 시체가 남아있는 사이 또 공격 판정에
-                             // 맞아 데미지/이펙트/데미지 숫자가 중복으로 발생하지 않게 합니다.
+                            // 맞아 데미지/이펙트/데미지 숫자가 중복으로 발생하지 않게 합니다.
 
         // 화면 고정형 체력바도 더 이상 갱신되지 않으니(위 UpdateBossHpBar 참고) 같이 숨겨서, 0으로
         // 채워진 채 화면에 계속 남아있는 어색한 모습을 막습니다.

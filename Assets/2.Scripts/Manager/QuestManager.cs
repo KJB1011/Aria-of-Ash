@@ -54,6 +54,12 @@
 //   같은 스프라이트를 연결하면 됩니다). 아이템 보상(rewardItems)은 LootItemData.icon을 그대로 쓰므로
 //   따로 설정할 게 없습니다.
 //
+// [완료 시 컷씬 재생 - QuestData.cutsceneOnComplete]
+//   CompleteQuest()가 어떤 경로로 호출됐든(자동 완료/TurnInQuest 보고/CheckDependentQuestObjectives의
+//   연쇄 완료) 공통으로 지나가는 지점 딱 한 곳에서, progress.data.cutsceneOnComplete가 비어있지 않으면
+//   CutsceneManager.Instance.Play(...)를 호출해줍니다. 자세한 설명/주의사항은 QuestData.cs 상단 주석
+//   참고.
+//
 // [씬 준비]
 //   빈 오브젝트에 이 스크립트를 붙이세요. 씬에 정확히 하나만 있어야 합니다.
 // ============================================================================
@@ -337,6 +343,16 @@ public class QuestManager : MonoBehaviour
         // 이 퀘스트의 완료를 targetQuest로 삼는 CompleteQuest 목표가 있는지 확인합니다(파일 상단
         // [CompleteQuest 목표] 참고) - "여러 작은 퀘스트를 다 깨야 완료되는 큰 퀘스트" 기능입니다.
         CheckDependentQuestObjectives(progress.data);
+
+        // QuestData.cutsceneOnComplete가 연결돼있으면 완료 컷씬을 재생합니다(파일 상단
+        // [완료 시 컷씬 재생] 참고). CompleteQuest()는 자동 완료/TurnInQuest 보고/위 CheckDependentQuestObjectives의
+        // 재귀 호출까지 모든 완료 경로가 공통으로 지나가는 지점이라 여기 한 곳에만 넣으면 됩니다.
+        // CutsceneManager.Play()는 이미 다른 컷씬이 재생 중이면 조용히 무시하므로, 연쇄 완료 상황에서는
+        // 먼저 완료된 쪽의 컷씬이 우선합니다(파일 상단 주의사항 참고).
+        if (progress.data.cutsceneOnComplete != null)
+        {
+            CutsceneManager.Instance?.Play(progress.data.cutsceneOnComplete);
+        }
     }
 
     /// <summary>completedQuestData가 방금 완료됐을 때 호출합니다. 지금 진행 중인 퀘스트 중 이

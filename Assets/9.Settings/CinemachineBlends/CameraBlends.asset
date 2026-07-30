@@ -79,3 +79,69 @@ MonoBehaviour:
         m_PreInfinity: 0
         m_PostInfinity: 0
         m_RotationOrder: 4
+  - From: '**ANY CAMERA**'
+    To: AppearMiddleSlimeCamera
+    Blend:
+      Style: 0
+      Time: 0.01
+      CustomCurve:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 0
+        m_PostInfinity: 0
+        m_RotationOrder: 4
+  - From: AppearMiddleSlimeCamera
+    To: LookMiddleSLimeCamera
+    Blend:
+      Style: 1
+      Time: 0.2
+      CustomCurve:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 0
+        m_PostInfinity: 0
+        m_RotationOrder: 4
+  - From: LookMiddleSLimeCamera
+    To: AttackMiddleSlimeCamera
+    Blend:
+      Style: 0
+      Time: 0.01
+      CustomCurve:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 0
+        m_PostInfinity: 0
+        m_RotationOrder: 4
+  - From: AttackMiddleSlimeCamera
+    To: MCCamera
+    Blend:
+      Style: 0
+      Time: 0.01
+      CustomCurve:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 0
+        m_PostInfinity: 0
+        m_RotationOrder: 4
+  - From: '**ANY CAMERA**'
+    To: PurifyViewCamera
+    Blend:
+      Style: 0
+      Time: 0.01
+      CustomCurve:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 0
+        m_PostInfinity: 0
+        m_RotationOrder: 4
+  - From: PurifyViewCamera
+    To: PurifyAfterMCCamera
+    Blend:
+      Style: 0
+      Time: 0.5
+      CustomCurve:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 0
+        m_PostInfinity: 0
+        m_RotationOrder: 4

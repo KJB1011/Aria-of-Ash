@@ -34,10 +34,40 @@
 //   이 스크립트는 그 UIExit이 씬 전환에도 살아있도록 "부모" 역할만 할 뿐, 굳이 이 스크립트를
 //   거칠 필요는 없습니다. 다만 씬 연결이 잘 됐는지 바로 확인해볼 수 있도록 Exit 프로퍼티로도
 //   꺼내볼 수 있게 해뒀습니다(GameManager.Instance.Exit).
+//
+// [게임 오버 - UIGameOver]
+//   UIExit과 완전히 같은 방식으로 GameManager의 자식에 UIGameOver를 붙여두면 됩니다. 플레이어가
+//   죽으면(PlayerController.Die()) GameManager.Instance.TriggerGameOver()를 호출해주세요 -
+//   deathAnimationDelay초(사망 모션이 끝날 때까지, 기본 3초) 기다린 뒤, 화면을 FadeOut으로
+//   까맣게 만들고, 다 어두워지면 UIGameOver.Show()를 대신 호출해서 게임 오버 화면을 페이드 인으로
+//   띄워줍니다. 씬을 다시 시작하는 버튼 처리는 UIGameOver.ClickRestartButton()이 담당합니다
+//   (UIGameOver.cs 참고).
+//
+// [씬 재시작 시 정적 오브젝트 풀 캐시 초기화 - 중요]
+//   NPCNameplate/MonsterHealthBar/RewardOrb/LootPickup은 전부 프리팹별 GameObjectPool을 static
+//   Dictionary에 캐싱해두는 방식을 씁니다(각 스크립트 상단 주석 참고) - 원래는 "인게임 씬이 플레이
+//   도중 다시 로드되지 않는다"는 전제로 만들어졌는데, UIGameOver의 재시작 버튼이 정확히 그 전제를
+//   깹니다. 씬이 다시 로드되면 이전 씬의 poolRoot와 그 안의 인스턴스들은 실제로 파괴되지만, static
+//   캐시는 씬과 무관하게 그대로 남아있어서 죽은 오브젝트를 계속 참조하려다
+//   MissingReferenceException이 납니다.
+//
+//   [중요 - sceneLoaded가 아니라 sceneUnloaded를 구독하는 이유]
+//   처음에는 SceneManager.sceneLoaded를 구독해서 새 씬이 로드될 때마다 캐시를 비웠는데, 이렇게 해도
+//   여전히 같은 MissingReferenceException이 났습니다 - 원인은 타이밍입니다. sceneLoaded 이벤트는 새
+//   씬의 모든 오브젝트의 Awake()/OnEnable()가 "이미 다 끝난 뒤"에야 발생합니다. 그런데 하필
+//   NPCNameplate.Awake()가 바로 그 문제의 GameObjectPool.Get() 호출부라서, sceneLoaded가 캐시를 비워줄
+//   때는 이미 그 새 씬의 첫 NPCNameplate.Awake()가 죽은 캐시를 참조해서 크래시가 난 "다음"입니다 -
+//   너무 늦은 타이밍입니다. 대신 SceneManager.sceneUnloaded는 "이전" 씬이 언로드될 때(=새 씬의
+//   오브젝트가 생성되어 Awake가 불리기 전) 발생하므로, 여기서 캐시를 비워두면 새 씬의 어떤
+//   Awake()보다도 먼저 확실하게 정리가 끝나 있습니다. 앞으로 같은 패턴(프리팹별 static
+//   GameObjectPool 캐시)으로 새 클래스를 추가한다면, 그 클래스에도 ResetStaticPools()를 만들어서
+//   아래 HandleSceneUnloaded()에 한 줄 추가해주세요.
 // ============================================================================
 
+using System.Collections;
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -49,11 +79,24 @@ public class GameManager : MonoBehaviour
     /// 용도 정도로 생각하시면 됩니다.</summary>
     public UIExit Exit { get; private set; }
 
+    /// <summary>자식으로 붙어있는 UIGameOver입니다. Exit과 같은 이유로, 보통은 TriggerGameOver()를
+    /// 통해서 간접적으로만 쓰이고 UIGameOver.Instance로 직접 접근할 일은 거의 없습니다.</summary>
+    public UIGameOver GameOver { get; private set; }
+
     [Header("화면 페이드 (풀스크린 페이드 인/아웃)")]
     [Tooltip("화면 전체를 덮는 Image가 붙은 CanvasGroup입니다. 반드시 연결하세요 - 비어있으면 " +
               "FadeOut()/FadeIn() 호출 시 바로 NullReferenceException이 납니다(연결을 빠뜨렸다는 게 " +
               "바로 드러나도록 하기 위해 일부러 방어 코드를 넣지 않았습니다).")]
     [SerializeField] CanvasGroup _fadeCanvasGroup;
+
+    [Header("게임 오버")]
+    [Tooltip("TriggerGameOver()가 호출된 뒤, 화면을 FadeOut하기 전에 먼저 기다리는 시간(초)입니다 - " +
+              "사망 모션이 다 끝날 때까지 기다리는 용도입니다. 대략적인 사망 애니메이션 길이(기본 3초)에 " +
+              "맞춰뒀으니 실제 모션 길이에 맞게 조절하세요. Time.timeScale과 무관하게(실시간 기준으로) " +
+              "기다립니다.")]
+    public float deathAnimationDelay = 3f;
+    [Tooltip("대기 시간이 끝난 뒤, 화면이 완전히 까매질 때까지 걸리는 시간(초)입니다.")]
+    public float gameOverFadeOutDuration = 1f;
 
     /// <summary>지금 화면이 완전히 불투명(알파 1, 완전히 가려진 상태)인지 여부입니다.</summary>
     public bool IsScreenFullyFaded => _fadeCanvasGroup != null && _fadeCanvasGroup.alpha >= 1f;
@@ -73,6 +116,7 @@ public class GameManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         Exit = GetComponentInChildren<UIExit>(true); // 비활성화된 자식도 찾도록 true를 넘깁니다.
+        GameOver = GetComponentInChildren<UIGameOver>(true);
 
         if (_fadeCanvasGroup != null)
         {
@@ -80,6 +124,27 @@ public class GameManager : MonoBehaviour
             _fadeCanvasGroup.interactable = false;
             _fadeCanvasGroup.blocksRaycasts = false;
         }
+
+        SceneManager.sceneUnloaded += HandleSceneUnloaded;
+    }
+
+    private void OnDestroy()
+    {
+        SceneManager.sceneUnloaded -= HandleSceneUnloaded;
+    }
+
+    /// <summary>씬이 언로드될 때마다(= 다음 씬의 오브젝트들이 생성되어 Awake가 불리기 전에) 호출됩니다
+    /// - 파일 상단 [씬 재시작 시 정적 오브젝트 풀 캐시 초기화] 참고, 특히 sceneLoaded가 아니라
+    /// sceneUnloaded를 구독하는 이유(타이밍 문제)를 반드시 함께 읽어보세요. 언로드되는 씬에 있던
+    /// poolRoot/인스턴스들은 이 시점에 이미(또는 곧) 파괴되므로, 그 죽은 참조를 계속 들고 있게 될
+    /// 정적 캐시들을 다음 씬이 시작되기 전에 미리 비워서 새 씬에서 깨끗하게 다시 만들어지도록
+    /// 합니다.</summary>
+    private void HandleSceneUnloaded(Scene scene)
+    {
+        NPCNameplate.ResetStaticPools();
+        MonsterHealthBar.ResetStaticPools();
+        RewardOrb.ResetStaticPools();
+        LootPickup.ResetStaticPools();
     }
 
     /// <summary>화면을 duration초에 걸쳐 서서히 까맣게(알파 0 → 1) 만듭니다. 시작하자마자 뒤쪽 클릭이
@@ -112,5 +177,34 @@ public class GameManager : MonoBehaviour
         fadeTween?.Kill();
         _fadeCanvasGroup.alpha = opaque ? 1f : 0f;
         _fadeCanvasGroup.blocksRaycasts = opaque;
+    }
+
+    /// <summary>플레이어가 사망했을 때 호출하세요(PlayerController.Die() 참고). 먼저
+    /// deathAnimationDelay초(사망 모션이 끝날 때까지, Time.timeScale과 무관하게 실시간 기준으로)
+    /// 기다린 뒤, 화면을 gameOverFadeOutDuration초에 걸쳐 FadeOut(까맣게)하고, 완전히 어두워지고
+    /// 나서야 UIGameOver.Show()를 호출해 게임 오버 화면을 페이드 인으로 띄웁니다. UIGameOver가
+    /// 자식으로 연결되어 있지 않으면 화면은 그대로 까맣게 남고 경고 로그만 남습니다.</summary>
+    public void TriggerGameOver()
+    {
+        StartCoroutine(GameOverRoutine());
+    }
+
+    private IEnumerator GameOverRoutine()
+    {
+        // 사망 모션이 다 재생될 때까지 먼저 기다립니다 - WaitForSecondsRealtime이라 Time.timeScale이
+        // 0이 되어도(다른 팝업 등으로 멈춰도) 영향받지 않고 항상 같은 실제 시간만큼 기다립니다.
+        yield return new WaitForSecondsRealtime(deathAnimationDelay);
+
+        yield return FadeOut(gameOverFadeOutDuration).WaitForCompletion();
+
+        if (GameOver != null)
+        {
+            GameOver.Show();
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] UIGameOver가 연결되어 있지 않아 게임 오버 화면을 띄울 수 없습니다. " +
+                              "GameManager의 자식으로 UIGameOver를 붙여주세요.", this);
+        }
     }
 }

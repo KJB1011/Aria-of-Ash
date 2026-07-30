@@ -17,210 +17,246 @@ MonoBehaviour:
     label: "\uD654\uBA74 \uD398\uC774\uB4DC\uC544\uC6C3"
     duration: 1
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 3
     label: "UI \uC228\uAE30\uAE30"
     duration: 0
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 7
     label: "\uD50C\uB808\uC774\uC5B4 \uC21C\uAC04\uC774\uB3D9"
     duration: 0
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: TP_VillageStart
+    eventKey: 
   - type: 4
     label: "\uB9C8\uC744\uC758 \uC804\uACBD\uC744 \uBCF4\uB294 \uCE74\uBA54\uB77C"
     duration: 0
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: Cam_LookVillage
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 1
     label: "\uD654\uBA74 \uD398\uC774\uB4DC\uC778"
     duration: 1
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 2
     label: "\uC7A0\uC2DC \uB300\uAE30"
     duration: 1
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: Merchant
     teleportPointKey: 
+    eventKey: 
   - type: 9
     label: "\uB9C8\uC744\uB85C\uACE0 \uBCF4\uC5EC\uC8FC\uAE30"
     duration: 3
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 21300000, guid: 3e1ff733565500a409a6108d36016caf,
-      type: 3}
+    titleCardKey: VillageLogo
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: Merchant
     teleportPointKey: 
+    eventKey: 
   - type: 2
     label: "\uC7A0\uC2DC \uB300\uAE30"
     duration: 2
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 9
     label: "\uB9C8\uC744 \uB85C\uACE0 \uB044\uAE30"
     duration: 2
     hudVisible: 0
-    showLocationTitle: 0
-    locationTitleSprite: {fileID: 21300000, guid: 3e1ff733565500a409a6108d36016caf,
-      type: 3}
+    titleCardKey: VillageLogo
+    titleCardVisible: 0
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: Merchant
     teleportPointKey: 
+    eventKey: 
   - type: 0
     label: "\uD398\uC774\uB4DC \uC544\uC6C3"
     duration: 1
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 4
     label: "\uC0C1\uC778 \uC55E \uC2DC\uC810 \uCE74\uBA54\uB77C"
     duration: 0
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: Cam_Merchant
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 5
     label: "\uD50C\uB808\uC774\uC5B4 \uAC77\uAE30 \uC5F0\uCD9C"
     duration: 0
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: MV_VillageStart
     arriveDistance: 0.1
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 1
     label: "\uD398\uC774\uB4DC \uC778"
     duration: 1
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 2
     label: "\uD50C\uB808\uC774\uC5B4 \uC774\uB3D9 \uB300\uAE30"
     duration: 2.5
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 4
     label: "\uB9C8\uC8FC\uBCF4\uB294 \uCE74\uBA54\uB77C\uB85C \uC804\uD658"
     duration: 0
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: Cam_EyeContact
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 8
     label: "\uB9C8\uC8FC\uBCF4\uAE30"
     duration: 1
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: Merchant
     teleportPointKey: 
+    eventKey: 
   - type: 2
     label: "\uB208 \uB9C8\uC8FC\uBCF4\uACE0 \uC7A0\uAE50 \uB300\uAE30"
     duration: 0.5
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 3
     label: "UI \uBCF4\uC774\uAE30"
     duration: 0
     hudVisible: 1
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: 
     teleportPointKey: 
+    eventKey: 
   - type: 6
     label: "\uB300\uD654\uC2DC\uC791"
     duration: 0
     hudVisible: 0
-    showLocationTitle: 1
-    locationTitleSprite: {fileID: 0}
+    titleCardKey: 
+    titleCardVisible: 1
+    titleCardSpriteOverride: {fileID: 0}
     cameraKey: 
     waypointGroupKey: 
     arriveDistance: 0
     npcKey: Merchant
     teleportPointKey: 
+    eventKey: 
