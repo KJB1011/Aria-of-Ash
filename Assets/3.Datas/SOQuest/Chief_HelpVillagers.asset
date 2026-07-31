@@ -43,3 +43,4 @@ MonoBehaviour:
   rewardExp: 300
   rewardGold: 200
   rewardItems: []
+  cutsceneOnComplete: {fileID: 0}

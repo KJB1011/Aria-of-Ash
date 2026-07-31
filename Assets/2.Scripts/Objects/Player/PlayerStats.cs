@@ -141,6 +141,18 @@ public class PlayerStats : MonoBehaviour, IDamageable
     // 세이브/로드 시스템이 생기면 이 목록도 함께 저장/복원해야 재시작 후에도 돌파 상태가 유지됩니다.
     private readonly HashSet<int> completedBreakthroughLevels = new HashSet<int>();
 
+    [Header("레벨업 연출")]
+    [Tooltip("레벨업할 때 플레이어 위치에서 재생할 VFX 이름입니다(Resources/VFX/ 아래 프리팹 이름과 " +
+              "일치해야 함, VFXManager.cs 참고). 비워두면 재생하지 않습니다. AddExperience()로 한 번에 " +
+              "여러 레벨이 오르거나 Breakthrough()로 밀린 레벨업이 이어질 때는 LevelUp()이 그 횟수만큼 " +
+              "호출되므로 레벨이 오른 횟수만큼 재생됩니다.")]
+    public string levelUpVfxName;
+    [Tooltip("레벨업할 때 화면에 띄울 알림 문구입니다(FloatingTextManager.cs 재사용 - VillageZone.cs와 " +
+              "같은 방식). {0} 자리에 새로 도달한 레벨이 그대로 들어갑니다. TextMeshPro 리치 텍스트 태그 " +
+              "(<color=...>)를 그대로 넣으면 그 부분만 다른 색으로 강조됩니다. 비워두면 띄우지 않습니다.")]
+    [TextArea]
+    public string levelUpMessageFormat = "<color=yellow>레벨 업!</color> Lv.{0}";
+
     [Header("기초 스탯")]
     public float baseHP = 1000f;
     public float baseAttackPower = 100f;
@@ -293,12 +305,43 @@ public class PlayerStats : MonoBehaviour, IDamageable
 
     /// <summary>레벨을 amount만큼 올립니다(기본 1레벨씩). maxLevel을 넘지 않습니다. 한계돌파 제한을
     /// 거치지 않는 저수준 함수입니다 - 디버그/치트용으로 직접 호출하는 경우가 아니라면 AddExperience()나
-    /// Breakthrough()를 통해서 레벨이 오르게 하세요. HP/MP 현재값을 자동으로 채워주지는 않습니다 -
-    /// 최대치가 늘어난 만큼의 차이는 자연 회복(hpRegenPerSecond/mpRegenPerSecond)으로 서서히 채워집니다.
-    /// 레벨업 즉시 풀피/풀MP로 채우고 싶다면 이 함수 호출 뒤에 Heal(MaxHP) 등을 직접 호출하세요.</summary>
+    /// Breakthrough()를 통해서 레벨이 오르게 하세요. 실제로 레벨이 오른 경우(이미 maxLevel이라 클램프에
+    /// 막혀 그대로인 경우는 제외) HP/MP를 각각의 새 최대치로 꽉 채우고, 레벨업 VFX/알림 텍스트를
+    /// 재생합니다(PlayLevelUpVfx()/ShowLevelUpMessage() 참고) - 레벨이 올라 최대치 자체가 늘어난
+    /// 상태이므로, 이전처럼 자연 회복으로 서서히 채워지길 기다리지 않고 그 자리에서 바로 풀피/풀MP가
+    /// 됩니다.</summary>
     public void LevelUp(int amount = 1)
     {
+        int previousLevel = level;
         level = Mathf.Clamp(level + amount, 1, maxLevel);
+
+        if (level <= previousLevel) return; // 이미 최대 레벨 등으로 실제로는 오르지 않았다면 아무 것도 하지 않습니다.
+
+        currentHP = TotalHP;
+        currentMP = TotalMP;
+
+        PlayLevelUpVfx();
+        ShowLevelUpMessage();
+    }
+
+    /// <summary>레벨업 VFX를 플레이어 위치(transform.position)에서 한 번 재생합니다. levelUpVfxName이
+    /// 비어있으면 조용히 넘어갑니다. PlayerStats는 Player 오브젝트에 직접 붙는 컴포넌트라
+    /// transform.position이 곧 플레이어 위치입니다(파일 상단 [씬 준비] 참고).</summary>
+    private void PlayLevelUpVfx()
+    {
+        if (string.IsNullOrEmpty(levelUpVfxName)) return;
+
+        VFXManager.Instance.Play(levelUpVfxName, transform.position);
+    }
+
+    /// <summary>levelUpMessageFormat을 새로 도달한 레벨(level)로 채워 화면에 띄웁니다(FloatingTextManager
+    /// 재사용 - VillageZone.cs의 입장/퇴장 알림과 같은 방식). levelUpMessageFormat이 비어있으면 조용히
+    /// 넘어갑니다.</summary>
+    private void ShowLevelUpMessage()
+    {
+        if (string.IsNullOrEmpty(levelUpMessageFormat)) return;
+
+        FloatingTextManager.Instance.Show(string.Format(levelUpMessageFormat, level));
     }
 
     /// <summary>레벨을 특정 값으로 직접 지정합니다 (퀘스트 보상, 디버그 등). maxLevel을 넘지 않습니다.

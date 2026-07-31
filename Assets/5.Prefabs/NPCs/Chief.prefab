@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 4423974153696299935}
   - component: {fileID: 7607113000301063623}
   - component: {fileID: 5386474901206904612}
+  - component: {fileID: 1499827634806144171}
   m_Layer: 7
   m_Name: Chief
   m_TagString: Untagged
@@ -72,13 +73,35 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   npcName: "\uCD0C\uC7A5"
   npcId: Chief
-  talkScript: {fileID: 0}
-  relatedQuest: {fileID: 0}
-  notStartedTalkIndex: 0
-  inProgressTalkIndex: 11
-  readyToTurnInTalkIndex: 21
-  completedTalkIndex: 31
-  questCompletionOverrides: []
+  talkScript: {fileID: 11400000, guid: a05f3a25458c356479628e35fe8ae050, type: 2}
+  relatedQuests:
+  - quest: {fileID: 11400000, guid: 9bedbfba26a28c54487467a2f2f263d8, type: 2}
+    notStartedTalkIndex: 0
+    inProgressTalkIndex: 1
+    readyToTurnInTalkIndex: 31
+    completedTalkIndex: 33
+  - quest: {fileID: 11400000, guid: 5e11321ed287da049b719c99d24c251a, type: 2}
+    notStartedTalkIndex: 0
+    inProgressTalkIndex: 1
+    readyToTurnInTalkIndex: 25
+    completedTalkIndex: 1
+  - quest: {fileID: 11400000, guid: ffaf13dc11e8db74bbab6745137e7620, type: 2}
+    notStartedTalkIndex: 0
+    inProgressTalkIndex: 11
+    readyToTurnInTalkIndex: 11
+    completedTalkIndex: 21
+  - quest: {fileID: 11400000, guid: fb5a6387d1f702d42ab3da982b99dcff, type: 2}
+    notStartedTalkIndex: 0
+    inProgressTalkIndex: 1
+    readyToTurnInTalkIndex: 1
+    completedTalkIndex: 1
+  questCompletionOverrides:
+  - quest: {fileID: 11400000, guid: fb5a6387d1f702d42ab3da982b99dcff, type: 2}
+    talkIndex: 11
+  - quest: {fileID: 11400000, guid: ffaf13dc11e8db74bbab6745137e7620, type: 2}
+    talkIndex: 21
+  - quest: {fileID: 11400000, guid: 9bedbfba26a28c54487467a2f2f263d8, type: 2}
+    talkIndex: 33
   cameraAnchor: {fileID: 0}
   modelTransform: {fileID: 0}
   talkRotationSpeed: 180
@@ -100,6 +123,18 @@ MonoBehaviour:
     type: 3}
   worldOffset: {x: 0, y: 2, z: 0}
   targetCamera: {fileID: 0}
+--- !u!114 &1499827634806144171
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3113278689972403346}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 059c3a54a441e0e46acc4d10a21a072a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &4581774414457518844
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -530,8 +565,40 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 24634d6e3081b0c44aa1bb50ed9c46b8,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7359835380316129823}
   m_SourcePrefab: {fileID: 100100000, guid: 24634d6e3081b0c44aa1bb50ed9c46b8, type: 3}
+--- !u!1 &3698812487005341613 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 24634d6e3081b0c44aa1bb50ed9c46b8,
+    type: 3}
+  m_PrefabInstance: {fileID: 4581774414457518844}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &7359835380316129823
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3698812487005341613}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 7fca68274286218428c0439c5a921029, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!4 &4043954222365662487 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 24634d6e3081b0c44aa1bb50ed9c46b8,

@@ -22,10 +22,10 @@ MonoBehaviour:
     targetNpcId: 
     targetQuest: {fileID: 0}
     targetCount: 5
-    description: "\uB9C8\uC744\uC744 \uACF5\uACA9\uD558\uB294 \uD558\uAE09 \uC2AC\uB77C\uC784\uC744
-      5\uB9C8\uB9AC \uD574\uCE58\uC6B0\uC790."
+    description: "\uD558\uAE09 \uC2AC\uB77C\uC784 5\uB9C8\uB9AC \uCC98\uCE58"
   requiresTurnIn: 1
   prerequisiteQuests: []
   rewardExp: 300
   rewardGold: 50
   rewardItems: []
+  cutsceneOnComplete: {fileID: 0}

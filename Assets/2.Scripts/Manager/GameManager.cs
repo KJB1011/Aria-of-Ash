@@ -43,6 +43,19 @@
 //   띄워줍니다. 씬을 다시 시작하는 버튼 처리는 UIGameOver.ClickRestartButton()이 담당합니다
 //   (UIGameOver.cs 참고).
 //
+// [게임 오버 화면 자동 리셋 - 중요]
+//   UIGameOver도 이 스크립트의 자식이라 DontDestroyOnLoad로 함께 유지됩니다 - 그런데 그 말은
+//   UIGameOver.ClickRestartButton()으로 씬을 다시 불러와도 UIGameOver.Awake()가 재실행되지 않는다는
+//   뜻이라, Show()가 알파 1/interactable/blocksRaycasts로 켜뒀던 상태가 그대로 남아 재시작된 게임
+//   화면을 계속 가리고 클릭도 막아버립니다(이 스크립트의 _fadeCanvasGroup도 FadeOut으로 알파 1(까맣게)
+//   상태로 남아있는 채라 마찬가지 문제입니다). 그래서 TriggerGameOver()가 실행되는 순간
+//   gameOverActive를 true로 표시해두고, SceneManager.sceneLoaded(새 씬의 오브젝트가 다 준비된 뒤에
+//   발생 - 위 [씬 재시작 시 정적 오브젝트 풀 캐시 초기화]에서 sceneUnloaded를 쓰는 것과는 반대로,
+//   여기서는 "새 씬이 완전히 시작된 뒤"가 정확히 우리가 원하는 타이밍입니다) 시점에 gameOverActive가
+//   켜져 있으면 UIGameOver.Hide()로 게임 오버 화면을 완전히 숨기고 restartFadeInDuration에 걸쳐 화면을
+//   FadeIn으로 되돌립니다. 게임 오버로 인한 재시작이 아닌(예: 메인 메뉴에서 처음 씬을 불러오는) 일반적인
+//   씬 전환에는 gameOverActive가 꺼져있으니 전혀 영향을 주지 않습니다.
+//
 // [씬 재시작 시 정적 오브젝트 풀 캐시 초기화 - 중요]
 //   NPCNameplate/MonsterHealthBar/RewardOrb/LootPickup은 전부 프리팹별 GameObjectPool을 static
 //   Dictionary에 캐싱해두는 방식을 씁니다(각 스크립트 상단 주석 참고) - 원래는 "인게임 씬이 플레이
@@ -97,11 +110,15 @@ public class GameManager : MonoBehaviour
     public float deathAnimationDelay = 3f;
     [Tooltip("대기 시간이 끝난 뒤, 화면이 완전히 까매질 때까지 걸리는 시간(초)입니다.")]
     public float gameOverFadeOutDuration = 1f;
+    [Tooltip("재시작 버튼으로 씬이 다시 로드된 뒤, 화면이 다시 보이기까지(FadeIn) 걸리는 시간(초)입니다 - " +
+              "파일 상단 [게임 오버 화면 자동 리셋] 참고.")]
+    public float restartFadeInDuration = 1f;
 
     /// <summary>지금 화면이 완전히 불투명(알파 1, 완전히 가려진 상태)인지 여부입니다.</summary>
     public bool IsScreenFullyFaded => _fadeCanvasGroup != null && _fadeCanvasGroup.alpha >= 1f;
 
     private Tween fadeTween;
+    private bool gameOverActive;
 
     private void Awake()
     {
@@ -126,11 +143,13 @@ public class GameManager : MonoBehaviour
         }
 
         SceneManager.sceneUnloaded += HandleSceneUnloaded;
+        SceneManager.sceneLoaded += HandleSceneLoaded;
     }
 
     private void OnDestroy()
     {
         SceneManager.sceneUnloaded -= HandleSceneUnloaded;
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
     }
 
     /// <summary>씬이 언로드될 때마다(= 다음 씬의 오브젝트들이 생성되어 Awake가 불리기 전에) 호출됩니다
@@ -145,6 +164,18 @@ public class GameManager : MonoBehaviour
         MonsterHealthBar.ResetStaticPools();
         RewardOrb.ResetStaticPools();
         LootPickup.ResetStaticPools();
+    }
+
+    /// <summary>새 씬의 오브젝트가 모두 준비된 뒤(Awake/Start까지 끝난 뒤) 호출됩니다 - 파일 상단
+    /// [게임 오버 화면 자동 리셋] 참고. gameOverActive가 꺼져있으면(게임 오버로 인한 재시작이 아니라면)
+    /// 아무 것도 하지 않고 조용히 넘어갑니다.</summary>
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (!gameOverActive) return;
+        gameOverActive = false;
+
+        GameOver?.Hide();
+        FadeIn(restartFadeInDuration);
     }
 
     /// <summary>화면을 duration초에 걸쳐 서서히 까맣게(알파 0 → 1) 만듭니다. 시작하자마자 뒤쪽 클릭이
@@ -200,6 +231,7 @@ public class GameManager : MonoBehaviour
         if (GameOver != null)
         {
             GameOver.Show();
+            gameOverActive = true; // 다음 sceneLoaded 때 HandleSceneLoaded()가 자동으로 리셋해줍니다.
         }
         else
         {

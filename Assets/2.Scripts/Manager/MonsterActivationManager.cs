@@ -22,6 +22,14 @@
 //   범위 안에 들어왔는지"는 몬스터 자신은 확인할 수 없습니다 - 그래서 항상 켜져있는 이 매니저가
 //   대신 검사해줘야 합니다.
 //
+// [컷씬 재생 중에는 검사를 건너뜁니다]
+//   CutsceneManager.IsAnyCutscenePlaying이 true인 동안은 CheckLoop()이 거리 검사 자체를 하지 않습니다 -
+//   그렇지 않으면 등장 컷씬 등에서 SetActive(true)로 막 등장시킨 몬스터를, 실제 플레이어는 아직
+//   activationRange 밖에 있다는 이유로 다음 검사 주기에 이 매니저가 곧바로 다시 꺼버릴 수 있습니다
+//   (MiddleSlimeBoss.PlayAppearAnimation() 등으로 등장시킨 보스가 "잠깐 나타났다 사라지는" 증상으로
+//   나타납니다). 컷씬이 끝나 IsAnyCutscenePlaying이 다시 false가 되면 바로 다음 검사 주기부터
+//   평소처럼 거리 기반 검사를 재개합니다.
+//
 // [다른 시스템과의 관계 - 안심하고 써도 되는 이유]
 //   - MonsterSpawner의 동시 생존 제한(maxAliveCount)은 그대로 정상 작동합니다. SetActive(false)는
 //     오브젝트를 파괴하는 게 아니라 잠깐 꺼두는 것뿐이라, 스포너 입장에서는 여전히 "살아있는"
@@ -129,6 +137,15 @@ public class MonsterActivationManager : MonoBehaviour
         while (true)
         {
             yield return wait;
+
+            // 컷씬 재생 중에는 거리 기반 활성화 검사를 건너뜁니다 - 예를 들어 등장 컷씬에서 카메라가
+            // 몬스터를 비추는 동안 실제 플레이어는 아직 activationRange 밖에 있을 수 있는데, 그 상태로
+            // 이 매니저가 계속 검사를 돌리면 컷씬이 방금 SetActive(true)로 등장시킨 몬스터(예:
+            // MiddleSlimeBoss.PlayAppearAnimation())를 다음 검사 주기에 곧바로 다시 SetActive(false)로
+            // 꺼버려서 "잠깐 나타났다 사라지는" 증상이 생깁니다(MiddleSlimeBoss.UpdateIdleState()의
+            // CutsceneManager.IsAnyCutscenePlaying 가드와 같은 이유 - 컷씬 중에는 이런 백그라운드
+            // 자동화 시스템이 컷씬이 만들어둔 상태를 건드리지 않아야 합니다).
+            if (CutsceneManager.IsAnyCutscenePlaying) continue;
 
             // 씬 전환 직후 등 플레이어가 아직 없을 수 있어 매번 재시도합니다(찾은 뒤로는 바로 리턴).
             FindPlayerIfNeeded();

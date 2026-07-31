@@ -23,7 +23,7 @@ MonoBehaviour:
     targetNpcId: 
     targetQuest: {fileID: 0}
     targetCount: 5
-    description: "\uB098\uBB47\uAC00\uC9C0 5\uAC1C \uBAA8\uC73C\uAE30"
+    description: "\uB098\uBB47\uAC00\uC9C0 5\uAC1C \uD68D\uB4DD"
   requiresTurnIn: 1
   prerequisiteQuests: []
   rewardExp: 300
@@ -31,3 +31,4 @@ MonoBehaviour:
   rewardItems:
   - item: {fileID: 11400000, guid: 60d3e301a9cee5b4e92e95190c09d7b4, type: 2}
     amount: 5
+  cutsceneOnComplete: {fileID: 0}

@@ -20,6 +20,13 @@
 //   재시작 버튼의 OnClick에 ClickRestartButton()을 연결하세요 - Ingame Scene Name에 지정한 씬을
 //   다시 불러와서 처음부터 다시 시작합니다.
 //
+// [화면을 다시 가리지 않도록 - Hide()]
+//   이 오브젝트는 GameManager처럼 DontDestroyOnLoad로 유지되므로, ClickRestartButton()으로 씬을
+//   다시 불러와도 Awake()가 재실행되지 않아 Show()가 켜뒀던 알파/interactable/blocksRaycasts가
+//   그대로 남아있습니다 - 손대지 않으면 재시작된 게임 화면을 계속 가리고 클릭도 막습니다. 그래서
+//   GameManager가 새 씬이 다 로드된 직후 자동으로 Hide()를 호출해서 완전히 숨긴 상태로 되돌려줍니다
+//   (GameManager.cs 상단 [게임 오버 화면 자동 리셋] 참고) - 따로 연결하거나 호출할 필요 없습니다.
+//
 // [씬 준비]
 //   1) 게임 오버 화면 오브젝트(항상 활성화 상태로 두세요)에 이 스크립트와 CanvasGroup을 붙이세요
 //      (CanvasGroup은 RequireComponent로 자동 추가됩니다).
@@ -86,5 +93,25 @@ public class UIGameOver : MonoBehaviour
     {
         Time.timeScale = 1f; // 사망/다른 팝업 등으로 timeScale이 0에 멈춰있었을 수 있으니, 새 씬을 시작하기 전에 원래대로 되돌립니다.
         SceneManager.LoadScene(ingameSceneName);
+    }
+
+    /// <summary>이 화면을 다시 완전히 숨긴 상태로 되돌립니다 - GameManager가 새 씬이 다 로드된 뒤에
+    /// 자동으로 호출해줍니다(GameManager.HandleSceneLoaded() 참고). 이 오브젝트는 DontDestroyOnLoad로
+    /// 유지되어 Awake()가 재시작 때 다시 실행되지 않으므로, Show()로 켜졌던 알파/interactable/
+    /// blocksRaycasts/isOpen을 여기서 직접 초기 상태로 되돌리지 않으면 새로 시작된 게임 화면을 계속
+    /// 가리고 클릭도 막게 됩니다. Show()가 풀어줬던 커서도 게임플레이 기본값(잠금+숨김)으로 되돌립니다 -
+    /// 새 씬에서 다른 값을 쓰고 싶다면 그 씬의 시작 스크립트에서 다시 조정하세요.</summary>
+    public void Hide()
+    {
+        if (!isOpen) return;
+        isOpen = false;
+
+        fadeTween?.Kill();
+        canvasGroup.alpha = 0f;
+        canvasGroup.interactable = false;
+        canvasGroup.blocksRaycasts = false;
+
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 }

@@ -94,6 +94,13 @@
 //   아니라 "상반신 전용 레이어"에서 재생하도록 Animator Controller를 구성하세요. 스크립트는
 //   animator.SetTrigger("SwingAttack") 처럼 파라미터 이름으로만 트리거를 쏘기 때문에, 그 파라미터를
 //   어떤 레이어가 받아서 재생하든 코드 수정 없이 그대로 동작합니다.
+//   [주의 - Rig Animation Type이 반드시 Humanoid여야 합니다] 아래 3번의 Avatar Mask 바디 파트 체크박스는
+//   모델의 Rig Animation Type이 Humanoid로 설정되어 있을 때만 동작합니다(모델 파일 선택 → Inspector →
+//   Rig 탭 → Animation Type). Generic으로 되어있으면 바디 파트 그림 자체가 비활성화되어 체크를 해도
+//   아무 효과가 없고, Appear 등 Base Layer 트리거는 멀쩡히 동작하는데 새로 만든 레이어의 공격
+//   트리거만 재생되지 않는(레이어가 있는지조차 알 수 없는) 증상으로 나타납니다 - 이땐 Mask를
+//   Transform 목록 기반으로 다시 만들거나, Rig 탭에서 Animation Type을 Humanoid로 바꾸고 Apply하면
+//   됩니다(모델이 실제로 휴머노이드 골격 구조를 따르고 있다면 바꾸는 쪽이 간단합니다).
 //   1) Animator 창 좌측 상단에서 Layers 옆 + 버튼으로 새 레이어(예: "UpperBody")를 추가합니다.
 //   2) 새 레이어를 선택하고 톱니바퀴(설정) 아이콘 클릭 → Weight를 1로, Mask에는 아래에서 만들
 //      Avatar Mask를 지정합니다. Blending은 보통 Override로 둡니다.
@@ -109,6 +116,7 @@
 //      하반신 트랙을 걸러주므로 하반신 움직임은 자동으로 무시됩니다 (클립을 다시 만들 필요 없음).
 // ============================================================================
 
+using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(MonsterStats))]
@@ -216,6 +224,14 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
               "필드에 연결하세요. 비워두면 재생하지 않습니다.")]
     public string waveCastVfxName;
 
+    [Header("컷씬 연출 전용 - PlayShockwaveForCutscene")]
+    [Tooltip("PlayShockwaveForCutscene()으로 컷씬용 파도를 재생할 때, WaveAttack 애니메이터 트리거를 쏜 " +
+              "시점부터 실제 파도(VFX)가 발사되기까지의 지연 시간(초)입니다. 0이면 트리거와 동시에(기존처럼) " +
+              "바로 나갑니다 - 애니메이션에서 손을 뻗는 등 '시전 동작'이 먼저 보이고 그 다음에 파도가 나가도록 " +
+              "타이밍을 맞추고 싶을 때 조절하세요. 실제 전투용 FireWaveFan()/EnterWaveAttack()에는 영향을 " +
+              "주지 않습니다 - 그쪽은 이미 waveChargeDuration(차징 시간)으로 별도 타이밍을 갖고 있습니다.")]
+    public float cutsceneShockwaveDelay = 0.5f;
+
     [Header("높이 조절")]
     [Tooltip("휘두르기(Swing) 범위 표시 및 내려찍기 판정 위치의 높이 오프셋. 보스 위치 기준 위(+)/아래(-)로 조절됩니다. 모델 크기나 원하는 타격 지점에 맞춰 조정하세요.")]
     public float swingHeight = 0f;
@@ -251,7 +267,20 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     private void Awake()
     {
         if (animator == null) animator = GetComponent<Animator>();
-        if (animator == null) animator = GetComponentInChildren<Animator>();
+        // includeInactive: true가 반드시 필요합니다 - 이 보스는 "Appear하기 전까지 비활성화" 컨벤션상
+        // 씬 시작부터 오브젝트 전체가 꺼져있을 수 있는데(파일 상단 [씬 준비] 8번 참고), 그 상태에서
+        // Animator가 본체가 아니라 자식(예: "Model") 오브젝트에 붙어있고 그 자식마저 비활성 상태라면,
+        // includeInactive 없이는(기본값 false) 찾지 못해 animator가 계속 null로 남습니다 - 그러면
+        // PlayAppearAnimation()/EnterSwingAttack() 등의 "if (animator != null)" 가드가 조용히 아무 것도
+        // 안 하고 넘어가서, 에러 하나 없이 애니메이션만 재생되지 않는 것처럼 보입니다.
+        if (animator == null) animator = GetComponentInChildren<Animator>(true);
+
+        if (animator == null)
+        {
+            Debug.LogWarning($"[MiddleSlimeBoss] '{name}'에서 Animator를 찾지 못했습니다 - Appear/SwingAttack/" +
+                              "WaveAttack/Die 애니메이션이 전혀 재생되지 않습니다. Animator 필드를 직접 " +
+                              "연결하거나, 본체(또는 자식)에 Animator 컴포넌트가 있는지 확인하세요.", this);
+        }
 
         stats = GetComponent<MonsterStats>();
         lootDropper = GetComponent<LootDropper>();
@@ -631,7 +660,27 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
 
         if (animator != null) animator.SetTrigger(WaveAttackParam);
 
-        FireWaveFanCore(origin, forward, default, 0f);
+        // 애니메이터 트리거는 위에서 즉시 쐈지만(그래야 모션이 바로 시작합니다), 실제 파도(VFX/판정)는
+        // cutsceneShockwaveDelay초만큼 기다렸다가 나가도록 분리했습니다 - 시전 동작이 먼저 보이고 그
+        // 다음에 파도가 나가는 자연스러운 타이밍을 위해서입니다(cutsceneShockwaveDelay 필드 참고).
+        if (cutsceneShockwaveDelay > 0f)
+        {
+            StartCoroutine(FireWaveFanCoreDelayed(origin, forward, default, 0f, cutsceneShockwaveDelay));
+        }
+        else
+        {
+            FireWaveFanCore(origin, forward, default, 0f);
+        }
+    }
+
+    /// <summary>PlayShockwaveForCutscene(Vector3)가 cutsceneShockwaveDelay > 0일 때 사용하는 지연 발사용
+    /// 코루틴입니다. delay초만큼 기다린 뒤 FireWaveFanCore()를 그대로 호출합니다 - 대기 중에 이 보스가
+    /// 파괴되거나 비활성화되면(예: 컷씬이 도중에 끊기는 극단적인 경우) 코루틴도 같이 멈추므로 별도의
+    /// null 체크가 필요 없습니다.</summary>
+    private IEnumerator FireWaveFanCoreDelayed(Vector3 origin, Vector3 forward, LayerMask hitMaskToUse, float damagePercentToUse, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        FireWaveFanCore(origin, forward, hitMaskToUse, damagePercentToUse);
     }
 
     // ------------------------------------------------------------------
@@ -681,6 +730,12 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         Vector3 lootOrigin = lootDropPoint != null ? lootDropPoint.position : transform.position;
         lootDropper.DropLoot(lootOrigin); // 지정한(또는 죽은) 위치를 기준으로 전리품을 흩뿌립니다 (보스 전용 Loot Table을 연결해두면 됩니다).
         lootDropper.DropRewards(lootOrigin); // 경험치/골드 오브젝트를 흩뿌립니다 (자동으로 플레이어에게 흡수됩니다).
+
+        // [퀘스트 Kill 목표 연동] 일반 몬스터는 MonsterFSM.ChangeState(State.Die)가 이 호출을 대신 해주지만,
+        // 이 보스는 MonsterFSM을 상속하지 않는 완전히 별도의 FSM이라 그 훅을 타지 않습니다 - 여기서 직접
+        // 호출하지 않으면 "MiddleSlime 처치" Kill 목표를 가진 퀘스트가 이 보스를 잡아도 절대 카운트되지
+        // 않습니다(QuestManager.ReportKill() 참고). QuestManager가 없는 테스트 씬에서도 안전합니다.
+        QuestManager.Instance?.ReportKill(stats.monsterId);
 
         if (animator != null) animator.SetTrigger(DieParam);
 
