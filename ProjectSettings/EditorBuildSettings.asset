@@ -6,6 +6,10 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/The_Viking_Village.unity
-    guid: 00000000000000000000000000000000
+    path: Assets/1.Scenes/LobbyScene.unity
+    guid: 159a9094ff4e39443bd03df23ad3d8d3
+  - enabled: 1
+    path: Assets/1.Scenes/IngameScene.unity
+    guid: 99c9720ab356a0642a771bea13969a05
   m_configObjects: {}
+  m_UseUCBPForAssetBundles: 0

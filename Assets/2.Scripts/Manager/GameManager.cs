@@ -56,6 +56,13 @@
 //   FadeIn으로 되돌립니다. 게임 오버로 인한 재시작이 아닌(예: 메인 메뉴에서 처음 씬을 불러오는) 일반적인
 //   씬 전환에는 gameOverActive가 꺼져있으니 전혀 영향을 주지 않습니다.
 //
+// [일반적인 씬 전환 - LoadSceneWithFade()]
+//   게임 오버 재시작(위 [게임 오버 화면 자동 리셋])과는 별개로, 로비 → 인게임처럼 "페이드 아웃 →
+//   씬 로드 → 페이드 인"이 필요한 모든 일반적인 씬 전환에 그대로 쓸 수 있는 범용 함수입니다
+//   (UILobby.cs 참고). gameOverActive와는 다른 별도의 pendingFadeInDuration으로 다음 sceneLoaded
+//   때 얼마 동안 페이드 인할지 기억해뒀다가, HandleSceneLoaded()에서 자동으로 처리합니다 - 게임
+//   오버 재시작 경로와 이 경로는 서로 독립적이라 섞여도 안전합니다(둘 다 필요하면 둘 다 실행됩니다).
+//
 // [씬 재시작 시 정적 오브젝트 풀 캐시 초기화 - 중요]
 //   NPCNameplate/MonsterHealthBar/RewardOrb/LootPickup은 전부 프리팹별 GameObjectPool을 static
 //   Dictionary에 캐싱해두는 방식을 씁니다(각 스크립트 상단 주석 참고) - 원래는 "인게임 씬이 플레이
@@ -120,6 +127,11 @@ public class GameManager : MonoBehaviour
     private Tween fadeTween;
     private bool gameOverActive;
 
+    // LoadSceneWithFade()가 다음 sceneLoaded 시점에 얼마 동안 페이드 인할지 기억해두는 용도입니다.
+    // null이면 "이번 씬 로드는 LoadSceneWithFade()를 거치지 않았다"는 뜻이라 HandleSceneLoaded()가
+    // 아무 것도 하지 않습니다(파일 상단 [일반적인 씬 전환] 참고).
+    private float? pendingFadeInDuration;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -171,11 +183,22 @@ public class GameManager : MonoBehaviour
     /// 아무 것도 하지 않고 조용히 넘어갑니다.</summary>
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (!gameOverActive) return;
-        gameOverActive = false;
+        if (gameOverActive)
+        {
+            gameOverActive = false;
+            GameOver?.Hide();
+            FadeIn(restartFadeInDuration);
+        }
 
-        GameOver?.Hide();
-        FadeIn(restartFadeInDuration);
+        // 게임 오버 재시작과는 별개의 경로입니다 - LoadSceneWithFade()로 불러온 씬이라면(로비 →
+        // 인게임 등) 여기서 자동으로 페이드 인까지 이어줍니다. 두 경로 모두 해당하는 특이 상황이어도
+        // 서로 독립적이라 각자 정상적으로 페이드 인됩니다.
+        if (pendingFadeInDuration.HasValue)
+        {
+            float duration = pendingFadeInDuration.Value;
+            pendingFadeInDuration = null;
+            FadeIn(duration);
+        }
     }
 
     /// <summary>화면을 duration초에 걸쳐 서서히 까맣게(알파 0 → 1) 만듭니다. 시작하자마자 뒤쪽 클릭이
@@ -238,5 +261,22 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning("[GameManager] UIGameOver가 연결되어 있지 않아 게임 오버 화면을 띄울 수 없습니다. " +
                               "GameManager의 자식으로 UIGameOver를 붙여주세요.", this);
         }
+    }
+
+    /// <summary>화면을 fadeOutDuration초에 걸쳐 까맣게 만든 뒤 sceneName을 불러오고, 그 씬이 다
+    /// 준비되면 fadeInDuration초에 걸쳐 다시 보이게 합니다. 로비 → 인게임처럼 일반적인 씬 전환에 그대로
+    /// 쓰세요(UILobby.cs 참고, 파일 상단 [일반적인 씬 전환] 참고). 게임 오버 재시작(TriggerGameOver())과는
+    /// 완전히 독립적인 경로입니다.</summary>
+    public void LoadSceneWithFade(string sceneName, float fadeOutDuration, float fadeInDuration)
+    {
+        StartCoroutine(LoadSceneWithFadeRoutine(sceneName, fadeOutDuration, fadeInDuration));
+    }
+
+    private IEnumerator LoadSceneWithFadeRoutine(string sceneName, float fadeOutDuration, float fadeInDuration)
+    {
+        yield return FadeOut(fadeOutDuration).WaitForCompletion();
+
+        pendingFadeInDuration = fadeInDuration; // 다음 sceneLoaded 때 HandleSceneLoaded()가 자동으로 페이드 인합니다.
+        SceneManager.LoadScene(sceneName);
     }
 }
