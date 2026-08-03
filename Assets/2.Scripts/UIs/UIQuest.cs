@@ -156,6 +156,18 @@ public class UIQuest : MonoBehaviour, IUIWindow
         else UICanvas.Instance.OpenUI(gameObject);
     }
 
+    /// <summary>X(나가기) 버튼 OnClick 전용입니다. ToggleQuest()는 이 창이 열려있는 동안만 호출될 것을
+    /// 전제로 하면 결과가 완전히 같지만, UICharacterInfo.ClickExitButton()/UIOption.ClickExitButton()과
+    /// 이름을 맞춰서 다른 창들과 똑같은 이름의 함수를 X 버튼에 연결할 수 있게 별도로 만들어뒀습니다.
+    /// [중요] 절대 Close()를 OnClick에 직접 연결하지 마세요 - Close()는 이 창을 "보이기/숨기기"만
+    /// 담당할 뿐 UICanvas.currentPopup을 비우거나 Time.timeScale을 되돌리지 않아서, 화면은 닫힌 것처럼
+    /// 보여도 게임 시간이 계속 멈춰있는 상태로 남는 버그가 생깁니다(IUIWindow.cs 상단 경고 참고 -
+    /// 실제로 이 버그가 보고되었습니다). 반드시 이 함수 또는 ToggleQuest()를 통해서만 닫으세요.</summary>
+    public void ClickExitButton()
+    {
+        UICanvas.Instance.CloseUI(gameObject);
+    }
+
     /// <summary>IUIWindow 구현. UICanvas.OpenUI()가 호출합니다 - 직접 호출하지 말고 ToggleQuest()나
     /// UICanvas.Instance.OpenUI(gameObject)를 쓰세요.</summary>
     public void Open()

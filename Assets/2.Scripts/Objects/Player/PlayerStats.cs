@@ -486,6 +486,15 @@ public class PlayerStats : MonoBehaviour, IDamageable
         currentHP = Mathf.Min(TotalHP, currentHP + amount);
     }
 
+    /// <summary>HP와 MP를 각각의 최대치로 즉시 꽉 채웁니다. currentHP/currentMP는 이 클래스 밖에서 직접
+    /// 대입할 수 없는 private 필드라, 리스폰(PlayerController.Respawn())처럼 "죽었다가 위치만 초기화하며
+    /// 부활"하는 흐름에서 HP/MP를 완전히 회복시키고 싶을 때는 Heal() 대신 이 함수를 호출하세요.</summary>
+    public void FullRestore()
+    {
+        currentHP = TotalHP;
+        currentMP = TotalMP;
+    }
+
     /// <summary>필살기 에너지를 amount만큼 충전합니다. AttackHitbox가 기본 공격/스킬 적중 시 호출합니다
     /// (판정 하나당 한 번만 - 여러 대상을 동시에 맞혀도 중복 충전되지 않습니다). maxEnergy를 넘지 않습니다.</summary>
     public void AddEnergy(float amount)

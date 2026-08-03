@@ -232,7 +232,7 @@ Material:
     - _Vector4: {r: 0, g: 0, b: 0, a: 0}
     - _Wave_Direction: {r: 0.5, g: 0.1, b: 0, a: 0}
     - _Waves_direction: {r: 1, g: 1, b: 1, a: 0}
-    - _deep_water_color: {r: 0.10448727, g: 0.032707363, b: 0.1981132, a: 1}
+    - _deep_water_color: {r: 0.19035272, g: 0, b: 0.24528301, a: 1}
     - _foam_color: {r: 1, g: 1, b: 1, a: 1}
     - _shallow_water_color: {r: 0.45736232, g: 0.3949359, b: 0.6698113, a: 0.2784314}
   m_BuildTextureStacks: []

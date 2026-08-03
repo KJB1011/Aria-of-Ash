@@ -29,6 +29,15 @@
 //   열리면 그 UI가 Cursor.lockState를 None으로 풀어두기 때문에, 이 체크 하나로 모든 UI가
 //   열려있는 동안의 회전/줌을 한 번에 막을 수 있습니다. 이게 없으면 인벤토리의 스크롤 뷰나
 //   스킬 트리 위에서 휠을 굴렸을 때 UI 스크롤과 카메라 줌이 동시에 반응해버립니다.
+//
+// [UI가 열려있는 동안엔 Alt 커서 토글도 막습니다]
+//   OnToggleCursor()는 UICanvas.Instance.IsUIOpen(인벤토리/캐릭터정보/옵션/퀘스트 팝업 +
+//   UINotice/UIYesNo/UITrash/UIExit + 대화/컷씬까지 전부 포함)이 true이면 Alt 입력 자체를
+//   무시합니다 - 이 가드가 없으면, UI가 열려서 이미 커서가 풀려있는(None) 상태에서 Alt를 누르는
+//   순간 "지금 Locked가 아니니 잠근다"는 토글 로직 때문에 커서가 갑자기 잠기고(보이지 않게 되고)
+//   더 이상 그 UI를 마우스로 클릭할 수 없게 되는 문제가 있었습니다. 각 UI는 자기가 열릴 때/닫힐 때
+//   커서 상태를 알아서 저장/복원하므로(UIInventory.Open()/Close() 등 참고), 열려있는 동안은
+//   이 스크립트가 끼어들 필요가 없습니다.
 // ============================================================================
 
 using UnityEngine;
@@ -185,6 +194,11 @@ public class CameraController : MonoBehaviour
 
     private void OnToggleCursor(InputAction.CallbackContext ctx)
     {
+        // UI(인벤토리/캐릭터정보/옵션/퀘스트/알림/확인창/대화/컷씬 등, UICanvas.IsUIOpen 참고)가
+        // 열려있는 동안은 Alt로 커서를 다시 잠그지 않습니다 - 그 UI를 더 이상 클릭할 수 없게 되는
+        // 문제를 막기 위해서입니다(파일 상단 [UI가 열려있는 동안엔 Alt 커서 토글도 막습니다] 참고).
+        if (UICanvas.Instance != null && UICanvas.Instance.IsUIOpen) return;
+
         SetCursorLocked(Cursor.lockState != CursorLockMode.Locked);
     }
 

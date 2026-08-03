@@ -35,6 +35,17 @@
 //   목표를 PlayerInventory.Instance.GetItemCount(item) 기준으로 다시 계산합니다 - 누적 획득량이 아니라
 //   "지금 보유한 개수" 기준이라, 아이템을 쓰거나 버리면 진행도도 자연스럽게 같이 줄어듭니다.
 //
+//   [완료 시 아이템 소모]
+//   퀘스트가 실제로 완료되는 순간(CompleteQuest() - 자동 완료든 TurnInQuest 보고든 경로 상관없이)
+//   ConsumeCollectObjectiveItems()가 그 퀘스트의 모든 Collect 목표에 대해 targetItem을 targetCount만큼
+//   PlayerInventory.Instance.RemoveItem()으로 실제로 차감합니다 - "모아오기" 퀘스트를 깨면 그 재료가
+//   진짜로 없어지는 게 자연스럽기 때문입니다. 혹시 완료 시점 사이에(예: requiresTurnIn 퀘스트를
+//   보고하기 전에 인벤토리에서 그 재료를 버리는 등) 실제 보유량이 targetCount보다 부족해져 있어도
+//   RemoveItem()이 조용히 false를 반환할 뿐 예외가 나지 않으므로 퀘스트 완료/보상 지급 자체는 항상
+//   정상적으로 진행됩니다. 이 차감이 PlayerInventory.OnInventoryChanged를 다시 발생시켜서 같은
+//   아이템을 쓰는 다른 진행 중인 Collect 퀘스트의 진행도도 함께 자동으로 재계산됩니다(activeQuests에서
+//   이미 빠진 이 퀘스트 자신은 다시 처리되지 않습니다 - 아래 CompleteQuest() 참고).
+//
 // [완료 / 보상 - 두 가지 방식]
 //   QuestData.requiresTurnIn이 false(기본값)면, 모든 목표의 카운트가 각자의 targetCount 이상이 되는
 //   즉시 CheckCompletion()이 CompleteQuest()를 호출해서 activeQuests에서 completedQuests로 옮기고,
@@ -307,6 +318,25 @@ public class QuestManager : MonoBehaviour
         return changed;
     }
 
+    /// <summary>data의 모든 Collect 목표에 대해 targetItem을 targetCount만큼 인벤토리에서 실제로
+    /// 차감합니다. CompleteQuest()가 activeQuests에서 이 퀘스트를 뺀 직후(파일 상단 [Collect 목표]의
+    /// [완료 시 아이템 소모] 참고)에만 호출하세요 - 그래야 이 호출이 유발하는 PlayerInventory.
+    /// OnInventoryChanged → HandleInventoryChanged() 재계산이 이미 완료된 이 퀘스트 자신을 다시
+    /// 건드리지 않습니다. RemoveItem()이 부족해서 실패해도(false) 무시하고 계속 진행합니다 - 재료가
+    /// 이미 다른 곳에서 소모된 드문 경우에도 퀘스트 완료 자체는 막히지 않아야 하기 때문입니다.</summary>
+    private void ConsumeCollectObjectiveItems(QuestData data)
+    {
+        if (PlayerInventory.Instance == null) return;
+
+        foreach (QuestData.Objective obj in data.objectives)
+        {
+            if (obj.type != QuestData.ObjectiveType.Collect) continue;
+            if (obj.targetItem == null || obj.targetCount <= 0) continue;
+
+            PlayerInventory.Instance.RemoveItem(obj.targetItem, obj.targetCount);
+        }
+    }
+
     /// <summary>목표가 방금 전부 채워졌는지 확인합니다. requiresTurnIn이 false인 퀘스트는 바로
     /// CompleteQuest()로 넘어가고, true인 퀘스트는 아직 완료 처리하지 않고 "보고 대기" 상태로만
     /// 표시합니다(실제 완료는 TurnInQuest() 호출을 기다립니다).</summary>
@@ -333,9 +363,11 @@ public class QuestManager : MonoBehaviour
     private void CompleteQuest(QuestProgress progress)
     {
         progress.isCompleted = true;
-        activeQuests.Remove(progress);
+        activeQuests.Remove(progress); // ConsumeCollectObjectiveItems()가 유발하는 재계산에서 이 퀘스트
+                                       // 자신은 더 이상 대상이 아니도록, 아이템을 차감하기 전에 먼저 뺍니다.
         completedQuests.Add(progress);
 
+        ConsumeCollectObjectiveItems(progress.data);
         GrantRewards(progress.data);
 
         OnQuestCompleted?.Invoke(progress);

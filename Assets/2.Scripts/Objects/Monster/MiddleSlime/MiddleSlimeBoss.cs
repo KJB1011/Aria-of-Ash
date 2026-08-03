@@ -245,6 +245,12 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     public float lootDropHeight = 1f;
 
     private State currentState;
+
+    /// <summary>지금 사망(Dead) 상태인지 여부입니다. MonsterFSM.CurrentState == State.Die와 같은 역할로,
+    /// 외부(GameManager.HealAllAliveMonsters() 등)에서 "이미 죽은 보스는 회복시키지 않는다"를
+    /// 판단할 때 사용하세요.</summary>
+    public bool IsDead => currentState == State.Dead;
+
     private AttackType lastAttack = AttackType.Wave; // 처음엔 반대 패턴(Swing)부터 나가도록 초기값을 Wave로 설정
     private float stateTimer;
     private MonsterStats stats;

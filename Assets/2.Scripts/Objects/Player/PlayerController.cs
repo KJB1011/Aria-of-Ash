@@ -265,6 +265,13 @@ public class PlayerController : MonoBehaviour
               "자동으로 이 시간만큼 조작이 잠깁니다.")]
     public float hitStunDuration = 0.4f;
 
+    [Header("리스폰 (사망 시 위치만 초기화 - 씬을 다시 불러오지 않음)")]
+    [Tooltip("사망 후 부활할 위치/방향입니다. 씬에 빈 오브젝트를 하나 만들어 원하는 리스폰 지점에 놓고 " +
+              "여기에 연결하세요. 비워두면 경고 로그를 남기고 죽은 자리에서 그대로(콜라이더/조작만 복구해서) " +
+              "부활합니다 - Die()가 GameManager.Instance.TriggerRespawn(this)를 호출하면 GameManager가 " +
+              "사망 연출(대기 → 페이드 아웃)까지 마친 뒤 Respawn()을 호출해줍니다(GameManager.cs 참고).")]
+    public Transform respawnPoint;
+
     [Header("디버그")]
     [Tooltip("콘솔에 기본 공격 콤보의 각 이벤트(타격 시작 / 콤보 창 열림 / 입력 무시 / 모션 종료) 발생 시각을 " +
               "로그로 남깁니다. 특정 타에서만 이상하게 동작할 때, 코드 문제인지 애니메이터/클립 설정 문제인지 " +
@@ -1484,9 +1491,10 @@ public class PlayerController : MonoBehaviour
     /// 재생하고, 이후 모든 조작(이동/회전/공격/스킬/대시/피격)을 영구히 막습니다. 자신(과 자식
     /// 오브젝트)의 모든 Collider(CharacterController 포함)도 꺼서, 죽은 뒤에는 몬스터의 공격 판정
     /// (OverlapSphere, 투사체 트리거 등)에 더 이상 걸리지 않습니다 - 몬스터의 DisableColliders()와
-    /// 같은 이유입니다. 마지막으로 GameManager.TriggerGameOver()를 호출해서 화면 페이드 아웃 →
-    /// 게임 오버 화면 순서로 이어지게 합니다(GameManager.cs/UIGameOver.cs 참고). 부활/리스폰 로직은
-    /// 아직 없으니 필요하면 이어서 만들어드릴 수 있습니다. 이미 사망한 상태면 아무것도 하지 않습니다.</summary>
+    /// 같은 이유입니다. 마지막으로 GameManager.TriggerRespawn(this)를 호출해서 사망 연출(대기 →
+    /// 페이드 아웃) 이후 Respawn()이 호출되도록 예약합니다(GameManager.cs 참고) - 씬을 다시 불러오지
+    /// 않고 위치/HP/MP만 초기화하는 방식이라 퀘스트/인벤토리/레벨 진행도는 그대로 유지됩니다.
+    /// 이미 사망한 상태면 아무것도 하지 않습니다.</summary>
     public void Die()
     {
         if (isDead) return;
@@ -1509,7 +1517,52 @@ public class PlayerController : MonoBehaviour
 
         if (animator != null) animator.SetTrigger(DieParam);
 
-        GameManager.Instance?.TriggerGameOver();
+        GameManager.Instance?.TriggerRespawn(this);
+    }
+
+    /// <summary>GameManager.TriggerRespawn()이 사망 연출(대기 → 페이드 아웃)까지 끝난 뒤, 화면이 완전히
+    /// 까매진 상태에서 호출합니다. respawnPoint로 순간이동시키고(TeleportTo() 재사용), 죽으면서 꺼뒀던
+    /// 콜라이더를 다시 켜고, isDead를 풀어 조작을 되돌리고, Animator를 Rebind()로 완전히 초기화해서
+    /// Die 트리거/애니메이션 상태가 남아있지 않게 합니다. HP/MP 회복은 playerStats.FullRestore()에
+    /// 위임합니다(퀘스트/인벤토리/레벨 등 다른 진행도는 씬을 다시 불러오지 않으므로 자연히 그대로
+    /// 유지됩니다). 아직 죽은 상태가 아니면(중복 호출 등) 아무것도 하지 않습니다.</summary>
+    public void Respawn()
+    {
+        if (!isDead) return;
+
+        isDead = false;
+        EnableColliders();
+
+        // [중요] EnableColliders()는 하위의 "모든" Collider를 무조건 켜버리는데, 그 안에는 AttackAreaController
+        // 밑의 공격 히트박스(Attack1/Attack2/Attack3/Skill 등, AttackHitbox.cs)도 포함되어 있습니다. 이
+        // 히트박스들은 평소엔 꺼져있다가(boxCollider.enabled = false) Animation Event(OnAttackHitboxOpen)가
+        // 호출될 때만 잠깐 켜지는 방식이라(AttackAreaController.OpenHitbox/CloseHitbox 참고), 방금 EnableColliders()가
+        // 이 히트박스들까지 전부 켜버리면 공격을 누르지 않았는데도 그 판정 범위에 몬스터가 들어오는 순간
+        // 계속 데미지가 들어가는 문제가 생깁니다(실제로 보고된 증상 - "공격을 누르지 않았는데 공격판정이
+        // 일어남"). Die()에서 이미 한 번 CloseAllHitboxes()로 닫아뒀던 것과 똑같이, 여기서도 EnableColliders()
+        // 직후 다시 닫아서 "몸통 콜라이더는 켜져있고 공격 히트박스만 꺼져있는" 정상 상태로 되돌립니다.
+        if (attackArea != null) attackArea.CloseAllHitboxes();
+
+        if (respawnPoint != null)
+        {
+            TeleportTo(respawnPoint.position, respawnPoint.rotation);
+        }
+        else
+        {
+            Debug.LogWarning("[PlayerController] Respawn Point가 연결되어 있지 않아 죽은 자리에서 그대로 " +
+                              "부활합니다. 인스펙터에서 Respawn Point를 씬의 리스폰 지점 Transform에 연결해주세요.", this);
+        }
+
+        if (playerStats != null) playerStats.FullRestore();
+
+        if (animator != null)
+        {
+            // Rebind()는 Animator를 처음 초기화된 상태(Entry/기본 상태, 모든 파라미터 기본값)로 되돌려서,
+            // Die 트리거로 들어갔던 사망 상태/트리거 잔여값을 확실하게 정리합니다. 곧바로 Update()를
+            // 호출해서 그 결과를 이번 프레임에 바로 반영합니다(다음 프레임까지 기다리지 않아도 됨).
+            animator.Rebind();
+            animator.Update(0f);
+        }
     }
 
     /// <summary>자신(과 자식 오브젝트) 위의 모든 Collider를 꺼서 더 이상 물리 판정에 걸리지 않도록 합니다.
@@ -1521,6 +1574,17 @@ public class PlayerController : MonoBehaviour
         foreach (Collider col in colliders)
         {
             col.enabled = false;
+        }
+    }
+
+    /// <summary>DisableColliders()의 반대입니다. Respawn() 전용 - 죽으면서 꺼뒀던 모든 Collider(CharacterController
+    /// 포함)를 다시 켭니다.</summary>
+    private void EnableColliders()
+    {
+        Collider[] colliders = GetComponentsInChildren<Collider>(true);
+        foreach (Collider col in colliders)
+        {
+            col.enabled = true;
         }
     }
 

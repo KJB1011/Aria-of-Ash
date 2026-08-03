@@ -9,7 +9,7 @@
 //   가정합니다. 각 노드는 SkillTreeNode 컴포넌트를 붙인 버튼이고, SkillTreeData(ScriptableObject,
 //   LootItemData와 같은 방식)를 하나씩 참조합니다. 노드를 클릭하면(버튼 OnClick → SkillTreeNode.
 //   OnClickNode() → 부모 계층에서 UICharacterInfo를 찾아 SelectSkillNode(this) 호출) 오른쪽에
-//   아이콘/이름/타입/설명과 해제(또는 이미 해제됐다면 "완료") 상태가 표시됩니다.
+//   아이콘/이름/타입/설명과 해제(또는 이미 해제됐다면 "OK") 상태가 표시됩니다.
 //   UNLOCK 버튼(ClickSkillUpgradeButton)은 한계돌파와 완전히 같은 방식으로 재료 2종 + 골드를
 //   확인/소모한 뒤 SkillTreeNode.MarkUnlocked()를 호출해서 그 노드를 해제합니다 - 재료/골드
 //   확인·소모 로직(HasEnoughMaterialsAndGold)은 한계돌파와 공유합니다.
@@ -82,9 +82,10 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
     [SerializeField] GameObject _uiSkillInfo;
 
     [Header("CharInfo")]
-    [Tooltip("플레이어 닉네임 표시용입니다. 지금은 닉네임을 들고 있는 데이터(PlayerStats 등)가 아직 없어서 " +
-              "RefreshCharInfo()가 자동으로 채워주지는 않습니다 - 나중에 닉네임 시스템이 생기면 SetPlayerName()으로 " +
-              "채우거나, RefreshCharInfo()에 한 줄 추가해서 연결하세요.")]
+    [Tooltip("플레이어 닉네임 표시용입니다. LobbyScene의 아이디 입력창(UILobby.cs)에 적은 값이 " +
+              "GameManager.PlayerId로 넘어와서, Start()에서 자동으로 SetPlayerName()에 채워집니다 - " +
+              "따로 연결하거나 호출할 필요 없습니다. 로비를 거치지 않고 IngameScene을 바로 테스트하는 " +
+              "등 GameManager.Instance.PlayerId가 비어있는 경우에는 빈 문자열이 표시됩니다.")]
     [SerializeField] TextMeshProUGUI _txtPlayerName;
     [SerializeField] TextMeshProUGUI _txtCharLevel;
     [SerializeField] TextMeshProUGUI _txtCharHP;
@@ -195,6 +196,12 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
 
         PlayerCurrency.Instance.OnGoldChanged += HandleGoldChanged;
         subscribedToCurrency = true;
+
+        // LobbyScene의 아이디 입력창(UILobby.cs)에서 넘어온 값을 표시합니다. GameManager는
+        // DontDestroyOnLoad라 씬이 바뀌어도 값이 그대로 유지되어 있습니다. 로비를 거치지 않고
+        // IngameScene을 바로 테스트하는 등 GameManager.Instance가 없거나 PlayerId가 비어있어도
+        // PlayerId 자체가 빈 문자열을 기본값으로 갖고 있으므로(GameManager.cs 참고) 안전합니다.
+        SetPlayerName(GameManager.Instance != null ? GameManager.Instance.PlayerId : "");
     }
 
     private void Update()
@@ -289,11 +296,24 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
         _imgSideCharBlack.gameObject.SetActive(!showCharInfo);
         _imgSideSkillBlack.gameObject.SetActive(showCharInfo);
 
-        // SkillInfo 탭을 처음 열었는데 아직 아무 노드도 선택된 적이 없다면, 오른쪽 정보 패널이
-        // 비어있지 않도록 0번 노드를 자동으로 선택해줍니다(skillNodes를 연결해둔 경우에만).
-        if (!showCharInfo && selectedSkillNode == null && skillNodes != null && skillNodes.Length > 0)
+        if (!showCharInfo)
         {
-            SelectSkillNode(skillNodes[0]);
+            if (selectedSkillNode == null && skillNodes != null && skillNodes.Length > 0)
+            {
+                // SkillInfo 탭을 처음 열었는데 아직 아무 노드도 선택된 적이 없다면, 오른쪽 정보 패널이
+                // 비어있지 않도록 0번 노드를 자동으로 선택해줍니다(skillNodes를 연결해둔 경우에만) -
+                // SelectSkillNode() 내부에서 RefreshSkillInfo()까지 호출해주므로 따로 갱신할 필요가 없습니다.
+                SelectSkillNode(skillNodes[0]);
+            }
+            else
+            {
+                // 이미 선택해둔 노드가 있는 상태로 SkillInfo 탭을 다시 열 때도(예: CharInfo로 갔다가
+                // 되돌아오거나, 창을 닫았다가 재료를 모아서 다시 열 때) 한 번 갱신해줍니다 - 그 사이
+                // 인벤토리/골드가 바뀌었을 수 있는데, 창이 닫혀있는 동안은 HandleInventoryChanged()/
+                // HandleGoldChanged()가 isOpen 가드 때문에 갱신을 건너뛰므로 다시 열 때 최신 상태로
+                // 맞춰주지 않으면 예전 재료 수량 표시가 그대로 남아있게 됩니다.
+                RefreshSkillInfo();
+            }
         }
     }
 
@@ -509,7 +529,7 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
 
         if (selectedSkillNode.IsUnlocked)
         {
-            // 이미 해제된 노드는 재료 요구량 대신 "완료"를 보여줍니다.
+            // 이미 해제된 노드는 재료 요구량 대신 "OK"를 보여줍니다.
             SetCompletedText(_txtSkillUpgradeRequirements1Count);
             SetCompletedText(_txtSkillUpgradeRequirements2Count);
             if (_txtSkillUpgradeRequiredGold != null) _txtSkillUpgradeRequiredGold.text = "-";

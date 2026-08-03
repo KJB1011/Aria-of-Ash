@@ -29,18 +29,26 @@
 //   targetCanvas에 직접 연결하세요 - 그러면 자동 생성 없이 그 Canvas 아래에 알림 텍스트가 뜹니다.
 //
 // [고정 위치 - anchoredPosition]
-//   모든 알림 메세지는 항상 이 하나의 자리(anchoredPosition)에 뜹니다. 기본값(0, 200)은 화면
-//   정중앙 기준으로 위쪽 200px 지점입니다 - "화면 중앙에서 살짝 위쪽"에 맞춘 기본값이니, 원하는
+//   새로 뜨는 알림 메세지는 항상 이 하나의 자리(anchoredPosition)에서 시작합니다. 기본값(0, 200)은
+//   화면 정중앙 기준으로 위쪽 200px 지점입니다 - "화면 중앙에서 살짝 위쪽"에 맞춘 기본값이니, 원하는
 //   위치로 인스펙터에서 직접 조절하세요.
-//   [주의] 지금은 "고정된 한 자리"만 지원합니다 - 여러 알림이 거의 동시에 뜨면 같은 자리에
-//   겹쳐서 보입니다(순차적으로 아래로 쌓이는 큐/스택 방식이 아닙니다). 그런 동작이 필요해지면
-//   나중에 별도로 확장하면 됩니다.
+//
+// [여러 개가 동시에 뜰 때 - 스택 쌓기]
+//   Show()가 새 알림을 만들 때마다, 그 시점에 아직 화면에 떠 있는(페이드 인/유지/페이드 아웃 중인)
+//   기존 알림들을 전부 stackSpacing(px)만큼 위로 밀어올립니다 - 그래서 여러 알림이 짧은 시간 안에
+//   연달아 뜨면 최신 알림이 항상 anchoredPosition(맨 아래 고정 자리)에서 시작하고, 먼저 떴던
+//   알림일수록 그 위에 순서대로 쌓입니다(각 FloatingTextPopup이 매 프레임 stackMoveSpeed로 그
+//   목표 위치까지 부드럽게 밀려 올라갑니다 - FloatingTextPopup.AddStackOffset() 참고). 밀려 올라간
+//   채로 자기 lifetime이 끝나면 평소처럼 페이드 아웃되어 사라지고, 그 뒤로도 새 알림이 뜨면 남은
+//   알림들은 계속 위로 밀려 올라갑니다(사라진 알림이 있었다고 아래로 다시 채워지진 않습니다).
+//   stackSpacing을 0으로 두면 예전처럼 전부 같은 자리에 겹쳐서 뜹니다.
 //
 // [사용 예시]
 //   FloatingTextManager.Instance.Show("퀘스트 완료!");
 //   FloatingTextManager.Instance.Show("인벤토리가 가득 찼습니다", Color.red);
 // ============================================================================
 
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -64,6 +72,16 @@ public class FloatingTextManager : MonoBehaviour
     public int maxPoolSize = 20;
     [Tooltip("켜두면 Show()/반납 등 동작을 콘솔에 로그로 남깁니다.")]
     public bool debugLog = false;
+
+    [Header("스택 쌓기 (여러 개가 동시에 뜰 때)")]
+    [Tooltip("새 알림이 뜰 때마다 그 시점에 아직 화면에 떠 있는 기존 알림들을 위로 밀어올리는 간격(px)입니다. " +
+              "0으로 두면 예전처럼 전부 같은 자리(anchoredPosition)에 겹쳐서 뜹니다. 파일 상단 [여러 개가 동시에 " +
+              "뜰 때 - 스택 쌓기] 참고.")]
+    public float stackSpacing = 50f;
+
+    // 지금 화면에 떠 있는(아직 풀에 반납되지 않은) 알림들입니다 - Show()가 새 알림을 추가할 때 이 목록의
+    // 기존 항목들을 먼저 위로 밀어올린 뒤, 새 알림을 이 목록에 추가합니다. ReturnToPool()에서 제거됩니다.
+    private readonly List<FloatingTextPopup> activePopups = new List<FloatingTextPopup>();
 
     private static FloatingTextManager instance;
     public static FloatingTextManager Instance
@@ -133,6 +151,15 @@ public class FloatingTextManager : MonoBehaviour
             return null;
         }
 
+        // 새 알림이 기본 자리(anchoredPosition)를 차지하기 전에, 지금 떠 있는 기존 알림들을 먼저
+        // stackSpacing만큼 위로 밀어올립니다 - 그래야 최신 알림이 항상 맨 아래(기본 자리)에서 시작하고
+        // 먼저 떴던 알림일수록 그 위에 순서대로 쌓입니다.
+        foreach (FloatingTextPopup existing in activePopups)
+        {
+            existing.AddStackOffset(stackSpacing);
+        }
+        activePopups.Add(popup);
+
         popup.Play(message, color);
 
         if (debugLog) Debug.Log($"[FloatingTextManager] \"{message}\" 표시 (position={anchoredPosition})", spawned);
@@ -141,9 +168,13 @@ public class FloatingTextManager : MonoBehaviour
     }
 
     /// <summary>FloatingTextPopup이 자기 애니메이션을 끝내고 스스로 반납할 때 호출합니다.
-    /// 다른 곳에서 직접 호출할 일은 없습니다.</summary>
+    /// 다른 곳에서 직접 호출할 일은 없습니다. 스택 목록(activePopups)에서도 함께 제거해서, 이후에
+    /// 뜨는 새 알림이 이미 사라진 알림까지 밀어올리려 하지 않도록 합니다.</summary>
     public void ReturnToPool(GameObject instance)
     {
+        FloatingTextPopup popup = instance.GetComponent<FloatingTextPopup>();
+        if (popup != null) activePopups.Remove(popup);
+
         pool?.Release(instance);
     }
 

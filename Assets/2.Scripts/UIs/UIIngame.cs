@@ -83,9 +83,9 @@ public class UIIngame : MonoBehaviour
     [Tooltip("Plus/Minus 버튼을 누를 때마다 카메라 Orthographic Size가 이만큼 바뀝니다.")]
     public float minimapZoomStep = 5f;
     [Tooltip("Orthographic Size의 최소값(가장 확대된 상태 - 좁은 범위를 크게 보여줌).")]
-    public float minimapMinZoom = 10f;
+    public float minimapMinZoom = 30f;
     [Tooltip("Orthographic Size의 최대값(가장 축소된 상태 - 넓은 범위를 보여줌).")]
-    public float minimapMaxZoom = 60f;
+    public float minimapMaxZoom = 80f;
 
     private Transform playerTransform;
     private CanvasGroup canvasGroup;

@@ -12,6 +12,16 @@
 //   그 자체가 레이캐스트 이벤트를 받아야 동작하므로, blocksRaycasts는 보이는 동안(Show())만 켜고
 //   숨겨지면(Hide()) 다시 꺼서 뒤쪽 게임 화면 클릭을 막지 않도록 합니다.
 //
+// [정렬 - 완료 보고 대기 퀘스트를 맨 위로]
+//   여러 퀘스트를 동시에 진행 중일 때, 그중 하나라도 목표를 다 채워 완료 보고 대기(isReadyToTurnIn)
+//   상태가 되면 RefreshEntries()가 그 퀘스트(들)를 스크롤뷰 맨 위로 올려서 눈에 잘 띄게 합니다 -
+//   나머지 퀘스트는 원래 순서(추가된 순서)를 그대로 유지합니다(안정 정렬). Vertical Layout Group이
+//   Content의 자식 순서(sibling index)대로 위에서 아래로 배치한다는 전제로, 그냥 완료 보고 대기
+//   퀘스트부터 먼저 Instantiate해서 앞쪽 sibling index를 차지하게 만드는 방식입니다. OnQuestAdded/
+//   OnQuestProgressChanged/OnQuestReadyToTurnIn 중 무엇으로 RefreshEntries()가 호출됐든 매번 이
+//   기준으로 다시 정렬되므로, 완료 보고 대기 퀘스트는 그 상태가 풀릴 때(TurnInQuest)까지 계속 맨
+//   위에 고정되어 있습니다.
+//
 // [완료 연출 - OnQuestCompleted만 따로 처리]
 //   OnQuestAdded/OnQuestProgressChanged/OnQuestReadyToTurnIn은 그대로 HandleQuestChanged()가
 //   받아서 RefreshEntries()로 전체를 다시 그립니다. 하지만 OnQuestCompleted는 곧바로 다시 그리지
@@ -150,11 +160,15 @@ public class UIIngameQuest : MonoBehaviour
 
         if (QuestManager.Instance != null)
         {
+            // 완료 보고 대기(isReadyToTurnIn) 퀘스트를 먼저 만들어서 앞쪽 sibling index(=스크롤뷰 맨 위)를
+            // 차지하게 하고, 나머지는 그 뒤에 원래 순서 그대로 이어붙입니다(파일 상단 [정렬] 참고).
             foreach (QuestProgress progress in QuestManager.Instance.ActiveQuests)
             {
-                UIIngameQuestBar entry = Instantiate(_entryPrefab, _viewIngameQuest.content);
-                entry.Setup(progress);
-                activeEntries.Add(entry);
+                if (progress.isReadyToTurnIn) CreateEntry(progress);
+            }
+            foreach (QuestProgress progress in QuestManager.Instance.ActiveQuests)
+            {
+                if (!progress.isReadyToTurnIn) CreateEntry(progress);
             }
         }
 
@@ -162,6 +176,13 @@ public class UIIngameQuest : MonoBehaviour
         // 계속 보여야 합니다 - 연출 도중에 패널이 사라지면 안 되기 때문입니다.
         if (activeEntries.Count > 0 || completingEntries.Count > 0) Show();
         else Hide();
+    }
+
+    private void CreateEntry(QuestProgress progress)
+    {
+        UIIngameQuestBar entry = Instantiate(_entryPrefab, _viewIngameQuest.content);
+        entry.Setup(progress);
+        activeEntries.Add(entry);
     }
 
     private void Show()

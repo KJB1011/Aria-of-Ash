@@ -18,6 +18,9 @@
 //   Collect: targetItem을 지금 몇 개 갖고 있는지(PlayerInventory.GetItemCount - 누적 획득이 아니라
 //   "지금 보유한 개수" 기준입니다. 아이템을 쓰거나 버리면 진행도도 같이 줄어듭니다)를
 //   PlayerInventory.OnInventoryChanged가 발생할 때마다 다시 계산합니다(QuestManager.cs 참고).
+//   [완료 시 소모] 이 퀘스트가 실제로 완료되는 순간(자동 완료든 TurnInQuest 보고든) targetItem이
+//   targetCount만큼 인벤토리에서 자동으로 차감됩니다(QuestManager.ConsumeCollectObjectiveItems 참고) -
+//   "모아오기" 퀘스트를 깨면 그 재료를 NPC에게 실제로 건네준 것처럼 없어집니다.
 //   TalkToNpc: targetNpcId와 같은 npcId를 가진 NPC와 상호작용(F키)할 때마다(NPCTalker.Interact() →
 //   QuestManager.ReportTalkToNpc(npcId)) 카운트가 1씩 오릅니다 - Kill과 완전히 같은 방식이고,
 //   그 NPC의 대화 내용/분기와는 무관하게 상호작용 자체만으로 카운트됩니다(대화가 끝까지 진행됐는지는

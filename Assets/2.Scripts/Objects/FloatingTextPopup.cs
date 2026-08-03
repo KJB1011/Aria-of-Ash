@@ -59,10 +59,22 @@ public class FloatingTextPopup : MonoBehaviour, IPoolable
         new Keyframe(0f, 0f, 0f, 2f),
         new Keyframe(1f, 1f, 0f, 0f));
 
+    [Header("스택 쌓기 (FloatingTextManager 전용)")]
+    [Tooltip("새 알림이 떠서 FloatingTextManager.AddStackOffset()이 호출될 때, 목표 위치까지 얼마나 " +
+              "빠르게(부드럽게) 밀려 올라갈지의 속도입니다. 값이 클수록 거의 즉시 밀려납니다.")]
+    public float stackMoveSpeed = 12f;
+
     private RectTransform rectTransform;
     private Color baseColor;
     private Vector2 baseAnchoredPosition;
     private Coroutine animateRoutine;
+
+    // 스택으로 밀려 올라간 정도(px, 위 방향이 +)입니다. targetStackOffsetY는 AddStackOffset()이 호출될
+    // 때마다 누적되는 "도착해야 할 목표값"이고, stackOffsetY는 매 프레임 stackMoveSpeed로 그 목표를
+    // 부드럽게 따라가는 "지금 실제로 적용된 값"입니다 - 이렇게 나눠둔 덕분에 새 알림이 연달아 떠서
+    // 목표가 계속 바뀌어도 순간이동하듯 튀지 않고 자연스럽게 계속 밀려 올라갑니다.
+    private float stackOffsetY;
+    private float targetStackOffsetY;
 
     private void Awake()
     {
@@ -95,7 +107,9 @@ public class FloatingTextPopup : MonoBehaviour, IPoolable
     }
 
     /// <summary>IPoolable 구현. 풀에서 꺼내져 활성화된 직후 호출됩니다. 실제 값 채우기는 뒤이어
-    /// 호출되는 Play()가 담당하므로, 여기서는 이전 사용의 흔적(진행 중이던 코루틴/알파)만 정리합니다.</summary>
+    /// 호출되는 Play()가 담당하므로, 여기서는 이전 사용의 흔적(진행 중이던 코루틴/알파/스택 오프셋)만
+    /// 정리합니다 - 스택 오프셋을 리셋하지 않으면 재사용된 인스턴스가 이전 생애의 밀려 올라간 위치에서
+    /// 그대로 다시 시작해버립니다.</summary>
     public void OnGetFromPool()
     {
         if (animateRoutine != null)
@@ -105,6 +119,18 @@ public class FloatingTextPopup : MonoBehaviour, IPoolable
         }
 
         if (canvasGroup != null) canvasGroup.alpha = 0f; // Play()의 페이드 인이 0에서부터 시작하도록.
+
+        stackOffsetY = 0f;
+        targetStackOffsetY = 0f;
+    }
+
+    /// <summary>FloatingTextManager 전용입니다. 새 알림이 하나 더 뜰 때, 이미 떠 있는 이 알림을 위로
+    /// deltaY(px)만큼 더 밀어올립니다 - 누적되므로 그 뒤에도 새 알림이 계속 뜨면 계속 더 위로
+    /// 쌓입니다. 즉시 이동하지 않고 AnimateAndRelease()가 매 프레임 stackMoveSpeed로 이 목표값을
+    /// 부드럽게 따라갑니다.</summary>
+    public void AddStackOffset(float deltaY)
+    {
+        targetStackOffsetY += deltaY;
     }
 
     /// <summary>IPoolable 구현. 풀로 반납되어 비활성화되기 직전 호출됩니다. 애니메이션 코루틴이
@@ -127,7 +153,13 @@ public class FloatingTextPopup : MonoBehaviour, IPoolable
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / lifetime);
 
-            rectTransform.anchoredPosition = baseAnchoredPosition + Vector2.up * riseDistance * riseCurve.Evaluate(t);
+            // 스택 오프셋(다른 알림에 밀려 올라간 정도)을 매 프레임 목표값(targetStackOffsetY)으로
+            // 부드럽게 근접시킨 뒤, 원래의 "떠오르는" 애니메이션(riseDistance/riseCurve)과 더해서 최종
+            // 위치를 계산합니다 - 두 움직임이 서로 방해하지 않고 자연스럽게 합쳐집니다.
+            stackOffsetY = Mathf.Lerp(stackOffsetY, targetStackOffsetY, Time.deltaTime * stackMoveSpeed);
+
+            rectTransform.anchoredPosition = baseAnchoredPosition +
+                Vector2.up * (riseDistance * riseCurve.Evaluate(t) + stackOffsetY);
 
             if (canvasGroup != null)
             {

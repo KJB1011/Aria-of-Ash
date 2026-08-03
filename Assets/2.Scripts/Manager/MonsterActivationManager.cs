@@ -100,6 +100,13 @@ public class MonsterActivationManager : MonoBehaviour
 
     private readonly List<MonsterActivation> monsters = new List<MonsterActivation>();
 
+    /// <summary>지금 등록되어 있는(=아직 파괴되지 않은) 모든 몬스터의 MonsterActivation 목록입니다 -
+    /// 거리 때문에 비활성화(SetActive(false))된 것도, dieDelay 동안 시체로 남아있는 것도 포함됩니다.
+    /// 플레이어 리스폰 시 "지금 살아있는 모든 몬스터를 풀피로 회복" 같은 씬 전체 순회가 필요한 곳
+    /// (GameManager.HealAllAliveMonsters() 등)에서 사용하세요 - 죽었는지 여부는 이 목록만으로는 알 수
+    /// 없으므로, 호출하는 쪽에서 MonsterFSM.CurrentState/MiddleSlimeBoss.IsDead 등으로 직접 확인해야 합니다.</summary>
+    public IReadOnlyList<MonsterActivation> Monsters => monsters;
+
     private void Awake()
     {
         if (instance != null && instance != this)

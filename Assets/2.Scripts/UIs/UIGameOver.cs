@@ -5,9 +5,15 @@
 // 자식에 두고 DontDestroyOnLoad로 씬을 넘나들며 계속 살아있게 합니다. 기능은 단순합니다 - 페이드
 // 인으로 나타나고, 버튼 하나로 씬을 재시작합니다.
 //
+// [지금은 미사용 경로 - GameManager.cs [리스폰] 참고]
+//   PlayerController.Die()는 이제 TriggerGameOver() 대신 GameManager.Instance.TriggerRespawn(this)를
+//   호출합니다(사망해도 씬을 다시 불러오지 않고 위치/HP/MP만 초기화하는 방식으로 바뀌었습니다) -
+//   그래서 이 화면은 지금 아무 데서도 자동으로 뜨지 않습니다. 씬을 완전히 초기화하는 게임 오버 UI가
+//   나중에 다시 필요해지면, 아래 설명대로 GameManager.TriggerGameOver()를 원하는 곳에서 호출해 그대로
+//   재사용할 수 있습니다.
+//
 // [뜨는 순서 - 2단계 연출, GameManager.TriggerGameOver() 참고]
-//   PlayerController.Die()가 호출되면 그 안에서 GameManager.Instance.TriggerGameOver()를 부릅니다.
-//   그러면 순서대로:
+//   TriggerGameOver()가 호출되면 순서대로:
 //     1) GameManager가 먼저 화면 전체를 FadeOut(화면이 서서히 까맣게)합니다.
 //     2) 완전히 까매지고 나서야 이 스크립트의 Show()를 호출해서, 이 게임 오버 화면 자신을
 //        FadeIn(알파 0 → 1)으로 서서히 보여줍니다.
