@@ -15,7 +15,8 @@
 //      Orbital Follow 필드에 1)에서 만든 카메라를 드래그해서 연결합니다.
 //
 // 이제 플레이를 누르면:
-//   - 마우스를 움직이면 카메라가 캐릭터 주위를 회전
+//   - 마우스를 움직이면 카메라가 캐릭터 주위를 회전 (목표 각도까지 부드럽게 전환, lookSmoothTime으로
+//     속도 조절 - 줌과 완전히 같은 방식입니다)
 //   - 마우스 휠로 줌 인/아웃 (목표 값까지 부드럽게 전환, zoomSmoothTime으로 속도 조절)
 //     단, 상호작용 가능한 대상이 2개 이상 범위 안에 있어서 InteractionDetector가 휠을 상호작용
 //     목록 선택에 쓰고 있는 동안에는(IsCyclingActive) 그 프레임의 줌 입력을 건너뜁니다.
@@ -38,6 +39,13 @@
 //   더 이상 그 UI를 마우스로 클릭할 수 없게 되는 문제가 있었습니다. 각 UI는 자기가 열릴 때/닫힐 때
 //   커서 상태를 알아서 저장/복원하므로(UIInventory.Open()/Close() 등 참고), 열려있는 동안은
 //   이 스크립트가 끼어들 필요가 없습니다.
+//
+// [lockCursorOnStart - 씬 시작과 동시에 여는 UI가 있다면]
+//   Start()에서 UICanvas.Instance.IsUIOpen을 먼저 확인한 뒤에만 커서를 잠급니다. UIControls(조작법
+//   안내 패널)처럼 씬이 시작되자마자 스스로 열리는 UI가 있는 경우, 그 UI의 Start()가 이 스크립트의
+//   Start()보다 먼저 실행되면(유니티는 서로 다른 스크립트의 Start() 순서를 보장하지 않습니다)
+//   이미 커서가 풀려있는 상태이므로 다시 잠그지 않습니다 - 안 그러면 "창은 정상적으로 열렸는데
+//   커서는 잠겨있어서 닫기 버튼을 클릭할 수 없는" 문제가 생깁니다.
 // ============================================================================
 
 using UnityEngine;
@@ -61,6 +69,12 @@ public class CameraController : MonoBehaviour
     public float verticalSensitivity = 0.15f;    // 마우스 상하
     public float gamepadSensitivity = 120f;      // 게임패드 오른쪽 스틱
     public bool invertY = false;
+    [Tooltip("카메라가 목표 각도까지 얼마나 부드럽게 따라가는지(초)입니다. 마우스 입력 자체는 매 프레임 " +
+              "즉시 목표 각도에 반영되니 조작 반응성은 그대로 유지되면서, 실제 카메라가 도는 움직임만 " +
+              "매끄러워집니다(HandleZoom()의 zoomSmoothTime과 같은 SmoothDamp 방식). 0이면 예전처럼 " +
+              "마우스 델타가 그대로 즉시 반영됩니다. 값이 클수록 더 느긋하고 묵직하게, 작을수록 더 " +
+              "즉각적으로 움직입니다 - 0.03~0.1 사이에서 눈으로 보며 조절하는 걸 추천합니다.")]
+    public float lookSmoothTime = 0.05f;
 
     [Header("줌 (마우스 휠)")]
     [Tooltip("휠을 한 번 굴렸을 때 목표 줌 값이 얼마나 바뀌는지")]
@@ -79,6 +93,14 @@ public class CameraController : MonoBehaviour
     // 줌을 부드럽게 전환하기 위한 내부 상태
     private float targetZoomValue;
     private float zoomVelocity;
+
+    // 회전을 부드럽게 전환하기 위한 내부 상태 - 줌과 같은 패턴입니다. targetYaw/targetPitch는 마우스
+    // 입력이 들어오는 즉시 갱신되는 "목표 각도"이고, 실제 orbitalFollow.HorizontalAxis/VerticalAxis는
+    // 이 목표를 SmoothDamp로 뒤따라갑니다.
+    private float targetYaw;
+    private float targetPitch;
+    private float yawVelocity;
+    private float pitchVelocity;
 
     private void Awake()
     {
@@ -123,7 +145,15 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        if (lockCursorOnStart)
+        // UICanvas.Instance.IsUIOpen을 먼저 확인합니다 - 예를 들어 UIControls(조작법 안내 패널)처럼
+        // 씬 시작과 동시에 스스로 여는 UI가 있으면, 그 UI가 이미 Cursor.lockState를 None으로 풀어둔
+        // 뒤일 수 있습니다. 유니티는 "모든 오브젝트의 Awake()가 어떤 오브젝트의 Start()보다도 먼저
+        // 끝난다"는 것만 보장할 뿐, 서로 다른 스크립트의 Start()끼리 순서는 보장하지 않습니다 - 만약
+        // 이 스크립트의 Start()가 그 UI의 Start()보다 나중에 실행되면, 방금 UI가 풀어둔 커서를 여기서
+        // 다시 잠가버려서 "창은 정상적으로 열렸는데 커서는 잠겨있는" 문제가 생깁니다. 이 가드는 실행
+        // 순서와 무관하게 항상 안전합니다 - 이 스크립트가 먼저 실행되면 아직 아무 UI도 안 열려있으니
+        // 정상적으로 잠그고, 나중에 실행되면 이미 열려있는 UI를 보고 잠그지 않습니다.
+        if (lockCursorOnStart && (UICanvas.Instance == null || !UICanvas.Instance.IsUIOpen))
         {
             SetCursorLocked(true);
         }
@@ -135,6 +165,11 @@ public class CameraController : MonoBehaviour
 
         // 줌의 시작 목표값을 현재 카메라 값으로 맞춰둡니다 (시작하자마자 튀는 것 방지).
         targetZoomValue = orbitalFollow.RadialAxis.Value;
+
+        // 회전도 마찬가지로 시작 목표값을 현재 카메라 각도로 맞춰둡니다 - 안 그러면 시작하자마자
+        // 목표값(기본 0)을 향해 카메라가 휙 돌아가버립니다.
+        targetYaw = orbitalFollow.HorizontalAxis.Value;
+        targetPitch = orbitalFollow.VerticalAxis.Value;
     }
 
     private void Update()
@@ -155,14 +190,25 @@ public class CameraController : MonoBehaviour
         float pitch = mouseDelta.y * verticalSensitivity + padDelta.y * gamepadSensitivity * Time.deltaTime;
         if (invertY) pitch = -pitch;
 
-        // 좌우 회전 (HorizontalAxis: 도 단위)
+        // 좌우 회전 (HorizontalAxis: 도 단위) - 목표 각도(targetYaw)는 입력이 들어오는 즉시 갱신하고,
+        // 실제 적용값(h.Value)만 SmoothDampAngle로 목표를 부드럽게 뒤따라가게 합니다. Angle 버전을
+        // 쓰는 이유는 HorizontalAxis가 보통 0~360도를 순환(Wrap)하는 축이라, 예를 들어 350도에서
+        // 10도로 넘어갈 때 일반 SmoothDamp라면 350→0→10으로 먼 길을 도는 것처럼 계산될 수 있는데,
+        // SmoothDampAngle은 항상 최단 경로(이 경우 -20도만 이동)로 보간해줍니다.
         var h = orbitalFollow.HorizontalAxis;
-        h.Value = h.ClampValue(h.Value + yaw);
+        targetYaw = h.ClampValue(targetYaw + yaw);
+        h.Value = lookSmoothTime > 0f
+            ? Mathf.SmoothDampAngle(h.Value, targetYaw, ref yawVelocity, lookSmoothTime)
+            : targetYaw;
         orbitalFollow.HorizontalAxis = h;
 
-        // 상하 회전 (VerticalAxis: 도 단위, 마우스를 위로 올리면 위를 보도록 부호 반전)
+        // 상하 회전 (VerticalAxis: 도 단위, 마우스를 위로 올리면 위를 보도록 부호 반전). VerticalAxis는
+        // 보통 위아래로 제한된(Wrap이 아닌) 범위라 순환을 고려할 필요가 없어 일반 SmoothDamp를 씁니다.
         var v = orbitalFollow.VerticalAxis;
-        v.Value = v.ClampValue(v.Value - pitch);
+        targetPitch = v.ClampValue(targetPitch - pitch);
+        v.Value = lookSmoothTime > 0f
+            ? Mathf.SmoothDamp(v.Value, targetPitch, ref pitchVelocity, lookSmoothTime)
+            : targetPitch;
         orbitalFollow.VerticalAxis = v;
     }
 

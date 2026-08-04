@@ -31,10 +31,14 @@
 //
 // [마우스 커서]
 //   열리는 순간 마우스 커서 잠금을 자동으로 풀어서(Cursor.lockState = None) UI를 클릭할 수 있게
-//   하고, 닫히면 열기 전 상태로 되돌립니다. CameraController의 HandleLook()이 커서가
-//   풀려있으면 카메라 회전도 같이 멈추므로, 인벤토리가 열려있는 동안엔 자연스럽게 카메라도
-//   멈춥니다. 만약 인벤토리를 열기 전에 이미(Alt/Esc로) 커서를 풀어둔 상태였다면, 닫을 때 다시
-//   잠그지 않고 풀린 상태 그대로 유지합니다 - 사용자가 직접 선택한 상태를 덮어쓰지 않기 위해서입니다.
+//   하고, 닫히면(키보드 I든, 버튼 클릭이든) 무조건 다시 잠그고 숨깁니다(Locked + 안 보임) - 평소
+//   게임플레이(카메라 조작) 기준 상태로 항상 되돌아갑니다. CameraController의 HandleLook()이
+//   커서가 풀려있으면 카메라 회전도 같이 멈추므로, 인벤토리가 열려있는 동안엔 자연스럽게 카메라도
+//   멈춥니다. [이전 동작과의 차이] 예전에는 "열기 직전 커서 상태"를 저장해뒀다가 닫을 때 그대로
+//   복원했는데(Alt/Esc로 이미 풀어둔 상태였다면 닫아도 계속 풀린 채로 유지), 이 창은 결국 마우스로
+//   버튼을 클릭해서 열 수도 있어야 하니 열기 직전에 커서가 이미 풀려있던 경우가 흔했고, 그러면 닫아도
+//   커서가 계속 풀린 채로 남아 "닫았는데 카메라가 안 돌아간다"는 문제가 있었습니다 - 그래서 복원 대신
+//   항상 잠그는 방식으로 바꿨습니다.
 //
 // [칸 클릭으로 선택하기]
 //   UIInventoryBar가 클릭되면(Button OnClick → UIInventoryBar.OnClickBar() → OnClicked 이벤트)
@@ -76,11 +80,6 @@ public class UIInventory : MonoBehaviour, IUIWindow
     // 지금 선택된 칸입니다(한 번에 하나만 선택). RefreshBars()가 다시 그릴 때마다(칸 오브젝트가
     // 전부 새로 Instantiate되므로) null로 초기화됩니다 - HandleBarClicked() 참고.
     private UIInventoryBar selectedBar;
-
-    // 인벤토리를 열기 직전의 커서 상태를 저장해뒀다가, 닫을 때 그대로 복원합니다 - 열기 전에
-    // 이미(Alt/Esc로) 커서가 풀려있었다면 닫아도 다시 잠그지 않고 풀린 상태를 유지합니다.
-    private CursorLockMode previousCursorLockState;
-    private bool previousCursorVisible;
 
     private InputAction toggleAction;
 
@@ -170,8 +169,6 @@ public class UIInventory : MonoBehaviour, IUIWindow
         if (isOpen) return;
         isOpen = true;
 
-        previousCursorLockState = Cursor.lockState;
-        previousCursorVisible = Cursor.visible;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
@@ -182,14 +179,16 @@ public class UIInventory : MonoBehaviour, IUIWindow
     }
 
     /// <summary>IUIWindow 구현. UICanvas.CloseUI()가 호출합니다 - 직접 호출하지 말고 ToggleInventory()나
-    /// UICanvas.Instance.CloseUI(gameObject)를 쓰세요.</summary>
+    /// UICanvas.Instance.CloseUI(gameObject)를 쓰세요. 닫히는 순간 커서를 무조건 다시 잠그고 숨깁니다
+    /// (파일 상단 [마우스 커서] 참고) - 이 창을 열려면 결국 커서가 풀려있어야 했으니(키보드 I 또는
+    /// 마우스로 버튼을 클릭), 닫을 때는 항상 평소 게임플레이 상태(커서 잠금 + 숨김)로 돌아갑니다.</summary>
     public void Close()
     {
         if (!isOpen) return;
         isOpen = false;
 
-        Cursor.lockState = previousCursorLockState;
-        Cursor.visible = previousCursorVisible;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
 
         fadeTween?.Kill();
         fadeTween = canvasGroup.DOFade(0f, fadeDuration).SetUpdate(true);

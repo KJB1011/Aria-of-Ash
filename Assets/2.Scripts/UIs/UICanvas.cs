@@ -31,6 +31,13 @@
 //   UIIngame.ClickQuestButton()). L 키는 UIQuest 자신이 직접 처리합니다(I키를 자기가 직접 처리하는
 //   UIInventory와 같은 패턴).
 //
+// [_uiControls]
+//   UIControls(조작법 안내 패널)도 IUIWindow를 구현하고 있어서 다른 팝업들과 완전히 같은 방식으로
+//   등록됩니다 - 다른 점은 버튼이나 키로 여는 게 아니라 UIControls 자신이 Start()에서 스스로
+//   OpenUI(gameObject)를 호출해서 씬 시작과 동시에 자동으로 뜬다는 것입니다(UIControls.cs 참고).
+//   옵션 창의 "조작법" 버튼(UIOption.ClickShowControlsButton())으로 다시 볼 수도 있습니다 -
+//   다른 스크립트는 UICanvas.Instance.Controls로 꺼내 씁니다.
+//
 // [다른 UI가 서로를 찾는 창구]
 //   UIInventory 등 개별 UI 스크립트에는 따로 static Instance를 두지 않았습니다 - 대신 UICanvas가
 //   모든 UI를 붙잡고 있다가, Ingame/Inventory 같은 타입이 있는 프로퍼티로 꺼내 쓸 수 있게
@@ -79,6 +86,7 @@ public class UICanvas : MonoBehaviour
     [SerializeField] GameObject _uiCharInfo;
     [SerializeField] GameObject _uiOption;
     [SerializeField] GameObject _uiQuest;
+    [SerializeField] GameObject _uiControls;
 
     /// <summary>_uiIngame에서 꺼내둔 UIIngame입니다. 다른 스크립트는 UICanvas.Instance.Ingame으로 씁니다.</summary>
     public UIIngame Ingame { get; private set; }
@@ -90,6 +98,8 @@ public class UICanvas : MonoBehaviour
     public UIOption Option { get; private set; }
     /// <summary>_uiQuest에서 꺼내둔 UIQuest입니다. 다른 스크립트는 UICanvas.Instance.Quest로 씁니다.</summary>
     public UIQuest Quest { get; private set; }
+    /// <summary>_uiControls에서 꺼내둔 UIControls입니다. 다른 스크립트는 UICanvas.Instance.Controls로 씁니다.</summary>
+    public UIControls Controls { get; private set; }
 
     private GameObject currentPopup;
 
@@ -117,15 +127,16 @@ public class UICanvas : MonoBehaviour
     {
         Instance = this;
 
-        // _uiIngame/_uiInventory/_uiCharInfo/_uiOption/_uiQuest에는 반드시 각각 UIIngame/UIInventory/
-        // UICharacterInfo/UIOption/UIQuest 컴포넌트가 붙어있어야 합니다 - 없으면 여기서 바로 null이
-        // 담기고, Ingame/Inventory/CharacterInfo/Option/Quest를 실제로 쓰는 시점에
-        // NullReferenceException이 나서 어떤 필드 연결을 빠뜨렸는지 바로 드러납니다.
+        // _uiIngame/_uiInventory/_uiCharInfo/_uiOption/_uiQuest/_uiControls에는 반드시 각각 UIIngame/
+        // UIInventory/UICharacterInfo/UIOption/UIQuest/UIControls 컴포넌트가 붙어있어야 합니다 - 없으면
+        // 여기서 바로 null이 담기고, Ingame/Inventory/CharacterInfo/Option/Quest/Controls를 실제로
+        // 쓰는 시점에 NullReferenceException이 나서 어떤 필드 연결을 빠뜨렸는지 바로 드러납니다.
         Ingame = _uiIngame.GetComponent<UIIngame>();
         Inventory = _uiInventory.GetComponent<UIInventory>();
         CharacterInfo = _uiCharInfo.GetComponent<UICharacterInfo>();
         Option = _uiOption.GetComponent<UIOption>();
         Quest = _uiQuest.GetComponent<UIQuest>();
+        Controls = _uiControls.GetComponent<UIControls>();
 
         escapeAction = new InputAction("CloseTopUI", InputActionType.Button, "<Keyboard>/escape");
     }

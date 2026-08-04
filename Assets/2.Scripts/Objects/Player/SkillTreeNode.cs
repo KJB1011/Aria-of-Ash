@@ -42,6 +42,9 @@ public class SkillTreeNode : MonoBehaviour
     [SerializeField] private GameObject lockedOverlay;
     [Tooltip("지금 선택된 노드임을 표시하는 오브젝트(테두리 하이라이트 등). 비워두면 선택 표시를 하지 않습니다.")]
     [SerializeField] private Image selectedHighlight;
+    [Tooltip("아직 잠겨있지만 재료/골드를 다 모아서 지금 바로 해제할 수 있는 상태일 때 켜지는 느낌표 알림 이미지입니다. " +
+              "UICharacterInfo가 재료/골드가 바뀔 때마다 자동으로 켜고 끕니다. 비워두면 알림 표시를 하지 않습니다.")]
+    [SerializeField] private GameObject unlockableNotification;
 
     /// <summary>지금 이 노드가 해제된 상태인지 여부입니다. UICharacterInfo가 UNLOCK 버튼 처리 시 확인/변경합니다.</summary>
     public bool IsUnlocked { get; private set; }
@@ -87,7 +90,14 @@ public class SkillTreeNode : MonoBehaviour
     /// <summary>지금 선택된 노드인지 표시를 켜고 끕니다. UICharacterInfo가 노드를 선택/선택 해제할 때 호출합니다.</summary>
     public void SetSelected(bool selected)
     {
-        selectedHighlight.enabled = selected;
+        if (selectedHighlight != null) selectedHighlight.enabled = selected;
+    }
+
+    /// <summary>이 노드를 지금 바로 해제할 수 있는 상태(재료/골드 충분)인지 여부에 맞춰 느낌표 알림을 켜고 끕니다.
+    /// UICharacterInfo.RefreshSkillNodeNotifications()가 재료/골드가 바뀔 때마다 호출합니다.</summary>
+    public void SetUnlockableNotification(bool show)
+    {
+        if (unlockableNotification != null) unlockableNotification.SetActive(show);
     }
 
     private void RefreshLockVisual()

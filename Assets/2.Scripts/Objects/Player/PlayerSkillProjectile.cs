@@ -32,6 +32,15 @@
 //   (기본 0.5)로 발사되고, 폭발 범위(FireballProjectile.explosionRadius)에 upgradedExplosionRadiusMultiplier
 //   (기본 1.5 = +50%)가 곱해지고, damagePercent에 upgradedDamagePercentMultiplier(기본 1.3 = +30%)가
 //   곱해집니다. 강화 전에는 지금까지와 완전히 동일하게 동작합니다.
+//
+// [자기 자신과의 충돌 무시 - 강화 시 몸에 닿아 바로 터지는 문제 방지]
+//   파이어볼은 firePoint(보통 손/지팡이 끝, 몸통 바로 옆)에서 생성되는데, 강화로 크기가 커지면
+//   (upgradedProjectileScale) 그 콜라이더도 함께 커져서 생성되는 순간 발사자 자신의 몸통 콜라이더와
+//   겹칠 수 있습니다. FireballProjectile의 Hit Mask가 Enemy 레이어만 가리키고 있다면 원래는 이걸로
+//   걸러지지만, 혹시 레이어 설정이 어긋나 있거나 나중에 바뀌더라도 안전하도록 발사되는 즉시
+//   Physics.IgnoreCollision()으로 파이어볼과 ownerCollider(비워두면 같은 오브젝트의
+//   CharacterController를 자동으로 씀) 사이의 충돌/트리거 판정 자체를 아예 무시하도록 만듭니다 -
+//   이렇게 하면 Hit Mask 설정과 무관하게 자기 자신에게는 절대 닿지 않습니다.
 // ============================================================================
 
 using UnityEngine;
@@ -47,6 +56,12 @@ public class PlayerSkillProjectile : MonoBehaviour
     public PlayerTargeting targeting;
     [Tooltip("비워두면 같은 오브젝트에서 PlayerStats를 자동으로 찾습니다.")]
     public PlayerStats playerStats;
+    [Tooltip("발사된 파이어볼과 충돌/트리거 판정을 서로 무시할 발사자(플레이어) 자신의 콜라이더입니다. " +
+              "비워두면 같은 오브젝트에서 CharacterController를 자동으로 찾습니다(CharacterController도 " +
+              "Collider를 상속하므로 그대로 씁니다). 스킬강화로 파이어볼이 커졌을 때 발사되자마자 자기 " +
+              "몸통과 겹쳐서 바로 터져버리는 문제를 막기 위한 안전장치입니다 - 자세한 내용은 파일 상단 " +
+              "[자기 자신과의 충돌 무시] 참고.")]
+    public Collider ownerCollider;
 
     [Header("발사")]
     public float projectileSpeed = 20f;
@@ -82,6 +97,7 @@ public class PlayerSkillProjectile : MonoBehaviour
     {
         if (targeting == null) targeting = GetComponent<PlayerTargeting>();
         if (playerStats == null) playerStats = GetComponent<PlayerStats>();
+        if (ownerCollider == null) ownerCollider = GetComponent<CharacterController>();
     }
 
     /// <summary>Animation Event 전용. 손에서 파이어볼이 실제로 떠나는 프레임에 이 이벤트를 추가하세요.</summary>
@@ -104,6 +120,18 @@ public class PlayerSkillProjectile : MonoBehaviour
         bool upgraded = playerStats != null && playerStats.HasSkillUpgrade;
 
         FireballProjectile fireball = Instantiate(fireballPrefab, spawnPosition, Quaternion.identity);
+
+        // 크기가 커지든 안 커지든, 발사자 자신에게는 절대 맞지 않도록 미리 무시시켜둡니다(위 [자기
+        // 자신과의 충돌 무시] 참고). 스케일을 키우기 전에 걸어둬도 상관없습니다 - IgnoreCollision은
+        // 콜라이더 쌍 자체를 기록해두는 것이라 이후 크기가 바뀌어도 계속 적용됩니다.
+        if (ownerCollider != null)
+        {
+            Collider fireballCollider = fireball.GetComponent<Collider>();
+            if (fireballCollider != null)
+            {
+                Physics.IgnoreCollision(fireballCollider, ownerCollider, true);
+            }
+        }
 
         fireball.damagePercent = upgraded ? damagePercent * upgradedDamagePercentMultiplier : damagePercent;
         fireball.sourceStats = playerStats;

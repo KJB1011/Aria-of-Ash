@@ -19,13 +19,27 @@
 //   [주의 2] 실제 게임플레이 효과(예: 패시브 강화를 해제하면 진짜로 에너지 충전 속도가 빨라지는 것)는
 //   아직 연결하지 않았습니다 - 지금은 "해제됐다/안 됐다" 상태와 UI 표시까지만 처리합니다. 각 스킬
 //   노드가 해제됐을 때 실제로 무엇이 바뀌어야 하는지 정해주시면 이어서 연결해드릴 수 있습니다.
+//   [주의 3] 기본 4개 노드(패시브/기본공격/스킬/필살기, SkillTreeNode.startUnlocked = true) 자체를
+//   재료로 강화해서 수치를 올리는 기능은 포트폴리오 범위에서 제외했습니다 - SkillTreeNode.IsUnlocked가
+//   시작부터 true라 RefreshSkillUpgradeUI()가 항상 "이미 해제된 노드" 분기를 타므로, 이 4개는 클릭하면
+//   정보만 보여주고 재료는 OK로 표시되며 UNLOCK/UPGRADE 버튼(_btnSkillUpgrade)은 항상 비활성화된
+//   채로 남습니다. 그 옆의 "강화" 버전 4개 노드(원래부터 startUnlocked = false로 잠긴 채 시작)는
+//   지금까지처럼 정상적으로 재료/골드를 소모해 해제할 수 있습니다 - 이번에 빠진 건 기본 노드 자신의
+//   강화뿐입니다.
+//   [주의 4] 스킬 강화 알림(느낌표) - 아직 해제 안 됐는데 재료/골드가 이미 충분해서 지금 바로 해제할 수
+//   있는 강화 노드마다 SkillTreeNode.unlockableNotification(씬에 미리 붙여두신 느낌표 이미지)이 켜지고,
+//   그런 노드가 하나라도 있으면 스킬 사이드탭 버튼의 _imgSideSkillNotification도 함께 켜집니다
+//   (RefreshSkillNodeNotifications() 참고). 창을 열 때, 창이 열려있는 동안 인벤토리/골드가 바뀔 때,
+//   UNLOCK 버튼을 눌러 해제할 때마다 자동으로 갱신되므로 따로 호출하실 필요는 없습니다 - 기본 4개
+//   노드는 항상 이미 해제된 상태라 이 알림 대상에서 자연스럽게 제외됩니다.
 //
 // [전체 창 여닫기 - UICanvas 연동]
 //   UIInventory와 완전히 같은 패턴입니다. IUIWindow를 구현해서 UICanvas가 "팝업 하나만 열리게,
 //   열려있는 동안 게임 시간을 멈추게" 관리해줍니다. ToggleCharacterInfo()(버튼 OnClick 또는 U 키)는
 //   UICanvas.Instance.OpenUI()/CloseUI()를 호출할 뿐이고, 실제 Open()/Close()는 UICanvas가 그 안에서
 //   호출해줍니다 - 직접 이 컴포넌트의 Open()/Close()를 호출하지 마세요.
-//   열리는 순간 마우스 커서 잠금을 자동으로 풀고, 닫히면 열기 전 상태로 되돌립니다.
+//   열리는 순간 마우스 커서 잠금을 자동으로 풀고, 닫히면(클릭이든 U 키든) 항상 다시 잠그고
+//   숨깁니다(UIInventory.cs 상단 [마우스 커서] 참고).
 //   U 키는 UIInventory의 I 키와 같은 방식(InputAction)으로 처리됩니다 - 따로 설정할 게 없습니다.
 //
 // [CharInfo - 레벨/최종 스탯/경험치]
@@ -77,6 +91,11 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
 {
     [SerializeField] Image _imgSideCharBlack;
     [SerializeField] Image _imgSideSkillBlack;
+    [Tooltip("스킬 사이드 탭 버튼에 표시할 느낌표 알림 이미지입니다. 스킬 트리 노드 중 하나라도 지금 바로 " +
+              "해제할 수 있는 상태(재료/골드 충분)가 되면 켜집니다 - RefreshSkillNodeNotifications() 참고. " +
+              "비워두면 사이드탭 알림 표시를 건너뜁니다(각 노드 자신의 느낌표는 SkillTreeNode." +
+              "unlockableNotification이 따로 처리하므로 이 필드가 없어도 노드별 알림은 정상 동작합니다).")]
+    [SerializeField] GameObject _imgSideSkillNotification;
 
     [SerializeField] GameObject _uicharInfo;
     [SerializeField] GameObject _uiSkillInfo;
@@ -124,6 +143,12 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
               "텍스트 오브젝트를 만들어 연결해주세요(재료1과 대칭되는 위치에).")]
     [SerializeField] TextMeshProUGUI _txtSkillUpgradeRequirements2Count;
     [SerializeField] TextMeshProUGUI _txtSkillUpgradeRequiredGold;
+    [Tooltip("UNLOCK/UPGRADE 버튼입니다. 선택된 노드가 이미 해제된 상태(selectedSkillNode.IsUnlocked)면 " +
+              "자동으로 비활성화됩니다 - 패시브/기본공격/스킬/필살기 기본 4개 노드는 처음부터 해제된 " +
+              "상태로 시작하므로(SkillTreeNode.startUnlocked) 항상 이 버튼이 비활성화된 채로 정보만 " +
+              "보여주게 됩니다(기본 스킬 자체를 강화하는 기능은 포트폴리오 범위에서 제외했습니다 - " +
+              "RefreshSkillUpgradeUI() 참고). 비워두면 활성화 상태 제어를 건너뜁니다.")]
+    [SerializeField] Button _btnSkillUpgrade;
 
     [Tooltip("스크롤 뷰에 배치해두신 8개의 스킬 트리 버튼(SkillTreeNode)입니다. 선택 사항이지만, 연결해두면 " +
               "SkillInfo 탭을 처음 열 때 0번 노드를 자동으로 선택해서 오른쪽 정보 패널이 비어있지 않게 해줍니다.")]
@@ -141,10 +166,6 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
     private bool subscribedToInventory;
     private bool subscribedToCurrency;
     private Tween fadeTween;
-
-    // 창을 열기 직전의 커서 상태를 저장해뒀다가 닫을 때 그대로 복원합니다(UIInventory와 동일한 이유).
-    private CursorLockMode previousCursorLockState;
-    private bool previousCursorVisible;
 
     // U 키로 여닫기 위한 입력 액션입니다(UIInventory가 I 키를 처리하는 것과 같은 패턴).
     private InputAction toggleAction;
@@ -232,13 +253,12 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
         if (isOpen) return;
         isOpen = true;
 
-        previousCursorLockState = Cursor.lockState;
-        previousCursorVisible = Cursor.visible;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
         SetActiveTab(true); // 열 때마다 항상 CharInfo 탭부터 보여줍니다.
         RefreshCharInfo();
+        RefreshSkillNodeNotifications(); // CharInfo 탭으로 열어도 스킬 사이드탭 알림은 미리 최신 상태로 맞춰둡니다.
 
         fadeTween?.Kill();
         fadeTween = canvasGroup.DOFade(1f, fadeDuration).SetUpdate(true); // 게임이 멈춰도(Time.timeScale = 0) 페이드는 정상 속도로 재생됩니다.
@@ -247,14 +267,16 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
     }
 
     /// <summary>IUIWindow 구현. UICanvas.CloseUI()가 호출합니다 - 직접 호출하지 말고 ToggleCharacterInfo()나
-    /// UICanvas.Instance.CloseUI(gameObject)를 쓰세요.</summary>
+    /// UICanvas.Instance.CloseUI(gameObject)를 쓰세요. 닫히는 순간 커서를 무조건 다시 잠그고 숨겨서
+    /// (UIInventory.Close() 참고 - 열기 직전 상태를 "복원"하는 대신 항상 게임플레이 기본 상태로
+    /// 되돌리는 방식으로 통일했습니다) 클릭으로 닫든 U 키로 닫든 항상 카메라 조작이 바로 돌아옵니다.</summary>
     public void Close()
     {
         if (!isOpen) return;
         isOpen = false;
 
-        Cursor.lockState = previousCursorLockState;
-        Cursor.visible = previousCursorVisible;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
 
         fadeTween?.Kill();
         fadeTween = canvasGroup.DOFade(0f, fadeDuration).SetUpdate(true);
@@ -529,10 +551,14 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
 
         if (selectedSkillNode.IsUnlocked)
         {
-            // 이미 해제된 노드는 재료 요구량 대신 "OK"를 보여줍니다.
+            // 이미 해제된 노드는 재료 요구량 대신 "OK"를 보여주고 UNLOCK/UPGRADE 버튼을 비활성화합니다.
+            // 패시브/기본공격/스킬/필살기 기본 4개 노드는 처음부터 IsUnlocked = true(startUnlocked)로
+            // 시작하므로 이 분기를 항상 타서, 선택하면 정보만 보이고 버튼은 계속 비활성화 상태로
+            // 남습니다 - 기본 스킬 자체를 강화하는 기능은 포트폴리오 범위에서 제외했습니다.
             SetCompletedText(_txtSkillUpgradeRequirements1Count);
             SetCompletedText(_txtSkillUpgradeRequirements2Count);
             if (_txtSkillUpgradeRequiredGold != null) _txtSkillUpgradeRequiredGold.text = "-";
+            if (_btnSkillUpgrade != null) _btnSkillUpgrade.interactable = false;
             return;
         }
 
@@ -542,6 +568,7 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
         SetRequirementText(_txtSkillUpgradeRequirements2Count, owned2, data.material2Amount);
 
         if (_txtSkillUpgradeRequiredGold != null) _txtSkillUpgradeRequiredGold.text = data.requiredGold.ToString();
+        if (_btnSkillUpgrade != null) _btnSkillUpgrade.interactable = true;
     }
 
     private static void SetCompletedText(TextMeshProUGUI text)
@@ -549,6 +576,34 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
         if (text == null) return;
         text.text = "OK";
         text.color = Color.white;
+    }
+
+    /// <summary>skillNodes 전체를 훑어서, 아직 해제되지 않았는데 재료/골드가 이미 충분해서 지금 바로
+    /// 해제할 수 있는 노드마다 느낌표 알림(SkillTreeNode.unlockableNotification)을 켭니다. 그런 노드가
+    /// 하나라도 있으면 스킬 사이드탭 버튼(_imgSideSkillNotification)에도 느낌표를 켭니다. 기본 4개 노드는
+    /// 항상 IsUnlocked = true(startUnlocked)라 이 조건에 걸리지 않으므로 따로 제외 처리가 필요 없습니다.
+    /// Open()과 HandleInventoryChanged()/HandleGoldChanged()(창이 열려있는 동안), ClickSkillUpgradeButton()
+    /// (해제 직후, 재료/골드 소모가 0이라 이벤트가 안 터지는 경우까지 대비)에서 호출합니다.</summary>
+    private void RefreshSkillNodeNotifications()
+    {
+        if (skillNodes == null) return;
+
+        bool anyUnlockable = false;
+
+        foreach (SkillTreeNode node in skillNodes)
+        {
+            if (node == null || node.data == null) continue;
+
+            bool canUnlock = !node.IsUnlocked && HasEnoughMaterialsAndGold(
+                node.data.material1, node.data.material1Amount,
+                node.data.material2, node.data.material2Amount,
+                node.data.requiredGold);
+
+            node.SetUnlockableNotification(canUnlock);
+            if (canUnlock) anyUnlockable = true;
+        }
+
+        if (_imgSideSkillNotification != null) _imgSideSkillNotification.SetActive(anyUnlockable);
     }
 
     /// <summary>UNLOCK 버튼 OnClick에 연결하세요. 현재 선택된 스킬 노드를 재료/골드를 확인/소모한 뒤
@@ -590,6 +645,7 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
         selectedSkillNode.MarkUnlocked();
         ApplySkillUpgradeEffect(data.skillId);
         RefreshSkillUpgradeUI();
+        RefreshSkillNodeNotifications(); // 재료/골드가 0이라 OnInventoryChanged/OnGoldChanged가 안 터지는 경우까지 대비해 직접 갱신합니다.
     }
 
     /// <summary>방금 해제된 노드(skillId)에 맞는 실제 게임플레이 효과를 PlayerStats에 켭니다. 강화 4종
@@ -634,6 +690,7 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
         if (!isOpen) return;
         RefreshBreakthroughUI();
         RefreshSkillUpgradeUI();
+        RefreshSkillNodeNotifications();
     }
 
     private void HandleGoldChanged(int gold)
@@ -641,5 +698,6 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
         if (!isOpen) return;
         RefreshBreakthroughUI();
         RefreshSkillUpgradeUI();
+        RefreshSkillNodeNotifications();
     }
 }

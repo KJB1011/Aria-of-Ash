@@ -162,6 +162,36 @@ public class PlayerController : MonoBehaviour
               "활성화된 채라 구르는 동안에도 이동은 정상적으로 계속됩니다 - 레이어만 바뀌어서 몬스터 공격의 " +
               "Hit Mask에 안 걸릴 뿐입니다.")]
     public string invincibleLayerName = "PlayerInvincible";
+
+    [Header("무적 표시 - 림라이트 (구르기 전용)")]
+    [Tooltip("켜두면 구르는 동안 rimLightRenderers에 림라이트를 켰다가, 구르기가 끝나면(정상 종료든 " +
+              "피격/사망/대화/컷씬 등으로 중간에 끊기든) 항상 다시 끕니다. 필살기 무적에는 적용하지 " +
+              "않습니다 - 필요해지면 HandleSkills()에도 같은 방식으로 걸 수 있습니다.")]
+    public bool dashRimLightEnabled = true;
+    [Tooltip("림라이트를 켤 렌더러들입니다. 캐릭터 모델을 이루는 SkinnedMeshRenderer/MeshRenderer를 전부 " +
+              "연결하세요(몸통 하나뿐이면 하나만, 무기/머리카락 등이 별도 렌더러로 나뉘어 있다면 전부). " +
+              "각 렌더러가 쓰는 머티리얼의 셰이더에 rimIntensityPropertyName(기본 _RimIntensity)/ " +
+              "rimColorPropertyName(기본 _RimColor) 프로퍼티가 노출되어 있어야 합니다 - 기존 URP/Lit " +
+              "셰이더에는 이 프로퍼티가 없으므로, Shader Graph로 Fresnel 기반 림라이트를 추가한 셰이더로 " +
+              "머티리얼을 바꿔야 합니다(만드는 방법은 대화로 안내해드렸습니다).")]
+    public Renderer[] rimLightRenderers;
+    [Tooltip("구르는 동안 켜질 림라이트 색상입니다.")]
+    public Color dashRimColor = new Color(0.4f, 0.8f, 1f, 1f);
+    [Tooltip("구르는 동안 림라이트 세기입니다. 셰이더의 rimIntensityPropertyName에 그대로 들어갑니다 - " +
+              "0이면 안 보이고, 커질수록 밝아집니다. Shader Graph에서 Fresnel 결과에 곱하는 배율이라 " +
+              "2~5 사이에서 눈으로 보며 조절하는 걸 추천합니다.")]
+    public float dashRimIntensity = 3f;
+    [Tooltip("셰이더에서 세기를 받는 프로퍼티 이름입니다. Shader Graph Blackboard의 Reference 이름을 " +
+              "다르게 지었다면 여기도 맞춰서 바꿔주세요.")]
+    public string rimIntensityPropertyName = "_RimIntensity";
+    [Tooltip("셰이더에서 색상을 받는 프로퍼티 이름입니다.")]
+    public string rimColorPropertyName = "_RimColor";
+    [Tooltip("림라이트가 0에서 dashRimIntensity까지 밝아지는 데 걸리는 시간(초). 0이면 예전처럼 즉시 켜집니다.")]
+    public float dashRimFadeInDuration = 0.15f;
+    [Tooltip("림라이트가 dashRimIntensity에서 0으로 사라지는 데 걸리는 시간(초). 0이면 예전처럼 즉시 꺼집니다. " +
+              "구르기 도중 피격 등으로 강제 중단되는 경우에도 똑같이 이 시간에 걸쳐 부드럽게 꺼집니다.")]
+    public float dashRimFadeOutDuration = 0.3f;
+
     [Tooltip("대시 진행도(0=시작 ~ 1=끝)에 따른 속도 배율 곡선. 기본값은 처음엔 빠르게 튀어나갔다가 " +
               "끝으로 갈수록 느려지도록(구르기 느낌) 되어 있습니다. 세로축(값)은 dashSpeed에 곱해지는 배율입니다.")]
     public AnimationCurve dashSpeedCurve = new AnimationCurve(
@@ -278,6 +308,14 @@ public class PlayerController : MonoBehaviour
               "구분하는 데 사용하세요.")]
     public bool debugLogCombo;
 
+    [Header("디버그 - 이동속도 조절 ( [ / ] 키)")]
+    [Tooltip("[ 키를 누르면 moveSpeed가 1 줄고, ] 키를 누르면 1 늘어납니다 - 테스트용으로 이동속도를 " +
+              "빠르게 맞춰보고 싶을 때 쓰세요. 누를 때마다 FloatingTextManager.Show()로 현재 moveSpeed " +
+              "값을 화면에 띄워서 바로 확인할 수 있습니다. moveSpeed가 음수가 되지 않도록 0에서 " +
+              "멈춥니다. 인벤토리 등 UI가 열려있는 동안은 다른 입력과 마찬가지로 무시되지만, 디버그 " +
+              "목적이라 일부러 사망/컷씬 중에도(isDead/IsCutsceneControlled와 무관하게) 동작하도록 뒀습니다.")]
+    public bool debugMoveSpeedHotkeyEnabled = true;
+
     private CharacterController controller;
     private int normalLayer;
     private int invincibleLayer = -1;
@@ -285,6 +323,8 @@ public class PlayerController : MonoBehaviour
     private InputAction dashAction;
     private InputAction skillAction;
     private InputAction ultSkillAction;
+    private InputAction decreaseMoveSpeedAction;
+    private InputAction increaseMoveSpeedAction;
     private InputAction attackAction;
 
     private float verticalVelocity;
@@ -309,6 +349,21 @@ public class PlayerController : MonoBehaviour
     // 지금 재생 중이라는 뜻이고, EndUltChargeVfxIfActive()가 이 참조로 풀에 반납합니다.
     private GameObject ultChargeVfxInstance;
     private GameObject ultChargeSfxInstance;
+
+    // SetDashRimLight()가 렌더러별 프로퍼티만 덮어쓸 때 재사용하는 버퍼입니다. 매번 새로 만들지 않고
+    // 하나를 계속 재사용합니다 - Awake()에서 만들어둡니다.
+    private MaterialPropertyBlock rimPropertyBlock;
+
+    // 지금 켜져있는 림라이트가 "구르기 때문에" 켜진 것인지 추적합니다. ExitInvincible()은 대시/필살기
+    // 무적이 끝날 때 공통으로 호출되는데, 이 플래그가 true일 때만(=구르기가 켰을 때만) 거기서 림라이트를
+    // 꺼줍니다 - 필살기 무적이 끝날 때는 애초에 이 플래그가 false이므로 림라이트를 건드리지 않습니다.
+    private bool dashRimLightActive;
+
+    // 지금 실제로 렌더러에 적용되어 있는 림라이트 세기입니다. FadeRimLightRoutine()이 매 프레임 이 값을
+    // 갱신합니다 - 페이드 도중에 새 페이드가 시작되더라도(예: 구르기가 끝나기 직전에 다시 구르기) 0이나
+    // dashRimIntensity가 아니라 "지금 실제로 보이는 값"에서부터 자연스럽게 이어서 전환하기 위해 필요합니다.
+    private float currentRimIntensity;
+    private Coroutine rimFadeRoutine;
 
     // ultInvincibilityExtraDuration만큼 무적을 더 유지하기 위해 ExitInvincible()을 지연 호출하는
     // 코루틴입니다. null이 아니면 지금 "무적 여유 시간"이 진행 중이라는 뜻입니다 - 새 필살기를 다시
@@ -387,6 +442,8 @@ public class PlayerController : MonoBehaviour
             }
         }
 
+        rimPropertyBlock = new MaterialPropertyBlock();
+
         if (animator == null)
         {
             animator = GetComponent<Animator>();
@@ -426,6 +483,9 @@ public class PlayerController : MonoBehaviour
         ultSkillAction = new InputAction("UltSkill", InputActionType.Button, "<Keyboard>/q");
 
         attackAction = new InputAction("Attack", InputActionType.Button, "<Mouse>/leftButton");
+
+        decreaseMoveSpeedAction = new InputAction("DecreaseMoveSpeed", InputActionType.Button, "<Keyboard>/leftBracket");
+        increaseMoveSpeedAction = new InputAction("IncreaseMoveSpeed", InputActionType.Button, "<Keyboard>/rightBracket");
     }
 
     private void OnEnable()
@@ -435,6 +495,8 @@ public class PlayerController : MonoBehaviour
         skillAction.Enable();
         ultSkillAction.Enable();
         attackAction.Enable();
+        decreaseMoveSpeedAction.Enable();
+        increaseMoveSpeedAction.Enable();
     }
 
     private void OnDisable()
@@ -444,6 +506,8 @@ public class PlayerController : MonoBehaviour
         skillAction.Disable();
         ultSkillAction.Disable();
         attackAction.Disable();
+        decreaseMoveSpeedAction.Disable();
+        increaseMoveSpeedAction.Disable();
     }
 
     private void Start()
@@ -536,6 +600,35 @@ public class PlayerController : MonoBehaviour
         UpdateHPBar(); // 살아있든 죽었든, 매 프레임 최신 HP 비율을 UI에 반영합니다 (자연 회복도 매 프레임 조금씩 바뀌기 때문입니다).
         UpdateMPBar(); // MP도 자연 회복(mpRegenPerSecond)되므로 매 프레임 최신 비율을 반영합니다.
         UpdateSkillCooldownUI(); // 스킬 쿨타임 + 필살기 에너지/쿨타임 UI(게이지 이미지 + 남은 시간 텍스트)도 이번 프레임 최신 상태로 반영합니다.
+        HandleDebugMoveSpeedAdjust(); // [ / ] 키로 moveSpeed 조절 - 위 조작 잠금 블록과 무관하게 항상 확인합니다(디버그용).
+    }
+
+    /// <summary>디버그용: [ 키로 moveSpeed를 1 줄이고, ] 키로 1 늘립니다. 누를 때마다 현재 moveSpeed를
+    /// FloatingTextManager로 화면에 띄워서 바로 확인할 수 있게 합니다. UI가 열려있는 동안은(인벤토리 등)
+    /// 다른 입력과 마찬가지로 무시하지만, 그 외에는 사망/컷씬 중이어도 동작합니다 - 디버그 목적이라
+    /// 일부러 다른 조작 잠금(isDead/IsCutsceneControlled 등)과 묶지 않았습니다.</summary>
+    private void HandleDebugMoveSpeedAdjust()
+    {
+        if (!debugMoveSpeedHotkeyEnabled || IsAnyUIOpen()) return;
+
+        if (decreaseMoveSpeedAction.WasPressedThisFrame())
+        {
+            moveSpeed = Mathf.Max(0f, moveSpeed - 1f);
+            ShowMoveSpeedFloatingText();
+        }
+        else if (increaseMoveSpeedAction.WasPressedThisFrame())
+        {
+            moveSpeed += 1f;
+            ShowMoveSpeedFloatingText();
+        }
+    }
+
+    /// <summary>VillageZone.cs/PlayerStats.cs의 레벨업 알림과 같은 방식(FloatingTextManager 재사용)으로
+    /// 현재 moveSpeed 값을 화면에 띄웁니다. FloatingTextManager.Instance는 처음 호출되는 순간 자동으로
+    /// 생성되므로(FloatingTextManager.cs 참고) 씬에 미리 배치해두지 않아도 안전합니다.</summary>
+    private void ShowMoveSpeedFloatingText()
+    {
+        FloatingTextManager.Instance.Show($"이동속도: {moveSpeed:0.##}");
     }
 
     /// <summary>인벤토리/캐릭터정보/옵션 같은 UICanvas 팝업이 지금 하나라도 열려있는지 확인합니다.
@@ -791,6 +884,11 @@ public class PlayerController : MonoBehaviour
             isDashing = true;
             dashTimer = dashDuration;
             if (dashGrantsInvincibility) EnterInvincible();
+            if (dashRimLightEnabled)
+            {
+                SetDashRimLight(true);
+                dashRimLightActive = true;
+            }
 
             if (animator != null)
             {
@@ -835,11 +933,82 @@ public class PlayerController : MonoBehaviour
     /// <summary>무적 상태(대시 또는 필살기)가 정상적으로 끝나거나, 피격/사망 등으로 중간에 강제로 끊길 때
     /// 호출해서 원래 레이어로 되돌립니다. 무적이 아니었을 때 호출해도(레이어가 이미 원래대로였어도)
     /// 안전합니다 - 그래서 TakeHit()/Die()처럼 "혹시 몰라서" 안전장치로 호출하는 곳에서는 지금 정말
-    /// 무적 상태였는지 따지지 않고 그냥 항상 호출합니다.</summary>
+    /// 무적 상태였는지 따지지 않고 그냥 항상 호출합니다.
+    /// [림라이트 정리는 레이어 가드보다 먼저] dashRimLightActive 체크는 일부러 invincibleLayer < 0
+    /// 가드보다 앞에 뒀습니다 - 림라이트는 invincibleLayerName 설정과 무관하게 독립적으로 켜지는
+    /// 기능이라(dashRimLightEnabled), 혹시 무적 레이어가 설정되지 않은 상태라도 켜져있던 림라이트는
+    /// 반드시 꺼져야 하기 때문입니다.</summary>
     private void ExitInvincible()
     {
+        if (dashRimLightActive)
+        {
+            SetDashRimLight(false);
+            dashRimLightActive = false;
+        }
+
         if (invincibleLayer < 0) return;
         gameObject.layer = normalLayer;
+    }
+
+    /// <summary>구르기 시작/종료 시 호출해서 rimLightRenderers의 림라이트를 목표값(켤 때는
+    /// dashRimIntensity, 끌 때는 0)까지 부드럽게 페이드시킵니다. 이미 페이드가 진행 중이었다면(예: 페이드
+    /// 아웃되는 도중에 다시 구르기 시작) 그 페이드를 취소하고 "지금 실제로 보이는 값"에서부터 새 목표로
+    /// 자연스럽게 이어서 전환합니다 - 갑자기 뚝 끊기고 다시 시작하는 부자연스러움을 막기 위해서입니다.</summary>
+    private void SetDashRimLight(bool on)
+    {
+        if (!dashRimLightEnabled || rimLightRenderers == null || rimLightRenderers.Length == 0) return;
+
+        float targetIntensity = on ? dashRimIntensity : 0f;
+        float duration = on ? dashRimFadeInDuration : dashRimFadeOutDuration;
+
+        if (rimFadeRoutine != null) StopCoroutine(rimFadeRoutine);
+        rimFadeRoutine = StartCoroutine(FadeRimLightRoutine(targetIntensity, duration));
+    }
+
+    /// <summary>currentRimIntensity(지금 실제로 적용된 값)에서 targetIntensity까지 duration에 걸쳐 매
+    /// 프레임 Lerp하며 ApplyRimIntensity()로 렌더러에 반영합니다. duration이 0 이하면(둘 다 기본값은
+    /// 0보다 크지만, 즉시 켜고/끄고 싶은 분들을 위해 0으로 낮출 수 있게 열어뒀습니다) 한 프레임 만에
+    /// 바로 목표값으로 맞춥니다.</summary>
+    private IEnumerator FadeRimLightRoutine(float targetIntensity, float duration)
+    {
+        float startIntensity = currentRimIntensity;
+
+        if (duration <= 0f)
+        {
+            ApplyRimIntensity(targetIntensity);
+            rimFadeRoutine = null;
+            yield break;
+        }
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            ApplyRimIntensity(Mathf.Lerp(startIntensity, targetIntensity, Mathf.Clamp01(elapsed / duration)));
+            yield return null;
+        }
+
+        ApplyRimIntensity(targetIntensity);
+        rimFadeRoutine = null;
+    }
+
+    /// <summary>MaterialPropertyBlock을 사용해서 머티리얼 인스턴스를 새로 만들지 않고 rimLightRenderers
+    /// 전부에 지금 세기(intensity)를 반영합니다(SRP 배칭을 크게 해치지 않습니다). 이미 그 렌더러에 다른
+    /// 프로퍼티 블록 값이 설정되어 있을 수 있으니(나중에 추가될 수 있는 피격 틴트 등) GetPropertyBlock()
+    /// 으로 먼저 읽어온 뒤 필요한 값만 덮어써서 다른 값들을 보존합니다.</summary>
+    private void ApplyRimIntensity(float intensity)
+    {
+        currentRimIntensity = intensity;
+
+        foreach (Renderer r in rimLightRenderers)
+        {
+            if (r == null) continue;
+
+            r.GetPropertyBlock(rimPropertyBlock);
+            rimPropertyBlock.SetFloat(rimIntensityPropertyName, intensity);
+            rimPropertyBlock.SetColor(rimColorPropertyName, dashRimColor);
+            r.SetPropertyBlock(rimPropertyBlock);
+        }
     }
 
     /// <summary>필살기 카메라 연출(UltSkillEffector)이 지금 재생 중이면(isUsingUltSkill) 게임플레이

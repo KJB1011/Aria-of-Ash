@@ -40,6 +40,13 @@
 //   되돌립니다. Inventory/CharacterInfo의 ClickExitButton()은 그냥 닫기만 하는 것과 달리, 옵션
 //   창은 실시간 미리보기 값이 있어서 이렇게 다르게 동작합니다.
 //
+// [조작법 버튼 - UIControls 연동]
+//   옵션 창 안에 "조작법" 버튼을 하나 두면 언제든 조작법 안내 패널(UIControls, 인게임 씬 시작 시
+//   자동으로 한 번 뜨는 그 패널)을 다시 볼 수 있습니다. OnClick에 이 스크립트의
+//   ClickShowControlsButton()을 연결하세요 - 옵션 창이 조작법 패널로 바로 바뀌고, 조작법 패널은
+//   자기 자신의 닫기 버튼을 눌러야 닫힙니다(옵션 창으로 자동으로 돌아가지는 않습니다 - 자세한
+//   내용은 UIControls.cs 참고).
+//
 // [O 키로 열고 닫기]
 //   UIInventory의 I키, UICharacterInfo의 U키와 완전히 같은 패턴입니다 - Awake()에서
 //   InputAction("<Keyboard>/o")을 만들고, OnEnable/OnDisable에서 Enable/Disable, Update()에서
@@ -56,6 +63,8 @@
 //   3) 나가기(취소) 버튼의 OnClick에 ClickExitButton()을, 확인 버튼의 OnClick에
 //      ClickConfirmButton()을 각각 연결하세요. O 키는 코드에서 자동으로 처리되므로 따로
 //      설정할 게 없습니다.
+//   3-1) (선택) "조작법" 버튼을 만들었다면 OnClick에 ClickShowControlsButton()을 연결하세요.
+//        UICanvas의 Controls 필드에 UIControls 패널이 먼저 연결되어 있어야 합니다.
 //   4) 이 오브젝트는 항상 활성화(Active) 상태로 두세요 - UIInventory/UICharacterInfo와 같은
 //      이유로, SetActive가 아니라 CanvasGroup 알파로 보이기/숨기기를 처리합니다. 씬 시작 시
 //      기본적으로 닫혀있습니다(알파 0, 상호작용 불가).
@@ -109,10 +118,6 @@ public class UIOption : MonoBehaviour, IUIWindow
     private CanvasGroup canvasGroup;
     private Tween fadeTween;
     private bool isOpen;
-
-    // 옵션 창을 열기 직전의 커서 상태를 저장해뒀다가, 닫을 때 그대로 복원합니다(UIInventory와 동일).
-    private CursorLockMode previousCursorLockState;
-    private bool previousCursorVisible;
 
     // Open() 시점의 값을 저장해두는 스냅샷입니다 - "나가기"(취소)를 누르면 이 값으로 되돌립니다.
     private float snapshotBgmVolume;
@@ -201,6 +206,17 @@ public class UIOption : MonoBehaviour, IUIWindow
         UICanvas.Instance.CloseUI(gameObject);
     }
 
+    /// <summary>"조작법" 버튼 OnClick에 연결하세요. 지금 열려있는 옵션 창을 조작법 안내 패널
+    /// (UIControls)로 바로 바꿔줍니다 - UICanvas.OpenUI()가 원래 "이미 다른 팝업이 열려있으면
+    /// 그것부터 닫고 새 팝업을 연다"는 방식으로 동작하므로, 옵션 창을 먼저 직접 닫을 필요 없이
+    /// 그냥 OpenUI만 호출하면 됩니다(스냅샷 취소 없이 지금 적용된 값 그대로 유지된 채 전환됩니다 -
+    /// ClickConfirmButton과 같은 동작). 조작법 패널은 자기 자신의 닫기 버튼을 눌러야 닫힙니다
+    /// (UIControls.cs 참고) - 옵션 창으로 자동으로 돌아가지는 않습니다.</summary>
+    public void ClickShowControlsButton()
+    {
+        UICanvas.Instance.OpenUI(UICanvas.Instance.Controls.gameObject);
+    }
+
     /// <summary>IUIWindow 구현. UICanvas.OpenUI()가 호출합니다 - 직접 호출하지 말고 ToggleOption()이나
     /// UICanvas.Instance.OpenUI(gameObject)를 쓰세요.</summary>
     public void Open()
@@ -208,8 +224,6 @@ public class UIOption : MonoBehaviour, IUIWindow
         if (isOpen) return;
         isOpen = true;
 
-        previousCursorLockState = Cursor.lockState;
-        previousCursorVisible = Cursor.visible;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
@@ -227,14 +241,16 @@ public class UIOption : MonoBehaviour, IUIWindow
     }
 
     /// <summary>IUIWindow 구현. UICanvas.CloseUI()가 호출합니다 - 직접 호출하지 말고 ToggleOption()이나
-    /// UICanvas.Instance.CloseUI(gameObject)를 쓰세요.</summary>
+    /// UICanvas.Instance.CloseUI(gameObject)를 쓰세요. 닫히는 순간 커서를 무조건 다시 잠그고 숨깁니다
+    /// (UIInventory.Close() 참고 - 열기 직전 상태를 복원하는 대신 항상 게임플레이 기본 상태로
+    /// 되돌리는 방식으로 통일했습니다).</summary>
     public void Close()
     {
         if (!isOpen) return;
         isOpen = false;
 
-        Cursor.lockState = previousCursorLockState;
-        Cursor.visible = previousCursorVisible;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
 
         fadeTween?.Kill();
         fadeTween = canvasGroup.DOFade(0f, fadeDuration).SetUpdate(true);

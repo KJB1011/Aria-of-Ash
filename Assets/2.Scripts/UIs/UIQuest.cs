@@ -82,11 +82,6 @@ public class UIQuest : MonoBehaviour, IUIWindow
     private bool isShowingQuestWindow = true;
     private bool subscribedToQuest;
 
-    // 퀘스트 창을 열기 직전의 커서 상태를 저장해뒀다가, 닫을 때 그대로 복원합니다 - UIInventory와
-    // 같은 이유입니다(열기 전에 이미 커서가 풀려있었다면 닫아도 다시 잠그지 않습니다).
-    private CursorLockMode previousCursorLockState;
-    private bool previousCursorVisible;
-
     private InputAction toggleAction;
 
     private void Awake()
@@ -175,8 +170,6 @@ public class UIQuest : MonoBehaviour, IUIWindow
         if (isOpen) return;
         isOpen = true;
 
-        previousCursorLockState = Cursor.lockState;
-        previousCursorVisible = Cursor.visible;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
@@ -191,14 +184,16 @@ public class UIQuest : MonoBehaviour, IUIWindow
     }
 
     /// <summary>IUIWindow 구현. UICanvas.CloseUI()가 호출합니다 - 직접 호출하지 말고 ToggleQuest()나
-    /// UICanvas.Instance.CloseUI(gameObject)를 쓰세요.</summary>
+    /// UICanvas.Instance.CloseUI(gameObject)를 쓰세요. 닫히는 순간 커서를 무조건 다시 잠그고 숨깁니다
+    /// (UIInventory.Close() 참고 - 열기 직전 상태를 복원하는 대신 항상 게임플레이 기본 상태로
+    /// 되돌리는 방식으로 통일했습니다).</summary>
     public void Close()
     {
         if (!isOpen) return;
         isOpen = false;
 
-        Cursor.lockState = previousCursorLockState;
-        Cursor.visible = previousCursorVisible;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
 
         fadeTween?.Kill();
         fadeTween = canvasGroup.DOFade(0f, fadeDuration).SetUpdate(true);
