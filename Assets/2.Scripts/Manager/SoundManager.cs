@@ -41,6 +41,26 @@
 //     SoundManager.Instance.PlaySFX(hitSfxName, vfxPosition, 1f, 0.08f);
 //   한 줄만 추가하면 타격음까지 같이 재생됩니다. 원하시면 AttackHitbox/MonsterFSM(피격,사망)/
 //   PlayerController(콤보 스윙) 등 기존 스크립트들에도 이어서 연결해드릴 수 있습니다.
+//
+// [전투 음악 자동 전환 - NotifyCombatEngaged / NotifyCombatDisengaged / SetFieldBGM]
+//   "지금 전투 중인가"도 이 매니저가 함께 판단합니다. 몬스터/보스가 교전을 시작/종료할 때마다 직접
+//   PlayBGM을 부르지 않고 NotifyCombatEngaged(this)/NotifyCombatDisengaged(this)만 호출하면,
+//   engagedSources(교전 중인 대상들의 집합)의 개수가 0→1이 되는 순간에만 combatBgmName을 재생하고,
+//   1→0이 된 뒤 combatExitDelay초 동안 아무도 다시 교전하지 않을 때만 currentFieldBgm(가장 최근에
+//   SetFieldBGM으로 알려준 구역 음악)으로 되돌립니다. 여러 몬스터가 동시에 싸우다 한 마리만 죽어도
+//   음악이 끊기지 않고, 몬스터를 잡자마자 바로 다음 몬스터에게 감지돼도 음악이 깜빡이지 않습니다.
+//   - MonsterFSM.ChangeState(): 교전 상태(Trace/Chase/BodyAttack/SplashAttack/Hit) 진입/이탈 시 호출.
+//   - MiddleSlimeBoss.Update(): IsTargetInDetectRange() 조건으로 호출(별도 FSM이라 직접 연결).
+//   - BGMZoneTrigger: 플레이어가 구역에 들어올 때 SetFieldBGM()으로 "평상시 음악"을 갱신.
+//
+// [게임 시작 시 기본 배경음악 - startBgmName]
+//   이 매니저가 처음 생성되는 순간(=Awake(), 사실상 게임을 시작하자마자) startBgmName이 채워져
+//   있으면 SetFieldBGM()으로 자동 재생합니다. 예: startBgmName = "Field_Theme"로 설정해두고, 마을
+//   경계에는 zoneBgmName = "Village_Theme", revertOnExit = true, exitBgmName = "Field_Theme"인
+//   BGMZoneTrigger를 배치하면 - 게임 시작 즉시 Field_Theme이 깔리고, 마을에 들어가면 Village_Theme으로,
+//   마을에서 나가면 다시 Field_Theme으로 자동 전환됩니다. 씬에 SoundManager를 미리 배치하지 않았다면
+//   이 값은 인스펙터에서 미리 설정해둘 수 없으므로, startBgmName을 쓰려면 시작 씬에 빈 오브젝트를
+//   만들어 SoundManager를 미리 붙여두고 그 값을 지정해두세요([씬/프로젝트 준비] 2번 참고).
 // ============================================================================
 
 using System.Collections;
@@ -60,6 +80,34 @@ public class SoundManager : MonoBehaviour
     [Header("BGM")]
     [Tooltip("PlayBGM()에 fadeDuration을 따로 넘기지 않았을 때 사용할 기본 크로스페이드 시간(초).")]
     public float defaultBgmFadeDuration = 1.5f;
+    [Tooltip("게임을 시작하자마자(이 매니저가 처음 생성되는 순간) 자동으로 재생할 기본 배경음악입니다 - " +
+              "Resources/BGM/ 아래 파일명과 일치해야 합니다. BGMZoneTrigger가 하나도 없어도 이 곡이 항상 " +
+              "깔려있고, 마을 등 특정 구역에 들어가면 그 구역의 BGMZoneTrigger가 SetFieldBGM()으로 잠시 " +
+              "덮어썼다가, 그 구역을 나가면(BGMZoneTrigger의 revertOnExit + exitBgmName을 이 값과 같은 " +
+              "이름으로 설정) 다시 이 곡으로 돌아오게 구성하세요. 비워두면 게임 시작 시 아무 것도 " +
+              "재생하지 않고, 첫 BGMZoneTrigger를 만날 때까지 조용합니다.")]
+    public string startBgmName;
+
+    [Header("전투 음악 자동 전환")]
+    [Tooltip("교전 중(몬스터 1마리 이상과 싸우는 중)일 때 재생할 곡입니다. Resources/BGM/ 아래 파일명과 일치해야 합니다.")]
+    public string combatBgmName = "Combat_Theme";
+    [Tooltip("평상시 음악 → 전투 음악으로 바뀔 때의 크로스페이드 시간(초). 전투 시작은 긴장감을 위해 " +
+              "필드 복귀보다 짧게(빠르게) 잡는 걸 추천합니다.")]
+    public float combatEnterFadeDuration = 0.6f;
+    [Tooltip("전투 음악 → 평상시 음악으로 바뀔 때의 크로스페이드 시간(초).")]
+    public float fieldReturnFadeDuration = 1.5f;
+    [Tooltip("마지막 몬스터와의 교전이 끝난 뒤, 이 시간(초)만큼 아무도 다시 교전하지 않아야 실제로 " +
+              "평상시 음악으로 되돌립니다. 몬스터를 잡자마자 근처 다른 몬스터에게 바로 감지되는 " +
+              "상황에서 음악이 깜빡이는 것을 막아줍니다.")]
+    public float combatExitDelay = 4f;
+
+    [Header("UI 클릭 효과음")]
+    [Tooltip("메뉴/인벤토리/캐릭터정보/옵션/퀘스트 창 등 게임 안의 모든 버튼이 공통으로 재생하는 클릭 " +
+              "효과음입니다(Resources/SFX/ 아래 클립 이름과 일치해야 함) - PlayUIClickSfx()가 이 값을 " +
+              "재생합니다. 버튼마다 다른 소리를 내고 싶다면 이 공용 메서드 대신 PlaySFX(다른 클립 이름)를 " +
+              "직접 호출하세요. 대화/퀘스트 선택지(UIDialogueChoiceButton)는 이 값 대신 자신만의 " +
+              "choiceSfxName을 따로 갖고 있습니다.")]
+    public string uiClickSfxName = "UI_Click";
 
     [Header("SFX 풀")]
     [Tooltip("미리 만들어서 대기시켜둘 SFX 보이스(AudioSource) 개수. 전투 중 처음 재생할 때 생기는 순간적인 끊김을 막아줍니다.")]
@@ -80,12 +128,22 @@ public class SoundManager : MonoBehaviour
         {
             if (instance == null)
             {
-                GameObject go = new GameObject("SoundManager");
-                instance = go.AddComponent<SoundManager>();
+                // 씬에 이미 배치해둔 인스턴스가 있으면 그걸 쓰고, 없으면 새로 만듭니다.
+                instance = FindFirstObjectByType<SoundManager>();
+                if (instance == null)
+                {
+                    GameObject go = new GameObject("SoundManager");
+                    instance = go.AddComponent<SoundManager>();
+                }
             }
             return instance;
         }
     }
+
+    /// <summary>인스턴스를 새로 만들지 않고 "이미 있으면" 그것만 돌려줍니다. 씬 종료/앱 종료 시점처럼
+    /// 새로 만들 필요가 없는 정리(해제) 코드에서 Instance 대신 이걸 사용하세요(MonsterActivation.OnDestroy와
+    /// 동일한 이유 - MonsterFSM/MiddleSlimeBoss의 OnDestroy 안전장치에서 씁니다).</summary>
+    public static SoundManager InstanceIfExists => instance;
 
     // ------------------------------------------------------------------
     // BGM - AudioSource 2개를 번갈아 쓰면서 크로스페이드합니다.
@@ -95,6 +153,18 @@ public class SoundManager : MonoBehaviour
     private AudioSource activeBgmSource;
     private Coroutine bgmFadeRoutine;
     private string currentBgmName;
+
+    // ------------------------------------------------------------------
+    // 전투 음악 자동 전환 - "지금 교전 중인 몬스터/보스"를 세어서(참조 카운팅) 1마리 이상이면 전투
+    // 음악을, 0마리면(그리고 combatExitDelay 동안 아무도 다시 교전하지 않으면) 구역 음악을 재생합니다.
+    // ------------------------------------------------------------------
+    // 몬스터가 여러 마리 동시에 플레이어를 공격할 수 있어서, 개별 몬스터가 직접 PlayBGM/StopBGM을
+    // 호출하지 않고 "나 지금 교전 중" / "나 이제 아님"만 여기 알려줍니다 - A가 죽어서 필드 음악으로
+    // 되돌리는 순간 아직 B가 싸우고 있는데도 음악이 끊기는 문제를 막기 위함입니다.
+    private readonly HashSet<Object> engagedSources = new HashSet<Object>();
+    // BGMZoneTrigger가 마지막으로 알려준 "평상시(비전투) 음악" 이름입니다. 전투가 끝나면 이 값으로 되돌아갑니다.
+    private string currentFieldBgm;
+    private Coroutine exitCombatRoutine;
 
     // ------------------------------------------------------------------
     // SFX - 클립 캐시 + 보이스(AudioSource) 오브젝트 풀
@@ -130,6 +200,15 @@ public class SoundManager : MonoBehaviour
 
         SetupBgmSources();
         SetupSfxVoicePool();
+
+        // 게임 시작과 동시에 기본 배경음악을 깔아둡니다. SetFieldBGM()을 거치는 이유는 PlayBGM()을 직접
+        // 부르면 currentFieldBgm이 갱신되지 않아서, 이후 전투가 한 번이라도 벌어지면 "돌아갈 곡"이 없어
+        // 정지해버리기 때문입니다 - SetFieldBGM()을 쓰면 이 곡이 처음부터 currentFieldBgm으로 기억되어
+        // 있으니 전투 종료 후에도 정상적으로 이 곡으로 복귀합니다.
+        if (!string.IsNullOrEmpty(startBgmName))
+        {
+            SetFieldBGM(startBgmName);
+        }
     }
 
     // ------------------------------------------------------------------
@@ -181,6 +260,67 @@ public class SoundManager : MonoBehaviour
     public string CurrentBGMName => currentBgmName;
 
     // ------------------------------------------------------------------
+    // 외부에서 호출하는 전투 음악 자동 전환 API
+    // ------------------------------------------------------------------
+
+    /// <summary>지금 전투 중(교전 중인 몬스터가 1마리 이상)인지 여부입니다.</summary>
+    public bool IsInCombat => engagedSources.Count > 0;
+
+    /// <summary>몬스터/보스가 교전을 시작할 때 호출하세요(예: MonsterFSM이 Trace/Chase 등으로 전환될 때,
+    /// MiddleSlimeBoss가 탐지 범위에 타겟을 포착했을 때). 이미 다른 몬스터와 교전 중이었다면(=이미 전투
+    /// 음악이 재생 중이라면) 카운트만 올리고 아무 것도 하지 않습니다.</summary>
+    public void NotifyCombatEngaged(Object source)
+    {
+        if (source == null) return;
+
+        bool wasEmpty = engagedSources.Count == 0;
+        if (!engagedSources.Add(source)) return; // 이미 등록되어 있었다면 중복 처리하지 않습니다.
+
+        if (wasEmpty)
+        {
+            if (exitCombatRoutine != null)
+            {
+                StopCoroutine(exitCombatRoutine);
+                exitCombatRoutine = null;
+            }
+
+            PlayBGM(combatBgmName, combatEnterFadeDuration);
+            if (debugLog) Debug.Log($"[SoundManager] 전투 시작 → '{combatBgmName}' 재생 (교전 시작: {source.name})", this);
+        }
+    }
+
+    /// <summary>몬스터/보스가 교전을 벗어날 때 호출하세요(타겟을 놓치고 복귀, 사망 등). 등록되어 있지
+    /// 않은 소스를 넘겨도(예: 애초에 교전한 적이 없거나 이미 해제됐다면) 안전하게 무시됩니다.</summary>
+    public void NotifyCombatDisengaged(Object source)
+    {
+        if (source == null) return;
+        if (!engagedSources.Remove(source)) return;
+
+        if (engagedSources.Count == 0)
+        {
+            if (exitCombatRoutine != null) StopCoroutine(exitCombatRoutine);
+            exitCombatRoutine = StartCoroutine(ExitCombatAfterDelay());
+            if (debugLog) Debug.Log($"[SoundManager] 마지막 교전 종료 (해제: {source.name}) - {combatExitDelay}초 뒤 평상시 음악으로 복귀 예정", this);
+        }
+    }
+
+    /// <summary>BGMZoneTrigger가 플레이어의 구역 진입/이탈 시 호출합니다. 지금 전투 중이 아니라면 즉시
+    /// 이 음악으로 전환하고, 전투 중이라면 지금은 바꾸지 않고 "전투가 끝나면 돌아갈 음악"으로만
+    /// 기억해둡니다.</summary>
+    public void SetFieldBGM(string bgmName, float fadeDuration = -1f)
+    {
+        currentFieldBgm = bgmName;
+
+        if (IsInCombat)
+        {
+            if (debugLog) Debug.Log($"[SoundManager] 구역 음악이 '{bgmName}'(으)로 바뀌었지만 아직 전투 중이라 전투가 끝난 뒤 적용됩니다.", this);
+            return;
+        }
+
+        PlayBGM(bgmName, fadeDuration);
+    }
+
+    // ------------------------------------------------------------------
     // 외부에서 호출하는 SFX API
     // ------------------------------------------------------------------
 
@@ -196,6 +336,16 @@ public class SoundManager : MonoBehaviour
     public void PlaySFX(string clipName, Vector3 position, float volume = 1f, float pitchVariation = 0f)
     {
         PlaySFXInternal(clipName, position, spatial: true, volume, pitchVariation);
+    }
+
+    /// <summary>uiClickSfxName을 2D로 재생합니다. 씬 어디서든(로비/인게임 모두) 존재하는 이 매니저를
+    /// 통해서만 재생하므로, UICanvas처럼 특정 씬에만 있는 허브에 이 기능을 두는 것보다 안전합니다 -
+    /// 각 UI 스크립트의 ClickXButton() 맨 앞에서 SoundManager.Instance.PlayUIClickSfx();만 호출하면
+    /// 됩니다. uiClickSfxName이 비어있으면 조용히 아무 것도 하지 않습니다.</summary>
+    public void PlayUIClickSfx()
+    {
+        if (string.IsNullOrEmpty(uiClickSfxName)) return;
+        PlaySFX(uiClickSfxName);
     }
 
     /// <summary>parent를 계속 따라다니는 효과음을 재생합니다 (발소리 루프, 캐릭터에 붙는 사운드 등).
@@ -346,6 +496,27 @@ public class SoundManager : MonoBehaviour
         source.Stop();
         source.volume = 0f;
         bgmFadeRoutine = null;
+    }
+
+    private IEnumerator ExitCombatAfterDelay()
+    {
+        yield return new WaitForSeconds(combatExitDelay);
+        exitCombatRoutine = null;
+
+        // 대기하는 동안 다른 몬스터가 다시 교전을 시작했다면(NotifyCombatEngaged가 다시 호출됐다면)
+        // engagedSources가 다시 채워져 있으므로 여기서 아무 것도 하지 않고 조용히 취소합니다.
+        if (engagedSources.Count > 0) yield break;
+
+        if (!string.IsNullOrEmpty(currentFieldBgm))
+        {
+            PlayBGM(currentFieldBgm, fieldReturnFadeDuration);
+            if (debugLog) Debug.Log($"[SoundManager] 전투 종료 → 평상시 음악 '{currentFieldBgm}'로 복귀", this);
+        }
+        else
+        {
+            StopBGM(fieldReturnFadeDuration);
+            if (debugLog) Debug.Log("[SoundManager] 전투 종료 - 되돌아갈 구역 음악이 지정되어 있지 않아 정지합니다.", this);
+        }
     }
 
     // ------------------------------------------------------------------

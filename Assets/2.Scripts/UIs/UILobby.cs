@@ -6,6 +6,16 @@
 // IngameSceneÀ¸·Î ÀÌµ¿½ÃÅµ´Ï´Ù. ½ÇÁ¦ ÆäÀÌµå/¾À ÀüÈ¯Àº »õ·Î ¸¸µéÁö ¾Ê°í GameManager.LoadSceneWithFade()¸¦
 // ±×´ë·Î Àç»ç¿ëÇÕ´Ï´Ù(GameManager.cs »ó´Ü [ÀÏ¹İÀûÀÎ ¾À ÀüÈ¯] Âü°í).
 //
+// [¹è°æÀ½¾Ç ÀüÈ¯ - ·Îºñ °î ¡æ (¹«À½) ¡æ ÇÊµå °î]
+//   ·Îºñ ¹è°æÀ½¾ÇÀº ÀÌ ½ºÅ©¸³Æ®°¡ Àç»ıÇÏÁö ¾Ê½À´Ï´Ù - SoundManager.startBgmNameÀÌ °ÔÀÓÀ» ½ÃÀÛÇÏ´Â
+//   ¼ø°£(=SoundManager°¡ Ã³À½ »ı¼ºµÇ´Â ¼ø°£) ÀÚµ¿À¸·Î Àç»ıÇØÁİ´Ï´Ù(LobbySceneÀÌ °ÔÀÓÀÇ Ã¹ ¾ÀÀÌ¹Ç·Î,
+//   LobbyScene¿¡ SoundManager¸¦ ¹Ì¸® ¹èÄ¡ÇÏ°í ±× ÇÊµå¿¡ ·Îºñ °îÀ» ÁöÁ¤ÇØµÎ¸é µË´Ï´Ù). °ÔÀÓ ½ÃÀÛ ¹öÆ°À»
+//   ´©¸£¸é È­¸éÀÌ ±î¸ÅÁö´Â °Í°ú °°Àº ¼ø°£ ·Îºñ °îÀÌ ÆäÀÌµå¾Æ¿ôµÇ¾î ·Îµù ³»³» Á¶¿ëÇØÁö°í, ·ÎµùÀÌ ³¡³ª
+//   È­¸éÀÌ ´Ù½Ã ¹à¾ÆÁö´Â ¼ø°£ fieldBgmName(ÇÊµå °î)ÀÌ ÆäÀÌµåÀÎµË´Ï´Ù - Å©·Î½ºÆäÀÌµå°¡ ¾Æ´Ï¶ó È­¸é°ú
+//   ¶È°°ÀÌ "¾îµÎ¿öÁü ¡æ ¹«À½ ¡æ ¹à¾ÆÁü"ÀÇ Èå¸§ÀÔ´Ï´Ù. ÀÌ ÀüÈ¯Àº ÀÌ ½ºÅ©¸³Æ®°¡ ¾Æ´Ï¶ó
+//   GameManager.LoadSceneWithFade()°¡ ´ã´çÇÕ´Ï´Ù(¾Æ·¡ fieldBgmNameÀ» ±×´ë·Î ³Ñ°ÜÁÙ »ÓÀÔ´Ï´Ù) - ÀÌ
+//   ¿ÀºêÁ§Æ®´Â ¾À ÀüÈ¯°ú ÇÔ²² ÆÄ±«µÇ¾î "·ÎµùÀÌ ³¡³­ µÚ"¸¦ ½º½º·Î ¾Ë ¼ö ¾ø±â ¶§¹®ÀÔ´Ï´Ù.
+//
 // [¾ÆÀÌµğ ÀÔ·Â - ½Ç½Ã°£ °ËÁõ]
 //   Awake()¿¡¼­ idInputField.characterLimitÀ» maxIdLength·Î ¸ÂÃç¼­, 12±ÛÀÚ¸¦ ³Ñ¾î°¡´Â ¼ø°£ºÎÅÍ´Â
 //   Å°º¸µå·Î ´õ ÀÔ·ÂÇØµµ(ºÙ¿©³Ö±â Æ÷ÇÔ) ¾Æ¿¹ ¾ÃÇô¼­ µé¾î°¡Áö ¾Ê½À´Ï´Ù - ±ÛÀÚ¼ö Á¶°ÇÀº ÀÌ·¸°Ô ÀÔ·Â
@@ -36,6 +46,9 @@
 //      Build¿¡ LobbyScene°ú ÇÔ²² µî·ÏµÇ¾î ÀÖ¾î¾ß ÇÕ´Ï´Ù.
 //   6) IngameScene ÂÊ¿¡¼­ ÀÌ ¾ÆÀÌµğ¸¦ Ç¥½ÃÇÏ·Á¸é GameManager.Instance.PlayerId¸¦ ÀĞÀ¸¸é µË´Ï´Ù
 //      (UICharacterInfo.cs°¡ ÀÌ¹Ì ÀÌ·¸°Ô ¿¬°áµÇ¾î ÀÖ½À´Ï´Ù).
+//   7) LobbyScene¿¡ ºó ¿ÀºêÁ§Æ®¸¦ ¸¸µé¾î SoundManager¸¦ ¹Ì¸® ºÙÀÌ°í startBgmName¿¡ ·Îºñ °îÀ»
+//      ÁöÁ¤ÇÏ¼¼¿ä - °ÔÀÓÀ» ½ÃÀÛÇÏÀÚ¸¶ÀÚ ±× °îÀÌ ÀÚµ¿À¸·Î Àç»ıµË´Ï´Ù. ÀÌ ÄÄÆ÷³ÍÆ®ÀÇ Field Bgm Name¿¡´Â
+//      ÀÎ°ÔÀÓ¿¡¼­ Àç»ıÇÒ ÇÊµå °îÀ» ÁöÁ¤ÇÏ¼¼¿ä.
 // ============================================================================
 
 using System.Text.RegularExpressions;
@@ -74,6 +87,16 @@ public class UILobby : MonoBehaviour
     public float fadeOutDuration = 1f;
     [Tooltip("ÀÎ°ÔÀÓ ¾ÀÀÌ ´Ù ÁØºñµÈ µÚ, È­¸éÀÌ ´Ù½Ã º¸ÀÌ±â±îÁö(ÆäÀÌµå ÀÎ) °É¸®´Â ½Ã°£(ÃÊ)ÀÔ´Ï´Ù.")]
     public float fadeInDuration = 1f;
+
+    [Header("¹è°æÀ½¾Ç")]
+    [Tooltip("°ÔÀÓ ½ÃÀÛ ¹öÆ°À» ´©¸£¸é ÀüÈ¯ÇÒ ÀÎ°ÔÀÓ(ÇÊµå) ¹è°æÀ½¾ÇÀÔ´Ï´Ù(Resources/BGM/ ¾Æ·¡ Å¬¸³ ÀÌ¸§°ú " +
+              "ÀÏÄ¡ÇØ¾ß ÇÔ). ·Îºñ ¹è°æÀ½¾Ç ÀÚÃ¼´Â ÀÌ ½ºÅ©¸³Æ®°¡ ¾Æ´Ï¶ó SoundManager.startBgmNameÀÌ " +
+              "°ÔÀÓÀ» ½ÃÀÛÇÏÀÚ¸¶ÀÚ ÀÚµ¿À¸·Î Àç»ıÇØÁİ´Ï´Ù(LobbyScene¿¡ SoundManager¸¦ ¹Ì¸® ¹èÄ¡ÇÏ°í ±× " +
+              "ÇÊµå¿¡ ·Îºñ °îÀ» ³Ö¾îµÎ¼¼¿ä). ÀÌ °ªÀº GameManager.LoadSceneWithFade()¿¡ ±×´ë·Î Àü´ŞµÇ¾î, " +
+              "È­¸éÀÌ ±î¸ÅÁö´Â ¼ø°£ ·Îºñ °îÀÌ fadeOutDuration¿¡ °ÉÃÄ ÆäÀÌµå¾Æ¿ô(·Îµù ³»³» ¹«À½)µÇ°í, " +
+              "·ÎµùÀÌ ³¡³ª È­¸éÀÌ ¹à¾ÆÁö´Â ¼ø°£ fadeInDuration¿¡ °ÉÃÄ ÀÌ °îÀ¸·Î ÆäÀÌµåÀÎµË´Ï´Ù. " +
+              "ºñ¿öµÎ¸é ¾ÀÀÌ ¹Ù²î¾îµµ ·Îºñ À½¾ÇÀÌ °è¼Ó Àç»ıµË´Ï´Ù.")]
+    public string fieldBgmName;
 
     // ¿µ¾î(A-Z, a-z) + ÇÑ±Û ¿Ï¼ºÇü À½Àı(°¡-ÆR, U+AC00~U+D7A3) + ÇÑ±Û ÀÚ¸ğ(¤¡-¤Ó, U+3131~U+318E - ÇÑ±Û
     // ÀÔ·Â µµÁß ¾ÆÁ÷ ¿Ï¼ºµÇÁö ¾ÊÀº ³¹ÀÚµµ ¸·Áö ¾Ê±â À§ÇØ ÇÔ²² Çã¿ëÇÕ´Ï´Ù)¸¸ Çã¿ëÇÕ´Ï´Ù. ºó ¹®ÀÚ¿­µµ
@@ -150,6 +173,7 @@ public class UILobby : MonoBehaviour
     /// È®ÀÎÇÕ´Ï´Ù.</summary>
     public void ClickGameStartButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         if (isTransitioning) return;
 
         string id = idInputField != null ? idInputField.text : string.Empty;
@@ -161,8 +185,8 @@ public class UILobby : MonoBehaviour
 
         if (GameManager.Instance == null)
         {
-            Debug.LogWarning("[UILobby] GameManager.Instance°¡ ¾ø¾î ¾ÆÀÌµğ Àü´Ş/ÆäÀÌµå ¿¬Ãâ ¾øÀÌ ¾ÀÀ» ¹Ù·Î " +
-                              "ºÒ·¯¿É´Ï´Ù. LobbyScene¿¡ GameManager°¡ ¹èÄ¡µÇ¾î ÀÖ´ÂÁö È®ÀÎÇÏ¼¼¿ä.", this);
+            Debug.LogWarning("[UILobby] GameManager.Instance°¡ ¾ø¾î ¾ÆÀÌµğ Àü´Ş/ÆäÀÌµå¡¤BGM ¿¬Ãâ ¾øÀÌ ¾ÀÀ» " +
+                              "¹Ù·Î ºÒ·¯¿É´Ï´Ù. LobbyScene¿¡ GameManager°¡ ¹èÄ¡µÇ¾î ÀÖ´ÂÁö È®ÀÎÇÏ¼¼¿ä.", this);
             SceneManager.LoadScene(ingameSceneName);
             return;
         }
@@ -170,6 +194,13 @@ public class UILobby : MonoBehaviour
         GameManager.Instance.SetPlayerId(id);
 
         isTransitioning = true;
-        GameManager.Instance.LoadSceneWithFade(ingameSceneName, fadeOutDuration, fadeInDuration);
+
+        // È­¸é ÆäÀÌµå¿Í BGM ÆäÀÌµå¸¦ GameManager.LoadSceneWithFade() ÇÑ °÷¿¡ ¸Ã±é´Ï´Ù - È­¸éÀÌ ±î¸ÅÁö´Â
+        // ¼ø°£ ·Îºñ °îµµ ÇÔ²² ÆäÀÌµå¾Æ¿ô(·Îµù ³»³» ¹«À½)µÇ°í, ·ÎµùÀÌ ³¡³ª È­¸éÀÌ ´Ù½Ã ¹à¾ÆÁö´Â ¼ø°£
+        // fieldBgmNameÀÌ °°Àº ±æÀÌ·Î ÆäÀÌµåÀÎµË´Ï´Ù(GameManager.cs [BGMµµ È­¸é°ú °°Àº Å¸ÀÌ¹ÖÀ¸·Î] Âü°í).
+        // ¿©±â¼­ Á÷Á¢ SetFieldBGMÀ» ºÎ¸£Áö ¾Ê´Â ÀÌÀ¯´Â, ÀÌ ¿ÀºêÁ§Æ®°¡ ¾À ÀüÈ¯°ú ÇÔ²² ÆÄ±«µÇ¾î "·ÎµùÀÌ
+        // ³¡³­ µÚ"¶ó´Â Å¸ÀÌ¹ÖÀ» ½º½º·Î´Â ¾Ë ¼ö ¾ø±â ¶§¹®ÀÔ´Ï´Ù - DontDestroyOnLoad·Î ¾ÀÀ» ³Ñ¾î »ì¾ÆÀÖ´Â
+        // GameManager¸¸ÀÌ ±× Å¸ÀÌ¹ÖÀ» Á¤È®È÷ ¾Ë ¼ö ÀÖ½À´Ï´Ù.
+        GameManager.Instance.LoadSceneWithFade(ingameSceneName, fadeOutDuration, fadeInDuration, fieldBgmName);
     }
 }

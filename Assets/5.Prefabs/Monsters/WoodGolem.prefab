@@ -10129,6 +10129,8 @@ MonoBehaviour:
   hitStunDuration: 0.5
   dieDelay: 2
   debugLogStateChanges: 0
+  meleeAttackSfxName: SFX_WoodGolem_Attack
+  projectileFireSfxName: SFX_WoodGolem_Shoot
   projectilePrefab: {fileID: 3387265587767877545, guid: 3687a99f03252c949bf0d523c12f56e7,
     type: 3}
   projectileSpawnPoint: {fileID: 5013430176065098892}

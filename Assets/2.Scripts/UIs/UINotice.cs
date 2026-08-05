@@ -97,6 +97,7 @@ public class UINotice : MonoBehaviour
     /// <summary>확인 버튼 OnClick에 연결하세요.</summary>
     public void ClickOKButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         Close();
     }
 

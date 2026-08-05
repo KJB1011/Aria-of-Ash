@@ -16,12 +16,27 @@
 //   - MonsterFSM/SlimeFSM과 동일합니다 (NavMeshAgent, Animator 파라미터 등).
 //   - Projectile Prefab과 Projectile Spawn Point(비워두면 자기 자신)를 인스펙터에서 연결하세요.
 //   - Animator의 SplashAttack 스테이트는 3초짜리 "계속 쏘는" 모션(루프 또는 3초 길이 클립)으로 구성하세요.
+//
+// [공격 시전 사운드 - meleeAttackSfxName / projectileFireSfxName]
+// meleeAttackSfxName은 근접(BodyAttack) 애니메이션 트리거 직후 한 번 재생됩니다. projectileFireSfxName은
+// SlimeFSM의 rangedAttackSfxName과 달리 "한 번"이 아니라 FireProjectile()이 호출될 때마다(=fireInterval
+// 간격으로 반복 발사할 때마다) 매번 재생됩니다 - 연사하는 무기 소리처럼 들리게 하기 위해서입니다. 둘 다
+// 맞았을 때 나는 타격음(MonsterStats.attackHitSfxName)과는 별개입니다 - 비워두면 재생하지 않습니다.
 // ============================================================================
 
 using UnityEngine;
 
 public class WoodGolemFSM : MonsterFSM
 {
+    [Header("공격 시전 사운드")]
+    [Tooltip("근접 공격(BodyAttack)을 시작하는 순간 재생할 효과음입니다(Resources/SFX/ 아래 클립 이름과 " +
+              "일치해야 함).")]
+    public string meleeAttackSfxName;
+    [Tooltip("투사체를 발사할 때마다(연사 중 매 발) 재생할 효과음입니다(Resources/SFX/ 아래 클립 이름과 " +
+              "일치해야 함). 한 번만 재생되는 SlimeFSM.rangedAttackSfxName과 달리, 연사 간격(fireInterval)마다 " +
+              "매번 재생됩니다.")]
+    public string projectileFireSfxName;
+
     [Header("우드골렘 - 연속 원거리 공격")]
     [Tooltip("발사할 투사체 프리팹")]
     public GameObject projectilePrefab;
@@ -43,6 +58,14 @@ public class WoodGolemFSM : MonsterFSM
     private void Reset()
     {
         splashAttackStateDuration = 3f;
+    }
+
+    protected override void OnBodyAttackTrigger()
+    {
+        if (!string.IsNullOrEmpty(meleeAttackSfxName))
+        {
+            SoundManager.Instance.PlaySFX(meleeAttackSfxName, transform.position);
+        }
     }
 
     protected override void OnSplashAttackTrigger()
@@ -76,6 +99,11 @@ public class WoodGolemFSM : MonsterFSM
         Vector3 aimPoint = target.position + Vector3.up * aimHeightOffset;
         Vector3 direction = aimPoint - spawnPoint.position;
         if (direction.sqrMagnitude < 0.0001f) return;
+
+        if (!string.IsNullOrEmpty(projectileFireSfxName))
+        {
+            SoundManager.Instance.PlaySFX(projectileFireSfxName, transform.position);
+        }
 
         GameObject instance = Instantiate(projectilePrefab, spawnPoint.position, Quaternion.identity);
 

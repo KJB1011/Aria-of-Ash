@@ -286,6 +286,7 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
 
     public void ClickExitButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.CloseUI(gameObject);
     }
 
@@ -295,12 +296,14 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
 
     public void ClickSideCharButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         if (isShowingCharInfo) return; // 이미 CharInfo 상태면 무시.
         SetActiveTab(true);
     }
 
     public void ClickSideSkillButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         if (!isShowingCharInfo) return; // 이미 SkillInfo 상태면 무시.
         SetActiveTab(false);
     }
@@ -444,6 +447,7 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
 
     public void ClickBreakThroughButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         if (playerStats == null) return;
 
         int index = GetPendingBreakthroughIndex();
@@ -610,6 +614,7 @@ public class UICharacterInfo : MonoBehaviour, IUIWindow
     /// 해제합니다(ClickBreakThroughButton과 완전히 같은 방식).</summary>
     public void ClickSkillUpgradeButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         if (selectedSkillNode == null || selectedSkillNode.data == null)
         {
             Debug.LogWarning("[UICharacterInfo] 선택된 스킬 노드가 없습니다. 먼저 트리에서 노드를 클릭하세요.", this);

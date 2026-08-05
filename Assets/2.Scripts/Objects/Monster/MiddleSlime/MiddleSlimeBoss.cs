@@ -328,6 +328,7 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         if (currentState == State.Dead) return;
 
         UpdateBossHpBar();
+        UpdateCombatMusicState();
 
         switch (currentState)
         {
@@ -362,6 +363,34 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
 
         float rate = stats.MaxHP > 0f ? stats.CurrentHP / stats.MaxHP : 0f;
         bossHpBar.SetHealthRate(rate);
+    }
+
+    // 마지막으로 UpdateCombatMusicState()가 확인했을 때 IsTargetInDetectRange()가 true였는지 여부입니다.
+    // 매 프레임 NotifyCombatEngaged/NotifyCombatDisengaged를 다시 호출하지 않고, "경계를 막 넘은 순간"에만
+    // 호출하기 위한 값입니다(SoundManager 쪽에서도 중복 호출을 무시하긴 하지만, 매 프레임 호출할 이유가
+    // 없으므로 여기서 미리 걸러줍니다).
+    private bool wasInCombatRange;
+
+    /// <summary>이 보스는 MonsterFSM을 상속하지 않는 별도 FSM이라 ChangeState() 같은 공용 전환 지점이
+    /// 없습니다. 그래서 UpdateBossHpBar()와 동일한 조건(IsTargetInDetectRange())을 기준으로, 보스 체력바가
+    /// 뜨는 순간 전투 음악도 함께 시작하고, 숨겨지는 순간 전투 음악도 함께 해제되도록 독립적으로
+    /// 처리합니다. bossHpBar가 비어있어도(인스펙터 연결을 깜빡한 씬이라도) 전투 음악은 정상 동작해야
+    /// 하므로, bossHpBar == null이면 조기 반환하는 UpdateBossHpBar()와 달리 이 메서드는 그 가드에 기대지
+    /// 않습니다.</summary>
+    private void UpdateCombatMusicState()
+    {
+        bool isInRange = IsTargetInDetectRange();
+        if (isInRange == wasInCombatRange) return;
+
+        wasInCombatRange = isInRange;
+        if (isInRange)
+        {
+            SoundManager.Instance.NotifyCombatEngaged(this);
+        }
+        else
+        {
+            SoundManager.Instance.NotifyCombatDisengaged(this);
+        }
     }
 
     // ------------------------------------------------------------------
@@ -714,6 +743,15 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
     {
         currentState = State.Dead;
 
+        // [전투 음악 연동] Update()가 State.Dead에서 곧바로 리턴해버려 더 이상 UpdateCombatMusicState()가
+        // 돌지 않으므로, 죽는 순간 교전 중이었다면(=전투 음악이 재생 중이었다면) 여기서 직접 한 번 더
+        // 해제해줘야 합니다. 안 그러면 이 보스가 죽어도 전투 음악이 영원히 계속 재생됩니다.
+        if (wasInCombatRange)
+        {
+            wasInCombatRange = false;
+            SoundManager.InstanceIfExists?.NotifyCombatDisengaged(this);
+        }
+
         DestroySwingIndicator();
         DestroyWaveIndicator();
         DisableColliders(); // 죽은 직후 콜라이더를 꺼서, dieDelay 동안 시체가 남아있는 사이 또 공격 판정에
@@ -746,6 +784,17 @@ public class MiddleSlimeBoss : MonoBehaviour, IDamageable
         if (animator != null) animator.SetTrigger(DieParam);
 
         Destroy(gameObject, dieDelay);
+    }
+
+    /// <summary>씬 전환 등으로 Die()를 거치지 않고 이 보스가 사라지는 경우에 대한 안전장치입니다(예:
+    /// 교전 중에 플레이어가 다른 씬으로 이동). wasInCombatRange가 이미 false라면(=Die()에서 이미 해제했거나
+    /// 애초에 교전 중이 아니었다면) 아무 일도 하지 않습니다.</summary>
+    private void OnDestroy()
+    {
+        if (wasInCombatRange)
+        {
+            SoundManager.InstanceIfExists?.NotifyCombatDisengaged(this);
+        }
     }
 
     /// <summary>자신(과 자식 오브젝트) 위의 모든 Collider를 꺼서 더 이상 공격 판정에 걸리지 않도록 합니다.</summary>

@@ -140,6 +140,19 @@ public class PlayerController : MonoBehaviour
     public float moveSpeed = 5f;
     public float rotationSmoothTime = 0.1f;
 
+    [Header("발소리")]
+    [Tooltip("이동 중(IsMove가 true인 동안) 일정 간격으로 재생할 발소리 효과음입니다(Resources/SFX/ 아래 " +
+              "클립 이름과 일치해야 함). 애니메이션 이벤트로 발이 실제로 땅에 닿는 타이밍에 맞추는 대신, " +
+              "이동 중이라면 footstepInterval초마다 고정 간격으로 재생하는 단순한 방식입니다 - 애니메이션 " +
+              "클립을 건드리지 않고도 바로 동작합니다. 비워두면 재생하지 않습니다.")]
+    public string footstepSfxName;
+    [Tooltip("발소리 재생 간격(초). 캐릭터의 실제 걸음 주기(애니메이션 클립의 발 구르는 속도)에 맞춰 " +
+              "조절하세요 - 너무 짧으면 발소리가 다다다 겹쳐 재생되고, 너무 길면 걷는 것보다 느리게 들립니다.")]
+    public float footstepInterval = 0.35f;
+    [Tooltip("발소리마다 무작위로 적용할 피치 편차(0~1). 예: 0.05면 ±5% 범위에서 매번 조금씩 다르게 " +
+              "재생되어 기계적으로 반복되는 느낌을 줄여줍니다.")]
+    public float footstepPitchVariation = 0.05f;
+
     [Header("걷기 (이벤트/컷씬 전용 - IsWalk)")]
     [Tooltip("평소 이동(WASD, IsMove)과는 별개로, 컷씬 등 이벤트에서 CutsceneMove()로 자동으로 걸을 때만 " +
               "사용하는 속도입니다. 이때는 IsMove가 아니라 IsWalk 애니메이터 bool을 켜서 걷는 모션을 " +
@@ -330,6 +343,10 @@ public class PlayerController : MonoBehaviour
     private float verticalVelocity;
     private float currentYawVelocity;
     private float currentYaw;
+
+    // 다음 발소리까지 남은 시간입니다. 움직이지 않는 순간 0으로 리셋해둬서, 다음에 다시 움직이기
+    // 시작하면(멈췄다 출발하는 매번) 대기 없이 바로 첫 발소리가 나도록 합니다.
+    private float footstepTimer;
 
     private bool isDashing;
     private float dashTimer;
@@ -1764,13 +1781,40 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>이동 입력 여부를 IsMove Bool 파라미터에 반영합니다. (Idle ↔ Running)
-    /// 스킬/기본 공격 콤보 사용 중에는 이동 입력이 있어도 항상 false로 두어 Running 모션과 섞이지 않게 합니다.</summary>
+    /// 스킬/기본 공격 콤보 사용 중에는 이동 입력이 있어도 항상 false로 두어 Running 모션과 섞이지 않게 합니다.
+    /// 같은 isMoving 조건으로 발소리(UpdateFootsteps)도 함께 갱신합니다 - animator가 비어있는 테스트 씬에서도
+    /// 발소리는 정상 재생되도록, animator null 체크는 애니메이터 쪽에만 걸어둡니다.</summary>
     private void UpdateAnimator(Vector3 moveDirection)
     {
-        if (animator == null) return;
-
         bool isMoving = !isUsingSkill && !isAttacking && !isHit && moveDirection.sqrMagnitude > 0.0001f;
-        animator.SetBool(IsMoveParam, isMoving);
+
+        if (animator != null)
+        {
+            animator.SetBool(IsMoveParam, isMoving);
+        }
+
+        UpdateFootsteps(isMoving);
+    }
+
+    /// <summary>이동 중(isMoving)이라면 footstepInterval초마다 footstepSfxName을 재생합니다. 애니메이션
+    /// 이벤트로 발이 실제로 땅에 닿는 순간에 정확히 맞추는 대신, 고정 간격으로 재생하는 단순한 방식입니다 -
+    /// 걸음을 멈추는 즉시 타이머를 0으로 리셋해서, 멈췄다 다시 움직이기 시작할 때마다 대기 없이 곧바로
+    /// 첫 발소리가 나도록 합니다.</summary>
+    private void UpdateFootsteps(bool isMoving)
+    {
+        if (!isMoving)
+        {
+            footstepTimer = 0f;
+            return;
+        }
+
+        footstepTimer -= Time.deltaTime;
+        if (footstepTimer > 0f) return;
+
+        footstepTimer = footstepInterval;
+
+        if (string.IsNullOrEmpty(footstepSfxName)) return;
+        SoundManager.Instance.PlaySFX(footstepSfxName, transform.position, 1f, footstepPitchVariation);
     }
 
     /// <summary>PlayerStats의 CurrentHP/MaxHP를 0~1 비율로 환산해서 UIIngame.SetHPBar()에 넘겨줍니다.

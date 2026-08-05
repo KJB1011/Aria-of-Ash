@@ -194,6 +194,7 @@ public class UIOption : MonoBehaviour, IUIWindow
     /// 싶을 때 씁니다.</summary>
     public void ClickExitButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         RevertToSnapshot();
         UICanvas.Instance.CloseUI(gameObject);
     }
@@ -203,6 +204,7 @@ public class UIOption : MonoBehaviour, IUIWindow
     /// 디스크에도 저장됩니다.</summary>
     public void ClickConfirmButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.CloseUI(gameObject);
     }
 
@@ -214,6 +216,7 @@ public class UIOption : MonoBehaviour, IUIWindow
     /// (UIControls.cs 참고) - 옵션 창으로 자동으로 돌아가지는 않습니다.</summary>
     public void ClickShowControlsButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.OpenUI(UICanvas.Instance.Controls.gameObject);
     }
 

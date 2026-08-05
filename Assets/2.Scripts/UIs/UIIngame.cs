@@ -83,9 +83,9 @@ public class UIIngame : MonoBehaviour
     [Tooltip("Plus/Minus 버튼을 누를 때마다 카메라 Orthographic Size가 이만큼 바뀝니다.")]
     public float minimapZoomStep = 5f;
     [Tooltip("Orthographic Size의 최소값(가장 확대된 상태 - 좁은 범위를 크게 보여줌).")]
-    public float minimapMinZoom = 30f;
+    public float minimapMinZoom = 10f;
     [Tooltip("Orthographic Size의 최대값(가장 축소된 상태 - 넓은 범위를 보여줌).")]
-    public float minimapMaxZoom = 80f;
+    public float minimapMaxZoom = 60f;
 
     private Transform playerTransform;
     private CanvasGroup canvasGroup;
@@ -186,12 +186,14 @@ public class UIIngame : MonoBehaviour
     /// <summary>미니맵을 확대합니다(Orthographic Size 감소 = 더 좁은 범위를 크게 보여줌).</summary>
     public void ClickMinimapPlusButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         _camMinimap.orthographicSize = Mathf.Max(minimapMinZoom, _camMinimap.orthographicSize - minimapZoomStep);
     }
 
     /// <summary>미니맵을 축소합니다(Orthographic Size 증가 = 더 넓은 범위를 보여줌).</summary>
     public void ClickMinimapMinusButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         _camMinimap.orthographicSize = Mathf.Min(minimapMaxZoom, _camMinimap.orthographicSize + minimapZoomStep);
     }
 
@@ -200,6 +202,7 @@ public class UIIngame : MonoBehaviour
     /// 쪽에서 처리합니다.</summary>
     public void ClickCharInfoButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.CharacterInfo.ToggleCharacterInfo();
     }
 
@@ -208,6 +211,7 @@ public class UIIngame : MonoBehaviour
     /// 커서 잠금 해제 등)는 UIInventory/UICanvas 쪽에 이미 구현되어 있습니다.</summary>
     public void ClickInventoryButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.Inventory.ToggleInventory();
     }
 
@@ -216,6 +220,7 @@ public class UIIngame : MonoBehaviour
     /// UIOption/UICanvas 쪽에서 처리합니다.</summary>
     public void ClickOptionButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.Option.ToggleOption();
     }
 
@@ -224,6 +229,7 @@ public class UIIngame : MonoBehaviour
     /// 직접 담당하므로 여기서는 신경 쓸 필요가 없습니다.</summary>
     public void ClickQuestButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.Quest.ToggleQuest();
     }
 }

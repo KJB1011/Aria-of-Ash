@@ -159,6 +159,7 @@ public class UIInventory : MonoBehaviour, IUIWindow
     /// 실제로 이 버그가 보고되었습니다). 반드시 이 함수 또는 ToggleInventory()를 통해서만 닫으세요.</summary>
     public void ClickExitButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.CloseUI(gameObject);
     }
 
@@ -254,6 +255,7 @@ public class UIInventory : MonoBehaviour, IUIWindow
     /// 하지 않습니다.</summary>
     public void ClickTrashButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         if (selectedBar == null || selectedBar.Slot == null) return;
 
         UITrash.Instance.Show(selectedBar.Slot);

@@ -86,6 +86,12 @@
 //   [로딩 화면] 문단에 적은 이유로 그 이벤트에 기대지 않고 LoadSceneWithFadeRoutine() 코루틴이 직접
 //   FadeIn()을 호출합니다 - 서로 다른 메커니즘이지만 완전히 독립적이라 섞여도 안전합니다.
 //
+//   [BGM도 화면과 같은 타이밍으로 - bgmNameOnLoad]
+//   선택 인자 bgmNameOnLoad를 넘기면, 화면이 까매지기 시작하는 순간 지금 재생 중이던 BGM도 함께
+//   fadeOutDuration에 걸쳐 페이드아웃(로딩 내내 무음)되고, 새 씬 로딩이 끝나 화면이 다시 fadeInDuration에
+//   걸쳐 밝아지는 순간 이 곡이 SetFieldBGM()으로 같은 길이만큼 페이드인됩니다 - 화면과 음악이 항상
+//   같은 리듬으로 어두워지고/밝아집니다. 비워두면(기본값) BGM은 전혀 건드리지 않습니다.
+//
 // [로딩 화면 - 슬라이더 + 진행률 텍스트]
 //   화면이 완전히 까매진(FadeOut 완료) 뒤부터 새 씬이 다 준비될 때까지 SceneManager.LoadSceneAsync()로
 //   비동기 로드하면서, 그 진행률(AsyncOperation.progress)을 Loading Root 아래 슬라이더/텍스트에
@@ -165,6 +171,11 @@ public class GameManager : MonoBehaviour
               "FadeOut()/FadeIn() 호출 시 바로 NullReferenceException이 납니다(연결을 빠뜨렸다는 게 " +
               "바로 드러나도록 하기 위해 일부러 방어 코드를 넣지 않았습니다).")]
     [SerializeField] CanvasGroup _fadeCanvasGroup;
+    [Tooltip("게임을 처음 시작했을 때(이 스크립트의 Awake() - 사실상 게임의 첫 씬이 켜지는 순간), 화면이 " +
+              "완전히 까만 상태에서 이 시간(초)에 걸쳐 서서히 드러나도록(FadeIn) 합니다. 씬을 다시 불러올 " +
+              "때마다가 아니라 게임 세션 전체에서 딱 한 번만(Instance가 처음 만들어질 때) 재생됩니다 - " +
+              "두 번째 GameManager는 이 Awake() 블록에 도달하기 전에 Destroy되기 때문입니다.")]
+    public float bootFadeInDuration = 1f;
 
     [Header("게임 오버")]
     [Tooltip("TriggerGameOver()가 호출된 뒤, 화면을 FadeOut하기 전에 먼저 기다리는 시간(초)입니다 - " +
@@ -218,9 +229,13 @@ public class GameManager : MonoBehaviour
 
         if (_fadeCanvasGroup != null)
         {
-            _fadeCanvasGroup.alpha = 0f;
+            // 게임을 막 시작한 순간이므로, 우선 화면을 완전히 까맣게 만들어둔 뒤(알파 1) 곧바로
+            // bootFadeInDuration에 걸쳐 FadeIn()으로 서서히 드러냅니다 - FadeIn()이 알아서 interactable/
+            // blocksRaycasts를 끝나는 시점에 정리해주므로 여기서는 시작 상태만 맞춰주면 됩니다.
+            _fadeCanvasGroup.alpha = 1f;
             _fadeCanvasGroup.interactable = false;
-            _fadeCanvasGroup.blocksRaycasts = false;
+            _fadeCanvasGroup.blocksRaycasts = true;
+            FadeIn(bootFadeInDuration);
         }
 
         if (_loadingRoot != null) _loadingRoot.SetActive(false);
@@ -388,14 +403,29 @@ public class GameManager : MonoBehaviour
     /// <summary>화면을 fadeOutDuration초에 걸쳐 까맣게 만든 뒤 sceneName을 불러오고, 그 씬이 다
     /// 준비되면 fadeInDuration초에 걸쳐 다시 보이게 합니다. 로비 → 인게임처럼 일반적인 씬 전환에 그대로
     /// 쓰세요(UILobby.cs 참고, 파일 상단 [일반적인 씬 전환] 참고). 게임 오버 재시작(TriggerGameOver())과는
-    /// 완전히 독립적인 경로입니다.</summary>
-    public void LoadSceneWithFade(string sceneName, float fadeOutDuration, float fadeInDuration)
+    /// 완전히 독립적인 경로입니다.
+    /// bgmNameOnLoad를 넘기면(Resources/BGM/ 아래 클립 이름), 화면이 까매지기 시작하는 것과 정확히 같은
+    /// 순간 지금 재생 중이던 BGM도 fadeOutDuration에 걸쳐 페이드아웃되어 로딩 내내 조용해지고, 새 씬
+    /// 로딩이 끝나 화면이 다시 fadeInDuration에 걸쳐 밝아지는 바로 그 순간 이 곡이 같은 길이로
+    /// 페이드인됩니다 - 화면과 음악이 항상 같은 타이밍으로 어두워지고 밝아집니다. SetFieldBGM()을
+    /// 거치므로 이후 전투가 벌어졌다 끝나도 이 곡으로 정상적으로 되돌아옵니다. 비워두면(기본값 null)
+    /// BGM은 전혀 건드리지 않습니다.</summary>
+    public void LoadSceneWithFade(string sceneName, float fadeOutDuration, float fadeInDuration, string bgmNameOnLoad = null)
     {
-        StartCoroutine(LoadSceneWithFadeRoutine(sceneName, fadeOutDuration, fadeInDuration));
+        StartCoroutine(LoadSceneWithFadeRoutine(sceneName, fadeOutDuration, fadeInDuration, bgmNameOnLoad));
     }
 
-    private IEnumerator LoadSceneWithFadeRoutine(string sceneName, float fadeOutDuration, float fadeInDuration)
+    private IEnumerator LoadSceneWithFadeRoutine(string sceneName, float fadeOutDuration, float fadeInDuration, string bgmNameOnLoad)
     {
+        // 화면이 까매지기 시작하는 것과 같은 프레임에 BGM 페이드아웃도 함께 시작합니다 - 둘 다
+        // FadeOut()/StopBGM()을 "시작만" 시키고(둘 다 코루틴 내부에서 알아서 진행되는 논블로킹 호출),
+        // 아래 WaitForCompletion()은 화면 쪽만 기다립니다(화면 fadeOutDuration과 BGM fadeOutDuration이
+        // 같은 값이라 실제로는 같은 순간에 끝납니다).
+        if (!string.IsNullOrEmpty(bgmNameOnLoad))
+        {
+            SoundManager.Instance.StopBGM(fadeOutDuration);
+        }
+
         yield return FadeOut(fadeOutDuration).WaitForCompletion();
 
         SetLoadingProgress(0f);
@@ -423,6 +453,13 @@ public class GameManager : MonoBehaviour
         // 생기던 "로딩 화면에 페이드 인이 가려지는" 타이밍 문제가 원천적으로 발생할 수 없습니다.
         if (_loadingRoot != null) _loadingRoot.SetActive(false);
         FadeIn(fadeInDuration);
+
+        // 화면이 다시 밝아지는 것과 같은 순간, 새 씬의 BGM도 같은 길이로 페이드인을 시작합니다. SoundManager는
+        // DontDestroyOnLoad라 씬이 바뀌어도 그대로 살아있으므로 여기서 바로 접근해도 안전합니다.
+        if (!string.IsNullOrEmpty(bgmNameOnLoad))
+        {
+            SoundManager.Instance.SetFieldBGM(bgmNameOnLoad, fadeInDuration);
+        }
     }
 
     /// <summary>로딩 슬라이더/퍼센트 텍스트를 progress01(0~1)에 맞춰 갱신합니다. 필드가 비어있으면

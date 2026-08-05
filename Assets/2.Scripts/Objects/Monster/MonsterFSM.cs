@@ -479,6 +479,15 @@ public abstract class MonsterFSM : MonoBehaviour, IDamageable
     [Tooltip("켜두면 상태가 바뀔 때마다 콘솔에 로그를 남깁니다. '왜 이 행동을 하는지' 추적할 때 켜보세요.")]
     public bool debugLogStateChanges = false;
 
+    /// <summary>이 상태가 "교전 중"으로 취급되는 상태인지 여부입니다. SoundManager에게 전투 음악을
+    /// 틀지/끌지 알려줄 때 기준으로 씁니다 - Idle(비전투 배회)/Return(포기하고 복귀)/Die(죽음)는
+    /// 전투가 아니고, 그 외(추적/돌진/공격/피격)는 전부 "지금 싸우고 있다"로 간주합니다.</summary>
+    protected static bool IsCombatState(State s)
+    {
+        return s == State.Trace || s == State.Chase || s == State.BodyAttack ||
+               s == State.SplashAttack || s == State.Hit;
+    }
+
     protected virtual void ChangeState(State newState)
     {
         if (debugLogStateChanges && newState != State.Trace)
@@ -491,6 +500,20 @@ public abstract class MonsterFSM : MonoBehaviour, IDamageable
         if (CurrentState == State.BodyAttack && newState != State.BodyAttack && attackArea != null)
         {
             attackArea.CloseAllHitboxes();
+        }
+
+        // 교전 상태 진입/이탈을 SoundManager에게 알려서 전투 음악을 자동으로 켜고 끕니다.
+        // (같은 "교전 중" 상태끼리 전환될 때, 예: Trace → BodyAttack는 이미 등록되어 있으니 중복 호출해도
+        // NotifyCombatEngaged가 내부적으로 무시합니다 - 안전합니다.)
+        bool wasEngaged = IsCombatState(CurrentState);
+        bool willBeEngaged = IsCombatState(newState);
+        if (!wasEngaged && willBeEngaged)
+        {
+            SoundManager.Instance.NotifyCombatEngaged(this);
+        }
+        else if (wasEngaged && !willBeEngaged)
+        {
+            SoundManager.Instance.NotifyCombatDisengaged(this);
         }
 
         CurrentState = newState;
@@ -660,6 +683,16 @@ public abstract class MonsterFSM : MonoBehaviour, IDamageable
         {
             col.enabled = false;
         }
+    }
+
+    /// <summary>씬 전환, 오브젝트 풀 반환, 강제 Destroy 등 ChangeState(Die)를 거치지 않고 이 몬스터가
+    /// 사라지는 모든 경우에 대한 안전장치입니다. 교전 중에 이런 식으로 사라지면 SoundManager에
+    /// "나 이제 교전 안 해요"를 알려줄 기회가 없어서 전투 음악이 영원히 계속되는 문제가 생길 수 있으므로,
+    /// 여기서 한 번 더 확실히 해제합니다. InstanceIfExists를 쓰는 이유는 씬/앱 종료 시점에 이미 사라진
+    /// SoundManager를 여기서 새로 만들 필요가 없기 때문입니다(MonsterActivation.OnDestroy와 동일한 이유).</summary>
+    protected virtual void OnDestroy()
+    {
+        SoundManager.InstanceIfExists?.NotifyCombatDisengaged(this);
     }
 
     protected virtual void OnDrawGizmosSelected()

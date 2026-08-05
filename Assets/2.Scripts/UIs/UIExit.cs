@@ -9,15 +9,21 @@
 // 붙은 오브젝트를 GameManager의 자식으로 두고, GameManager(부모)에 DontDestroyOnLoad만
 // 걸어주시면 별도 코드 수정 없이 그대로 어떤 씬에서든 계속 동작합니다.
 //
-// [언제 뜨는가 - "인게임 UI를 제외한 나머지가 모두 꺼져있을 때"]
+// [언제 뜨는가/닫히는가 - UICanvas가 있는 씬에서는 여닫기 판단을 전부 UICanvas에게 맡깁니다]
 //   인벤토리/캐릭터정보/옵션 등 UICanvas가 관리하는 팝업이나 알림/확인창이 하나라도 열려있으면
 //   Escape는 이 창이 아니라 그 UI를 닫는 데 먼저 쓰입니다(UICanvas.cs의 HandleEscapePressed
 //   참고) - 그 쪽에서 "닫을 UI가 하나도 없다"고 판단했을 때만 UICanvas가 이 스크립트의 Show()를
-//   대신 호출해줍니다. 그래서 이 스크립트는 UICanvas.Instance가 존재하는 씬(인게임)에서는 직접
-//   Escape를 듣고 "열지"는 않습니다 - UICanvas가 알아서 열어줄 때까지 기다립니다. 반대로 UICanvas가
-//   아예 없는 씬(예: 나중에 만들 로그인 씬)에서는 그런 중재자가 없으므로 이 스크립트가 직접
-//   Escape를 듣고 판단해서 엽니다. (닫는 것(취소)은 씬에 UICanvas가 있든 없든 항상 이 스크립트가
-//   직접 처리합니다 - 열려있는 동안 Escape를 또 누르면 취소와 같은 동작입니다.)
+//   대신 호출해줍니다. 이 창이 열려있는 상태에서 Escape를 또 누르면, 이번엔 UICanvas가 (다른
+//   알림창들과 동일하게) ClickCancelButton()을 대신 호출해서 닫아줍니다.
+//   [주의 - 왜 이 스크립트가 직접 Escape를 읽지 않는가]
+//   예전 버전은 이 스크립트도 자기 Update()에서 독립적으로 Escape를 읽어서 열고 닫았는데, 그러면
+//   같은 프레임 안에서 "이 스크립트의 Update()"와 "UICanvas의 Update()"가 실행되는 순서에 따라
+//   방금 닫힌 걸 UICanvas가 (아직 안 열려있는 줄 알고) 곧바로 다시 열어버리는 경합이 생겨서
+//   Escape로 절대 안 닫히는 것처럼 보이는 버그가 있었습니다. 그래서 UICanvas.Instance가 있는
+//   씬에서는 이 스크립트가 Escape를 아예 읽지 않고 100% UICanvas의 판단만 따르도록 바꿨습니다 -
+//   판단을 내리는 스크립트가 하나뿐이라 실행 순서와 무관하게 항상 정확합니다. UICanvas가 아예
+//   없는 씬(예: 나중에 만들 로그인 씬)에서만 이 스크립트가 직접 Escape를 듣고 판단합니다(그
+//   씬엔 경합을 일으킬 다른 스크립트가 없으므로 안전합니다).
 //
 // [게임 종료]
 //   확인을 누르면 Application.Quit()을 호출합니다. 에디터에서는 빌드된 실행 파일이 아니라서
@@ -83,20 +89,16 @@ public class UIExit : MonoBehaviour
 
     private void Update()
     {
-        if (!escapeAction.WasPressedThisFrame()) return;
-
-        if (isOpen)
-        {
-            ClickCancelButton();
-            return;
-        }
-
-        // UICanvas가 있는 씬에서는 "닫을 UI가 하나도 없을 때"만 UICanvas가 대신 Show()를
-        // 호출해줍니다 - 여기서 직접 열어버리면 인벤토리 등을 막 닫으면서 동시에 종료 확인창까지
-        // 튀어나오는 문제가 생길 수 있어서, 그 판단을 UICanvas에게 완전히 맡깁니다.
+        // UICanvas가 있는 씬(인게임)에서는 여닫기 판단을 전부 UICanvas.HandleEscapePressed()에게
+        // 맡깁니다 - 위 헤더 주석의 [주의] 참고. 이 스크립트가 따로 Escape를 읽으면 같은 프레임
+        // 안에서 두 스크립트 중 어느 쪽 Update()가 먼저 실행되느냐에 따라 방금 닫은 걸 곧바로
+        // 다시 열어버리는 경합이 생길 수 있습니다.
         if (UICanvas.Instance != null) return;
 
-        Show();
+        if (!escapeAction.WasPressedThisFrame()) return;
+
+        if (isOpen) ClickCancelButton();
+        else Show();
     }
 
     /// <summary>종료 확인 팝업을 엽니다. 다른 스크립트에서 직접 부를 수도 있지만, 보통은 Escape
@@ -123,6 +125,7 @@ public class UIExit : MonoBehaviour
     /// <summary>확인 버튼 OnClick에 연결하세요. 게임을 종료합니다.</summary>
     public void ClickOKButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -134,6 +137,7 @@ public class UIExit : MonoBehaviour
     /// (위 Update()에서) 이 함수가 호출됩니다.</summary>
     public void ClickCancelButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         if (!isOpen) return;
         isOpen = false;
 

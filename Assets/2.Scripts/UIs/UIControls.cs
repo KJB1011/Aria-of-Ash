@@ -79,6 +79,7 @@ public class UIControls : MonoBehaviour, IUIWindow
     /// 경고를 참고하세요.</summary>
     public void ClickExitButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.CloseUI(gameObject);
     }
 

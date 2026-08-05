@@ -55,6 +55,7 @@ public class UIInventoryBar : MonoBehaviour
     /// <summary>이 칸의 Button OnClick에 연결하세요.</summary>
     public void OnClickBar()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         OnClicked?.Invoke(this);
     }
 }

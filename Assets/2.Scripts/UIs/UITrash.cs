@@ -106,10 +106,7 @@ public class UITrash : MonoBehaviour
         currentAmount = 1;
 
         if (_imgIcon != null) _imgIcon.sprite = item.icon;
-        if (_txtOwnedAmount != null) {
-            string str = "x" + maxAmount.ToString();
-            _txtOwnedAmount.text = str;
-             }
+        if (_txtOwnedAmount != null) _txtOwnedAmount.text = maxAmount.ToString();
         RefreshCountText();
 
         if (isOpen) return;
@@ -132,12 +129,14 @@ public class UITrash : MonoBehaviour
     /// <summary>수량을 1 늘립니다(보유 수량을 넘지 않음).</summary>
     public void ClickPlus()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         SetAmount(currentAmount + 1);
     }
 
     /// <summary>수량을 1 줄입니다(최소 1).</summary>
     public void ClickMinus()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         SetAmount(currentAmount - 1);
     }
 
@@ -146,6 +145,7 @@ public class UITrash : MonoBehaviour
     /// 이벤트로 자동 갱신됩니다.</summary>
     public void ClickOKButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         if (targetItem != null)
         {
             PlayerInventory.Instance.RemoveItem(targetItem, currentAmount);
@@ -157,6 +157,7 @@ public class UITrash : MonoBehaviour
     /// 처리에서도 이 함수를 그대로 호출합니다.</summary>
     public void ClickCancelButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         Close();
     }
 

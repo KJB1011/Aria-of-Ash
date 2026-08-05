@@ -160,6 +160,7 @@ public class UIQuest : MonoBehaviour, IUIWindow
     /// 실제로 이 버그가 보고되었습니다). 반드시 이 함수 또는 ToggleQuest()를 통해서만 닫으세요.</summary>
     public void ClickExitButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.CloseUI(gameObject);
     }
 
@@ -207,6 +208,7 @@ public class UIQuest : MonoBehaviour, IUIWindow
 
     public void ClickSideQuestButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         if (isShowingQuestWindow) return; // 이미 QuestWindow 상태면 무시.
         isShowingQuestWindow = true;
         SetSideTabVisual(true);
@@ -215,6 +217,7 @@ public class UIQuest : MonoBehaviour, IUIWindow
 
     public void ClickSideClearQuestButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         if (!isShowingQuestWindow) return; // 이미 ClearQuestWindow 상태면 무시.
         isShowingQuestWindow = false;
         SetSideTabVisual(false);

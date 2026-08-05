@@ -15,12 +15,26 @@
 // target.position은 보통 플레이어 캐릭터 루트(CharacterController 기준 발밑) 좌표라, 그대로 조준하면
 // 투사체가 계속 발을 향해 날아갑니다(WoodGolemFSM과 같은 이유). aimHeightOffset만큼 위로 띄운
 // 지점을 조준하도록 했습니다.
+//
+// [공격 시전 사운드 - meleeAttackSfxName / rangedAttackSfxName]
+// 둘 다 "공격이 실제로 나가는 순간" 한 번 재생되는 시전음입니다 - 근접은 BodyAttack 애니메이션
+// 트리거 직후(OnBodyAttackTrigger), 원거리는 투사체가 생성되는 순간(OnSplashAttackTrigger)입니다.
+// 맞았을 때 나는 타격음(MonsterStats.attackHitSfxName, MonsterAttackHitbox/AttackHitbox가 재생)과는
+// 완전히 별개입니다 - 비워두면 재생하지 않습니다.
 // ============================================================================
 
 using UnityEngine;
 
 public class SlimeFSM : MonsterFSM
 {
+    [Header("공격 시전 사운드")]
+    [Tooltip("근접 공격(BodyAttack)을 시작하는 순간 재생할 효과음입니다(Resources/SFX/ 아래 클립 이름과 " +
+              "일치해야 함). 맞았을 때 나는 타격음(MonsterStats.attackHitSfxName)과는 별개입니다.")]
+    public string meleeAttackSfxName;
+    [Tooltip("원거리 공격 투사체가 생성되는 순간 재생할 효과음입니다(Resources/SFX/ 아래 클립 이름과 " +
+              "일치해야 함).")]
+    public string rangedAttackSfxName;
+
     [Header("슬라임 - 곡사형 투사체")]
     [Tooltip("ArcProjectile 컴포넌트가 붙어있는 프리팹")]
     public GameObject splashProjectilePrefab;
@@ -33,8 +47,21 @@ public class SlimeFSM : MonsterFSM
               "띄워서 실제로 몸에 맞는 것처럼 보이게 하세요.")]
     public float aimHeightOffset = 1f;
 
+    protected override void OnBodyAttackTrigger()
+    {
+        if (!string.IsNullOrEmpty(meleeAttackSfxName))
+        {
+            SoundManager.Instance.PlaySFX(meleeAttackSfxName, transform.position);
+        }
+    }
+
     protected override void OnSplashAttackTrigger()
     {
+        if (!string.IsNullOrEmpty(rangedAttackSfxName))
+        {
+            SoundManager.Instance.PlaySFX(rangedAttackSfxName, transform.position);
+        }
+
         if (splashProjectilePrefab == null || target == null) return;
 
         Transform spawnPoint = projectileSpawnPoint != null ? projectileSpawnPoint : transform;

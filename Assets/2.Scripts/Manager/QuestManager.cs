@@ -71,6 +71,13 @@
 //   CutsceneManager.Instance.Play(...)를 호출해줍니다. 자세한 설명/주의사항은 QuestData.cs 상단 주석
 //   참고.
 //
+// [효과음 - questAcceptSfxName / questCompleteSfxName]
+//   퀘스트를 받는 순간(AddQuest 성공 시)과 완료되는 순간(CompleteQuest() - 경로 상관없이 공통으로 지나가는
+//   한 곳)에 각각 한 번씩 2D 효과음을 재생합니다. cutsceneOnComplete처럼 퀘스트마다 다르게 설정하는 게
+//   아니라, 이 매니저 하나에 공통으로 설정하는 값입니다(UI 클릭음처럼 항상 같은 소리로 충분하다는 가정 -
+//   퀘스트마다 다른 소리가 필요하면 QuestData에 필드를 추가하고 여기서 progress.data 쪽 값을 우선하도록
+//   바꾸면 됩니다).
+//
 // [씬 준비]
 //   빈 오브젝트에 이 스크립트를 붙이세요. 씬에 정확히 하나만 있어야 합니다.
 // ============================================================================
@@ -132,6 +139,16 @@ public class QuestManager : MonoBehaviour
     /// <summary>퀘스트가 완료(보상 지급까지 끝남)됐을 때 발생합니다. requiresTurnIn이 false면 목표 달성
     /// 즉시, true면 TurnInQuest()가 호출된 시점에 발생합니다.</summary>
     public event Action<QuestProgress> OnQuestCompleted;
+
+    [Header("효과음")]
+    [Tooltip("퀘스트를 새로 받았을 때(AddQuest 성공 시) 재생할 효과음입니다(Resources/SFX/ 아래 클립 " +
+              "이름과 일치해야 함). 위치와 상관없는 2D 효과음으로 재생됩니다. 비워두면 재생하지 않습니다.")]
+    public string questAcceptSfxName;
+    [Tooltip("퀘스트가 완료(보상 지급까지 끝남)됐을 때 재생할 효과음입니다(Resources/SFX/ 아래 클립 이름과 " +
+              "일치해야 함). 자동 완료/TurnInQuest 보고/연쇄 완료(CheckDependentQuestObjectives) 등 어떤 " +
+              "경로로 완료됐든 CompleteQuest() 한 곳에서 재생되므로 항상 정확히 한 번만 울립니다. 위치와 " +
+              "상관없는 2D 효과음으로 재생됩니다. 비워두면 재생하지 않습니다.")]
+    public string questCompleteSfxName;
 
     [Header("보상 획득 로그 (화면 왼쪽 UIIngameLoot)")]
     [Tooltip("퀘스트 완료로 경험치를 받았을 때 화면 왼쪽 전리품 로그(UIIngameLoot)에 표시할 아이콘입니다 - " +
@@ -199,6 +216,11 @@ public class QuestManager : MonoBehaviour
 
         QuestProgress progress = new QuestProgress(data);
         activeQuests.Add(progress);
+
+        if (!string.IsNullOrEmpty(questAcceptSfxName))
+        {
+            SoundManager.Instance.PlaySFX(questAcceptSfxName);
+        }
 
         OnQuestAdded?.Invoke(progress);
 
@@ -369,6 +391,11 @@ public class QuestManager : MonoBehaviour
 
         ConsumeCollectObjectiveItems(progress.data);
         GrantRewards(progress.data);
+
+        if (!string.IsNullOrEmpty(questCompleteSfxName))
+        {
+            SoundManager.Instance.PlaySFX(questCompleteSfxName);
+        }
 
         OnQuestCompleted?.Invoke(progress);
 

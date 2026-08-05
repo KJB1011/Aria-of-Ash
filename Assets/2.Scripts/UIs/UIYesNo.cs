@@ -94,6 +94,7 @@ public class UIYesNo : MonoBehaviour
     /// <summary>확인 버튼 OnClick에 연결하세요.</summary>
     public void ClickOKButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         Action callback = onYes;
         Close();
         callback?.Invoke();
@@ -103,6 +104,7 @@ public class UIYesNo : MonoBehaviour
     /// 호출합니다.</summary>
     public void ClickCancelButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         Action callback = onNo;
         Close();
         callback?.Invoke();

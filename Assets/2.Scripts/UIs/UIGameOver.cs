@@ -97,6 +97,7 @@ public class UIGameOver : MonoBehaviour
     /// 처음부터 다시 시작합니다.</summary>
     public void ClickRestartButton()
     {
+        SoundManager.Instance.PlayUIClickSfx();
         Time.timeScale = 1f; // 사망/다른 팝업 등으로 timeScale이 0에 멈춰있었을 수 있으니, 새 씬을 시작하기 전에 원래대로 되돌립니다.
         SceneManager.LoadScene(ingameSceneName);
     }

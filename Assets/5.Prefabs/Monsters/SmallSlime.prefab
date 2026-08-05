@@ -570,6 +570,8 @@ MonoBehaviour:
   hitStunDuration: 0.5
   dieDelay: 2
   debugLogStateChanges: 0
+  meleeAttackSfxName: SFX_SmallSlime_Attack
+  rangedAttackSfxName: SFX_SmallSlime_Shoot
   splashProjectilePrefab: {fileID: 4362786895302904009, guid: e0a591dd92f339045b7acd8fd9c66556,
     type: 3}
   projectileSpawnPoint: {fileID: 5194379574197453861}
