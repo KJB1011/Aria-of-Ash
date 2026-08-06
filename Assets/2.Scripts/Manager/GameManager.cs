@@ -13,13 +13,13 @@
 //   하면 됩니다 - GameManager 자체가 DontDestroyOnLoad라 씬이 바뀌어도 값이 그대로 유지됩니다.
 //
 // [화면 페이드 - Fade Canvas Group]
-//   컷씬(CutsceneManager) 시작/종료뿐 아니라, 사망 화면/씬 전환/로딩 등 "화면을 잠깐 가렸다가 다시
+//   컷씬(CutsceneSequence) 시작/종료뿐 아니라, 사망 화면/씬 전환/로딩 등 "화면을 잠깐 가렸다가 다시
 //   보여주는" 어떤 용도로도 재사용할 수 있도록 만들어뒀습니다. 원래는 별도의 ScreenFader
 //   싱글턴이었는데, 씬이 바뀌어도 유지되어야 하는 전역 기능이라 GameManager로 옮겼습니다 - Exit과
 //   마찬가지로 Fade Canvas Group도 이 오브젝트의 자식으로 두면 DontDestroyOnLoad로 함께 유지됩니다.
 //   FadeOut()/FadeIn()은 DOTween Tween을 그대로 반환하니, 완전히 끝날 때까지 기다리고 싶으면
 //   `yield return GameManager.Instance.FadeOut(duration).WaitForCompletion();`처럼 쓰세요
-//   (CutsceneManager.cs 참고). UIIngameLoot/UIIngameQuest 등 다른 CanvasGroup 페이드와 같은 이유로
+//   (CutsceneSequence.cs 참고). UIIngameLoot/UIIngameQuest 등 다른 CanvasGroup 페이드와 같은 이유로
 //   .SetUpdate(true)를 붙여서, 다른 팝업이 게임을 멈춰도(Time.timeScale = 0) 얼어붙지 않습니다.
 //
 // [씬 준비]
@@ -447,6 +447,16 @@ public class GameManager : MonoBehaviour
         op.allowSceneActivation = true;
 
         while (!op.isDone) yield return null; // 실제 씬 전환(및 새 씬의 Awake/Start)이 끝날 때까지 기다립니다.
+
+        // FloatingText/데미지 숫자가 게임플레이 중 처음 뜰 때 겪던 순간 렉(폰트 아틀라스 생성 +
+        // 셰이더 컴파일이 그 순간에 몰려서 발생)을 없애기 위해, 아직 로딩 화면이 가리고 있는 지금
+        // 미리 한 번씩 "보이지 않게" 렌더링시켜 그 비용을 여기서 끝내둡니다(각 Prewarm() 참고).
+        // 데미지 숫자는 UI가 아니라 월드 스페이스 3D TextMeshPro라 셰이더 자체가 달라서 따로
+        // 워밍업해야 합니다. 워밍업 자체는 알파 0으로 그려지므로 로딩 화면을 끄는 타이밍과 겹쳐도
+        // 화면에 아무 영향이 없어, 아래 절차를 기다리지 않고 발사 후 신경 쓰지 않아도
+        // (fire-and-forget) 안전합니다.
+        FloatingTextManager.Instance.Prewarm();
+        DamageNumberManager.Instance.Prewarm();
 
         // 로딩 화면을 먼저 끄고, 바로 다음 줄에서 페이드 인을 시작합니다 - 이 둘의 순서가 코드 한
         // 줄 한 줄로 보장되므로(파일 상단 [로딩 화면]의 [중요] 참고), sceneLoaded 이벤트에 맡겼을 때

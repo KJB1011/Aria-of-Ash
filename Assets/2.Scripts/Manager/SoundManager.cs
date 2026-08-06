@@ -266,6 +266,12 @@ public class SoundManager : MonoBehaviour
     /// <summary>지금 전투 중(교전 중인 몬스터가 1마리 이상)인지 여부입니다.</summary>
     public bool IsInCombat => engagedSources.Count > 0;
 
+    /// <summary>BGMZoneTrigger/LoadSceneWithFade 등이 마지막으로 SetFieldBGM()에 알려준 "평상시(비전투)
+    /// 음악" 이름입니다. 지금 실제로 재생 중인 곡(CurrentBGMName - 전투 중이면 전투 곡일 수 있음)과는
+    /// 다릅니다. CutsceneManager가 컷씬 시작 전 값을 기억해뒀다가 컷씬이 끝나면 그대로 복원하는 데
+    /// 사용합니다.</summary>
+    public string CurrentFieldBGMName => currentFieldBgm;
+
     /// <summary>몬스터/보스가 교전을 시작할 때 호출하세요(예: MonsterFSM이 Trace/Chase 등으로 전환될 때,
     /// MiddleSlimeBoss가 탐지 범위에 타겟을 포착했을 때). 이미 다른 몬스터와 교전 중이었다면(=이미 전투
     /// 음악이 재생 중이라면) 카운트만 올리고 아무 것도 하지 않습니다.</summary>
@@ -350,8 +356,10 @@ public class SoundManager : MonoBehaviour
 
     /// <summary>parent를 계속 따라다니는 효과음을 재생합니다 (발소리 루프, 캐릭터에 붙는 사운드 등).
     /// loop가 true면 자동으로 반납되지 않으니, 다 쓰면 반드시 StopSFX(반환값)을 호출해서 직접
-    /// 반납해주세요. loop가 false면 클립 길이가 지나면 자동으로 반납됩니다.</summary>
-    public GameObject PlaySFXAttached(string clipName, Transform parent, float volume = 1f, bool loop = false)
+    /// 반납해주세요. loop가 false면 클립 길이가 지나면 자동으로 반납됩니다. pitchVariation(0~1)을 넘기면
+    /// PlaySFX()와 동일하게 ±pitchVariation 범위에서 매번 무작위 피치가 적용됩니다(예: 발소리가 매번
+    /// 기계적으로 똑같이 들리지 않도록).</summary>
+    public GameObject PlaySFXAttached(string clipName, Transform parent, float volume = 1f, bool loop = false, float pitchVariation = 0f)
     {
         AudioClip clip = GetClip(clipName, SfxFolder, sfxClipCache, missingSfxWarned);
         if (clip == null) return null;
@@ -360,7 +368,8 @@ public class SoundManager : MonoBehaviour
         GameObject voice = sfxVoicePool.Get(worldPosition, Quaternion.identity, parent);
 
         AudioSource source = voice.GetComponent<AudioSource>();
-        ConfigureVoice(source, clip, volume, pitch: 1f, spatial: true, loop);
+        float pitch = 1f + Random.Range(-pitchVariation, pitchVariation);
+        ConfigureVoice(source, clip, volume, pitch, spatial: true, loop);
         source.Play();
 
         int id = voice.GetInstanceID();
@@ -368,12 +377,12 @@ public class SoundManager : MonoBehaviour
 
         if (!loop)
         {
-            Coroutine co = StartCoroutine(AutoReleaseSfxRoutine(voice, clip.length));
+            Coroutine co = StartCoroutine(AutoReleaseSfxRoutine(voice, clip.length / Mathf.Max(0.01f, Mathf.Abs(pitch))));
             pendingSfxReleases[id] = co;
         }
         // loop가 true면 자동 반납 타이머를 걸지 않습니다 - StopSFX()로 직접 반납해야 합니다.
 
-        if (debugLog) Debug.Log($"[SoundManager] SFX '{clipName}' 재생 (parent='{parent?.name}'에 부착, loop={loop})", voice);
+        if (debugLog) Debug.Log($"[SoundManager] SFX '{clipName}' 재생 (parent='{parent?.name}'에 부착, loop={loop}, pitch={pitch:F2})", voice);
 
         return voice;
     }
@@ -452,6 +461,12 @@ public class SoundManager : MonoBehaviour
         return source;
     }
 
+    // Time.deltaTime이 아니라 Time.unscaledDeltaTime을 씁니다 - 인게임 씬 시작과 동시에
+    // UIControls가 스스로 열리면서 Time.timeScale을 0으로 만드는데(UICanvas.OpenUI() 참고),
+    // scaled deltaTime을 썼다면 그 순간 BGM 페이드가 그대로 멈춰버려서 조작법창을 닫아
+    // Time.timeScale이 1로 돌아올 때까지 브금이 안 나오는 것처럼 보입니다. 화면 페이드(GameManager)가
+    // 이미 DOTween .SetUpdate(true)로 timeScale 영향을 안 받게 만들어둔 것과 같은 이유로,
+    // BGM 페이드도 어떤 팝업이 게임을 멈춰도 실시간 기준으로 정상 진행되도록 맞춥니다.
     private IEnumerator CrossfadeBgm(AudioSource outgoing, AudioSource incoming, float duration)
     {
         float targetVolume = bgmVolume * masterVolume;
@@ -469,7 +484,7 @@ public class SoundManager : MonoBehaviour
         float t = 0f;
         while (t < duration)
         {
-            t += Time.deltaTime;
+            t += Time.unscaledDeltaTime;
             float p = t / duration;
             outgoing.volume = Mathf.Lerp(startOutgoingVolume, 0f, p);
             incoming.volume = Mathf.Lerp(0f, targetVolume, p);
@@ -488,7 +503,7 @@ public class SoundManager : MonoBehaviour
         float t = 0f;
         while (t < duration)
         {
-            t += Time.deltaTime;
+            t += Time.unscaledDeltaTime;
             source.volume = Mathf.Lerp(startVolume, 0f, t / duration);
             yield return null;
         }

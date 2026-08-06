@@ -347,6 +347,10 @@ public class PlayerController : MonoBehaviour
     // 다음 발소리까지 남은 시간입니다. 움직이지 않는 순간 0으로 리셋해둬서, 다음에 다시 움직이기
     // 시작하면(멈췄다 출발하는 매번) 대기 없이 바로 첫 발소리가 나도록 합니다.
     private float footstepTimer;
+    // 지금 재생 중인 발소리 보이스입니다 - footstepInterval이 실제 클립 길이보다 짧으면 이전 발소리가
+    // 채 끝나기 전에 다음 발소리가 재생되어 두 소리가 겹쳐(중복으로) 들리므로, 새 발소리를 재생하기
+    // 직전에 이전 보이스를 강제로 정지시켜 항상 하나만 재생되도록 보장합니다.
+    private GameObject activeFootstepVoice;
 
     private bool isDashing;
     private float dashTimer;
@@ -1799,7 +1803,10 @@ public class PlayerController : MonoBehaviour
     /// <summary>이동 중(isMoving)이라면 footstepInterval초마다 footstepSfxName을 재생합니다. 애니메이션
     /// 이벤트로 발이 실제로 땅에 닿는 순간에 정확히 맞추는 대신, 고정 간격으로 재생하는 단순한 방식입니다 -
     /// 걸음을 멈추는 즉시 타이머를 0으로 리셋해서, 멈췄다 다시 움직이기 시작할 때마다 대기 없이 곧바로
-    /// 첫 발소리가 나도록 합니다.</summary>
+    /// 첫 발소리가 나도록 합니다. footstepInterval이 실제 발소리 클립 길이보다 짧게 설정되어 있어도 이전
+    /// 발소리와 겹쳐(중복으로) 들리지 않도록, 새로 재생하기 직전에 activeFootstepVoice로 기억해둔 이전
+    /// 보이스를 StopSFX()로 먼저 정지시킵니다(이미 다 재생되어 자동 반납된 보이스를 또 정지시켜도
+    /// SoundManager.ReleaseSfxVoice()의 이중 반납 방지 로직 덕분에 안전합니다).</summary>
     private void UpdateFootsteps(bool isMoving)
     {
         if (!isMoving)
@@ -1814,7 +1821,14 @@ public class PlayerController : MonoBehaviour
         footstepTimer = footstepInterval;
 
         if (string.IsNullOrEmpty(footstepSfxName)) return;
-        SoundManager.Instance.PlaySFX(footstepSfxName, transform.position, 1f, footstepPitchVariation);
+
+        if (activeFootstepVoice != null)
+        {
+            SoundManager.Instance.StopSFX(activeFootstepVoice);
+            activeFootstepVoice = null;
+        }
+
+        activeFootstepVoice = SoundManager.Instance.PlaySFXAttached(footstepSfxName, transform, 1f, false, footstepPitchVariation);
     }
 
     /// <summary>PlayerStats의 CurrentHP/MaxHP를 0~1 비율로 환산해서 UIIngame.SetHPBar()에 넘겨줍니다.

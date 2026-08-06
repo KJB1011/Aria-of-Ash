@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 13cb09ea5bc971d44a94b59325849814, type: 3}
   m_Name: EnterMiddleSlime
   m_EditorClassIdentifier: 
+  bgmName: MiddleSlimeBGM
+  bgmFadeDuration: 1
   steps:
   - type: 0
     label: "\uD654\uBA74 \uD398\uC774\uB4DC \uC544\uC6C3"
@@ -26,6 +28,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 3
     label: "UI \uAC00\uB9AC\uAE30"
     duration: 0
@@ -39,6 +43,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 10
     label: "\uC7A5\uBCBD \uC5C6\uC560\uAE30"
     duration: 0
@@ -52,6 +58,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: MiddleSlimeGateOpen
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 4
     label: "\uCE74\uBA54\uB77C \uC804\uD658"
     duration: 0
@@ -65,6 +73,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: MiddleSlimeGateOpen
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 1
     label: "\uD654\uBA74 \uD398\uC774\uB4DC\uC778"
     duration: 1
@@ -78,6 +88,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 10
     label: "\uC911\uAE08\uC2AC\uB77C\uC784 \uC18C\uD658 \uD2B8\uB9AC\uAC70 \uBC1C\uB3D9"
     duration: 0
@@ -91,6 +103,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: MiddleSlimeAppear
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 2
     label: "\uC7A0\uC2DC \uB300\uAE30"
     duration: 3
@@ -104,6 +118,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 4
     label: "\uB85C\uACE0 \uCE74\uBA54\uB77C\uB85C \uC804\uD658"
     duration: 0
@@ -117,6 +133,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 9
     label: "\uC911\uAE09 \uC2AC\uB77C\uC784 \uC774\uB984 \uB85C\uACE0 \uCD9C\uB825"
     duration: 0.2
@@ -130,6 +148,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 2
     label: "\uB85C\uACE0\uB97C \uBCF4\uC5EC\uC8FC\uB294 \uB3D9\uC548 \uC7A0\uC2DC
       \uB300\uAE30"
@@ -144,6 +164,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 9
     label: "\uB2E4\uC2DC \uB85C\uACE0 \uB044\uAE30"
     duration: 0
@@ -157,6 +179,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 4
     label: "\uCE74\uBA54\uB77C \uBCC0\uACBD"
     duration: 0
@@ -170,6 +194,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 2
     label: "1\uCD08 \uB300\uAE30"
     duration: 1
@@ -183,6 +209,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 10
     label: "\uC2AC\uB77C\uC784 \uACF5\uACA9 \uD2B8\uB9AC\uAC70 \uBC1C\uB3D9"
     duration: 0
@@ -196,6 +224,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: MiddleSlimeShockwave
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 2
     label: "1\uCD08 \uB300\uAE30"
     duration: 1
@@ -209,6 +239,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 0
     label: "\uD654\uBA74 \uD398\uC774\uB4DC \uC544\uC6C3"
     duration: 1
@@ -222,6 +254,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 3
     label: "UI \uB2E4\uC2DC \uCF1C\uAE30"
     duration: 0
@@ -235,6 +269,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 4
     label: "\uC6D0\uB798 \uC2DC\uC810\uC73C\uB85C \uADC0\uD658"
     duration: 0
@@ -248,6 +284,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 1
     label: "\uD654\uBA74 \uD398\uC774\uB4DC\uC778"
     duration: 1
@@ -261,6 +299,8 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: 
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01
   - type: 10
     label: "\uCEF7\uC52C \uC885\uB8CC"
     duration: 0
@@ -274,3 +314,5 @@ MonoBehaviour:
     npcKey: 
     teleportPointKey: 
     eventKey: FinishCutscene
+    questToGrant: {fileID: 0}
+    targetFogDensity: 0.01

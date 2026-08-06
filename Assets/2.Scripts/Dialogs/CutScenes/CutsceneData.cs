@@ -239,6 +239,18 @@ public class CutsceneData : ScriptableObject
         public float targetFogDensity = 0.01f;
     }
 
+    [Header("컷씬 전용 배경음악 (선택)")]
+    [Tooltip("이 컷씬이 재생되는 동안 틀 배경음악입니다(Resources/BGM/ 아래 클립 이름과 일치해야 함). " +
+              "비워두면 지금 재생 중이던 배경음악(필드 곡이든 전투 곡이든)이 그대로 계속 재생됩니다. " +
+              "채워두면 컷씬이 시작되는 순간 이 곡으로 전환되고, 컷씬이 끝나면(끝까지 재생되거나 " +
+              "CutsceneManager.StopCutscene()으로 중간에 끊기거나 상관없이) 컷씬 시작 전에 재생 중이던 " +
+              "곡으로 자동으로 되돌아갑니다 - SoundManager.SetFieldBGM()이 아니라 CutsceneManager가 직접 " +
+              "SoundManager.PlayBGM()을 호출하는 방식이라, 전투 중에 컷씬이 시작돼도 이 곡이 확실하게 " +
+              "우선합니다(자세한 내용은 CutsceneManager.cs 상단 [컷씬 전용 배경음악] 참고).")]
+    public string bgmName;
+    [Tooltip("bgmName으로 전환/복귀될 때의 크로스페이드 시간(초). 시작/종료 양쪽에 똑같이 적용됩니다.")]
+    public float bgmFadeDuration = 1f;
+
     [Tooltip("이 컷씬을 구성하는 스텝들입니다. 순서대로 하나씩 실행됩니다(CutsceneManager.cs 참고).")]
     public Step[] steps = new Step[0];
 }

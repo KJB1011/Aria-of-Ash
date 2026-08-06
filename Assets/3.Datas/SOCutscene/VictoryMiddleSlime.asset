@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 13cb09ea5bc971d44a94b59325849814, type: 3}
   m_Name: VictoryMiddleSlime
   m_EditorClassIdentifier: 
+  bgmName: PurifyBGM
+  bgmFadeDuration: 1
   steps:
   - type: 0
     label: "\uD654\uBA74 \uD328\uC774\uB4DC \uC544\uC6C3"

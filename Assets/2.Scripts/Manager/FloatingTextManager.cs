@@ -48,6 +48,7 @@
 //   FloatingTextManager.Instance.Show("인벤토리가 가득 찼습니다", Color.red);
 // ============================================================================
 
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -72,6 +73,14 @@ public class FloatingTextManager : MonoBehaviour
     public int maxPoolSize = 20;
     [Tooltip("켜두면 Show()/반납 등 동작을 콘솔에 로그로 남깁니다.")]
     public bool debugLog = false;
+
+    [Header("워밍업 (첫 등장 시 렉 방지)")]
+    [Tooltip("Prewarm()이 TextMeshPro 폰트 아틀라스/셰이더를 미리 데울 때 화면에 보이지 않게(알파 0) " +
+              "한 번 렌더링시킬 표본 문자열입니다. 실제 게임에서 뜨는 메세지들에 나오는 문자(한글 " +
+              "자모/자주 쓰는 단어)를 최대한 포함해둘수록, 그 문자들이 실제로 처음 등장할 때 생기는 " +
+              "아틀라스 재생성 렉을 더 많이 미리 없앨 수 있습니다. 동적(Dynamic) SDF 아틀라스를 쓰는 " +
+              "폰트 애셋일수록 이 워밍업의 효과가 큽니다.")]
+    public string warmUpSampleText = "레벨업퀘스트완료인벤토리가득참아이템획득!0123456789";
 
     [Header("스택 쌓기 (여러 개가 동시에 뜰 때)")]
     [Tooltip("새 알림이 뜰 때마다 그 시점에 아직 화면에 떠 있는 기존 알림들을 위로 밀어올리는 간격(px)입니다. " +
@@ -165,6 +174,44 @@ public class FloatingTextManager : MonoBehaviour
         if (debugLog) Debug.Log($"[FloatingTextManager] \"{message}\" 표시 (position={anchoredPosition})", spawned);
 
         return spawned;
+    }
+
+    /// <summary>FloatingText가 게임플레이 중 처음 뜰 때 순간적으로 렉이 걸리는 문제를 미리 없애기
+    /// 위한 워밍업입니다. 원인은 Show()의 첫 호출 한 프레임 안에 (1) Resources.Load(동기 디스크 I/O),
+    /// (2) 자동 Canvas 생성, (3) 오브젝트 풀 최초 Instantiate, (4) TextMeshPro가 그 문자들을 화면에
+    /// "실제로 그리는" 첫 순간 필요한 폰트 아틀라스 생성(동적 SDF 아틀라스라면 특히 무겁습니다)과
+    /// 셰이더 변형(variant) 컴파일까지 한꺼번에 몰려서 일어나기 때문입니다 - prewarmCount로 미리
+    /// Instantiate해둔 인스턴스들은 비활성 상태라 (4)를 전혀 겪지 않으므로, 실제 첫 Show()에서
+    /// 그대로 렉이 발생합니다. 이 함수는 실제 Play()와 똑같은 경로로 한 번 "보이지 않게" 렌더링을
+    /// 시켜서 (1)~(4)를 전부 지금 이 시점에 끝내둡니다. GameManager의 로딩 루틴처럼 화면이 이미
+    /// 가려져 있는 시점에 호출하는 걸 추천합니다 - FloatingTextManager.Instance.Prewarm();</summary>
+    public void Prewarm()
+    {
+        StartCoroutine(PrewarmRoutine());
+    }
+
+    private IEnumerator PrewarmRoutine()
+    {
+        GameObjectPool p = GetOrCreatePool();
+        if (p == null) yield break;
+
+        RectTransform canvasTransform = GetCanvasTransform();
+        if (canvasTransform == null) yield break;
+
+        GameObject spawned = p.Get(Vector3.zero, Quaternion.identity, canvasTransform);
+        FloatingTextPopup popup = spawned.GetComponent<FloatingTextPopup>();
+        if (popup != null)
+        {
+            popup.WarmUp(warmUpSampleText);
+        }
+
+        // 최소 한 프레임은 실제로 활성 상태로 렌더링되게 두어야, CPU 쪽 아틀라스 생성뿐 아니라
+        // GPU 셰이더 변형 컴파일까지 이 시점에 끝납니다(알파가 0이라 화면에는 아무것도 안 보입니다).
+        yield return null;
+
+        pool.Release(spawned);
+
+        if (debugLog) Debug.Log("[FloatingTextManager] 워밍업 완료 (폰트 아틀라스 생성 + 셰이더 컴파일을 미리 끝냄)");
     }
 
     /// <summary>FloatingTextPopup이 자기 애니메이션을 끝내고 스스로 반납할 때 호출합니다.

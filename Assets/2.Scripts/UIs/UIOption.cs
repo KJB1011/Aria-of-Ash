@@ -5,20 +5,22 @@
 // 구현해서 UICanvas가 "팝업 하나만 열리게, 열려있는 동안 게임 시간 멈추기"를 관리해줍니다.
 // CanvasGroup 알파 페이드로 보이기/숨기기를 처리하는 것도 동일합니다.
 //
-// [BGM/SFX 슬라이더]
-//   SoundManager.Instance의 bgmVolume/sfxVolume(둘 다 0~1)을 그대로 읽고 씁니다 - 요청하신 필드가
-//   BGM/SFX 두 개뿐이라 마스터 볼륨 슬라이더는 만들지 않았습니다(필요해지면 같은 방식으로 하나
-//   더 추가하면 됩니다). 슬라이더의 Min/Max는 Inspector에서 0~1로 맞춰주세요. 값이 바뀔 때마다
-//   (드래그 중에도) 바로 SoundManager.Instance.SetBGMVolume()/SetSFXVolume()을 호출해서 실시간으로
-//   반영됩니다.
+// [BGM/SFX 슬라이더 + 수치 표시]
+//   SoundManager.Instance의 bgmVolume/sfxVolume(둘 다 0~1)을 그대로 읽고 씁니다. 슬라이더 옆에
+//   현재 값을 %로 보여주는 TMP 텍스트(_textBGMValue/_textSFXValue)를 함께 두었습니다 - 슬라이더가
+//   바뀌는 모든 경로(드래그, 설정 불러오기, 창 열 때 새로고침, 나가기로 되돌리기)에서 전부
+//   같이 갱신되도록 UpdateBgmVolumeText()/UpdateSfxVolumeText() 헬퍼를 통해서만 값을 반영합니다.
 //
-// [해상도 드롭다운 - 지금은 화면 비율만]
-//   말씀하신 대로 지금은 정확한 해상도(1920x1080 등)나 프레임 관련 설정 없이, 화면 비율만
-//   고를 수 있게 했습니다(16:9 / 16:10 / 21:9 / 4:3). 비율을 고르면 "현재 화면 높이는 그대로
-//   두고 그 비율에 맞는 너비"를 계산해서 Screen.SetResolution()을 호출합니다 - 예를 들어 높이가
-//   1080일 때 16:9를 고르면 1920x1080, 21:9를 고르면 2520x1080이 되는 식입니다. 나중에 실제
-//   해상도 목록(1920x1080/2560x1440 등 - 다른 프레임/픽셀 조합)이나 프레임레이트 설정이
-//   필요해지면 그때 이 드롭다운을 확장하면 됩니다.
+// [해상도 드롭다운 - 모니터가 지원하는 실제 해상도 목록]
+//   Screen.resolutions로 모니터가 보고하는 모든 해상도를 가져온 뒤, 주사율이 60Hz인 것만 추려서
+//   (가로x세로) 기준으로 중복 제거하고, 해상도가 큰 것부터 작은 것 순으로 정렬해 드롭다운에
+//   채웁니다(예: 1920x1080, 1600x900 ...). 60Hz 해상도가 하나도 보고되지 않는 예외적인 환경을
+//   대비해 그럴 땐 주사율 무관 전체 해상도로, 그마저 없으면 현재 해상도 하나만 폴백으로 넣습니다.
+//
+//   해상도 드롭다운은 화면 모드가 "창모드(Windowed)"일 때만 활성화됩니다 - 테두리없는창모드/
+//   전체화면은 보통 모니터 해상도에 맞춰지거나 별도 처리가 필요해서, 여기서는 창모드에서만
+//   임의 해상도 지정이 의미가 있다고 보고 나머지 모드에서는 비활성화(회색 처리)해둡니다.
+//   화면 모드 드롭다운이 바뀔 때마다 UpdateResolutionDropdownInteractable()로 갱신됩니다.
 //
 // [화면 모드 드롭다운]
 //   창모드/테두리없는창모드/전체화면 3가지를 Unity의 FullScreenMode로 매핑합니다.
@@ -27,7 +29,7 @@
 //
 // [설정 저장 - 요청엔 없었지만 추가한 기능]
 //   옵션 창의 목적상 설정이 게임을 껐다 켜도 유지되는 게 자연스러워서 PlayerPrefs에
-//   저장/불러오기를 추가했습니다(Option_BGMVolume/Option_SFXVolume/Option_AspectRatioIndex/
+//   저장/불러오기를 추가했습니다(Option_BGMVolume/Option_SFXVolume/Option_ResolutionIndex/
 //   Option_ScreenModeIndex 키 사용). 저장된 값이 없으면(첫 실행) 그 시점의 실제 볼륨/화면
 //   상태를 기준으로 UI를 맞춥니다. 필요 없으시면 LoadAndApplySettings()의 PlayerPrefs 부분과
 //   각 On***Changed()의 PlayerPrefs.SetXxx() 줄을 지우시면 됩니다.
@@ -57,9 +59,9 @@
 // [씬 준비]
 //   1) 옵션 창 패널(전체를 여닫을 오브젝트)에 이 스크립트와 CanvasGroup을 붙이세요
 //      (CanvasGroup은 RequireComponent로 자동 추가됩니다).
-//   2) BGM/SFX 슬라이더, Resolution/ScreenMode 드롭다운을 각 필드에 연결하세요 - 드롭다운의
-//      Option 항목(16:9 등, 창모드 등)은 코드에서 자동으로 채우므로 Inspector에서 미리
-//      만들어둘 필요 없습니다.
+//   2) BGM/SFX 슬라이더와 그 옆에 값을 보여줄 TMP 텍스트, Resolution/ScreenMode 드롭다운을 각
+//      필드에 연결하세요 - 드롭다운의 Option 항목(해상도 목록, 창모드 등)은 코드에서 자동으로
+//      채우므로 Inspector에서 미리 만들어둘 필요 없습니다.
 //   3) 나가기(취소) 버튼의 OnClick에 ClickExitButton()을, 확인 버튼의 OnClick에
 //      ClickConfirmButton()을 각각 연결하세요. O 키는 코드에서 자동으로 처리되므로 따로
 //      설정할 게 없습니다.
@@ -85,22 +87,17 @@ public class UIOption : MonoBehaviour, IUIWindow
 {
     [SerializeField] Slider _sliderBGM;
     [SerializeField] Slider _sliderSFX;
+    [SerializeField] TMP_Text _textBGMValue;
+    [SerializeField] TMP_Text _textSFXValue;
     [SerializeField] TMP_Dropdown _dropdownResolution;
     [SerializeField] TMP_Dropdown _dropdownScreenMode;
 
     [Header("표시/숨김")]
     public float fadeDuration = 0.15f;
 
-    // 화면 비율만 다루기로 했으므로(정확한 해상도 목록이 아님), 비율 자체를 데이터로 들고 있다가
-    // 드롭다운 인덱스와 1:1로 매칭합니다.
-    private static readonly Vector2Int[] AspectRatios =
-    {
-        new Vector2Int(16, 9),
-        new Vector2Int(16, 10),
-        new Vector2Int(21, 9),
-        new Vector2Int(4, 3),
-    };
-    private static readonly string[] AspectRatioLabels = { "16:9", "16:10", "21:9", "4:3" };
+    // 모니터에서 실제로 지원하는(그리고 60Hz로 필터링된) 해상도 목록입니다 - 드롭다운 인덱스와
+    // 1:1로 매칭되며, 큰 해상도 -> 작은 해상도 순으로 정렬되어 있습니다.
+    private readonly List<Vector2Int> _resolutions = new List<Vector2Int>();
 
     private static readonly FullScreenMode[] ScreenModes =
     {
@@ -112,7 +109,7 @@ public class UIOption : MonoBehaviour, IUIWindow
 
     private const string PrefBgmVolume = "Option_BGMVolume";
     private const string PrefSfxVolume = "Option_SFXVolume";
-    private const string PrefAspectRatioIndex = "Option_AspectRatioIndex";
+    private const string PrefResolutionIndex = "Option_ResolutionIndex";
     private const string PrefScreenModeIndex = "Option_ScreenModeIndex";
 
     private CanvasGroup canvasGroup;
@@ -122,7 +119,7 @@ public class UIOption : MonoBehaviour, IUIWindow
     // Open() 시점의 값을 저장해두는 스냅샷입니다 - "나가기"(취소)를 누르면 이 값으로 되돌립니다.
     private float snapshotBgmVolume;
     private float snapshotSfxVolume;
-    private int snapshotAspectIndex;
+    private int snapshotResolutionIndex;
     private int snapshotScreenModeIndex;
 
     private InputAction toggleAction;
@@ -134,7 +131,8 @@ public class UIOption : MonoBehaviour, IUIWindow
         canvasGroup.interactable = false;
         canvasGroup.blocksRaycasts = false;
 
-        SetupDropdownOptions();
+        SetupResolutionOptions();
+        SetupScreenModeOptions();
 
         toggleAction = new InputAction("ToggleOption", InputActionType.Button, "<Keyboard>/o");
     }
@@ -172,13 +170,61 @@ public class UIOption : MonoBehaviour, IUIWindow
         }
     }
 
-    private void SetupDropdownOptions()
+    private void SetupScreenModeOptions()
     {
-        _dropdownResolution.ClearOptions();
-        _dropdownResolution.AddOptions(new List<string>(AspectRatioLabels));
-
         _dropdownScreenMode.ClearOptions();
         _dropdownScreenMode.AddOptions(new List<string>(ScreenModeLabels));
+    }
+
+    /// <summary>Screen.resolutions로 모니터가 보고하는 해상도 중 주사율이 60Hz인 것만 추려서
+    /// (가로x세로) 기준 중복 제거 후 큰 해상도 -> 작은 해상도 순으로 정렬해 드롭다운을 채웁니다.
+    /// 60Hz 해상도가 하나도 없는 경우 주사율 무관 전체 목록으로, 그마저 없으면 현재 해상도
+    /// 하나만 폴백으로 넣습니다.</summary>
+    private void SetupResolutionOptions()
+    {
+        _resolutions.Clear();
+        HashSet<Vector2Int> seen = new HashSet<Vector2Int>();
+
+        foreach (Resolution res in Screen.resolutions)
+        {
+            int refreshRate = Mathf.RoundToInt((float)res.refreshRateRatio.value);
+            if (refreshRate != 60) continue;
+
+            Vector2Int size = new Vector2Int(res.width, res.height);
+            if (seen.Add(size))
+            {
+                _resolutions.Add(size);
+            }
+        }
+
+        // 60Hz로 보고되는 해상도가 하나도 없는 극단적인 경우(일부 환경/드라이버)를 대비해,
+        // 이땐 주사율 필터링 없이 전체 해상도(중복 제거)를 사용합니다.
+        if (_resolutions.Count == 0)
+        {
+            foreach (Resolution res in Screen.resolutions)
+            {
+                Vector2Int size = new Vector2Int(res.width, res.height);
+                if (seen.Add(size)) _resolutions.Add(size);
+            }
+        }
+
+        // 그마저도 하나도 없으면(Screen.resolutions가 빈 배열인 일부 플랫폼) 현재 해상도라도
+        // 목록에 넣어서 드롭다운이 완전히 비지 않도록 합니다.
+        if (_resolutions.Count == 0)
+        {
+            _resolutions.Add(new Vector2Int(Screen.width, Screen.height));
+        }
+
+        _resolutions.Sort((a, b) => (b.x * b.y).CompareTo(a.x * a.y)); // 큰 해상도 -> 작은 해상도 순
+
+        List<string> labels = new List<string>(_resolutions.Count);
+        foreach (Vector2Int r in _resolutions)
+        {
+            labels.Add($"{r.x} x {r.y}");
+        }
+
+        _dropdownResolution.ClearOptions();
+        _dropdownResolution.AddOptions(labels);
     }
 
     /// <summary>옵션 버튼 OnClick에서 호출하는 열기/닫기 토글 함수입니다. UIInventory.ToggleInventory()와
@@ -189,12 +235,11 @@ public class UIOption : MonoBehaviour, IUIWindow
         else UICanvas.Instance.OpenUI(gameObject);
     }
 
-    /// <summary>나가기(취소) 버튼 OnClick에 연결하세요. 이 창을 연 뒤 바뀐 BGM/SFX 볼륨, 해상도
-    /// 비율, 화면 모드를 전부 Open() 시점 값으로 되돌린 뒤 닫습니다 - 실시간 미리보기 값을 버리고
+    /// <summary>나가기(취소) 버튼 OnClick에 연결하세요. 이 창을 연 뒤 바뀐 BGM/SFX 볼륨, 해상도,
+    /// 화면 모드를 전부 Open() 시점 값으로 되돌린 뒤 닫습니다 - 실시간 미리보기 값을 버리고
     /// 싶을 때 씁니다.</summary>
     public void ClickExitButton()
     {
-        SoundManager.Instance.PlayUIClickSfx();
         RevertToSnapshot();
         UICanvas.Instance.CloseUI(gameObject);
     }
@@ -204,7 +249,6 @@ public class UIOption : MonoBehaviour, IUIWindow
     /// 디스크에도 저장됩니다.</summary>
     public void ClickConfirmButton()
     {
-        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.CloseUI(gameObject);
     }
 
@@ -216,7 +260,6 @@ public class UIOption : MonoBehaviour, IUIWindow
     /// (UIControls.cs 참고) - 옵션 창으로 자동으로 돌아가지는 않습니다.</summary>
     public void ClickShowControlsButton()
     {
-        SoundManager.Instance.PlayUIClickSfx();
         UICanvas.Instance.OpenUI(UICanvas.Instance.Controls.gameObject);
     }
 
@@ -271,39 +314,57 @@ public class UIOption : MonoBehaviour, IUIWindow
     {
         SoundManager.Instance.SetBGMVolume(value);
         PlayerPrefs.SetFloat(PrefBgmVolume, value);
+        UpdateBgmVolumeText(value);
     }
 
     private void OnSfxSliderChanged(float value)
     {
         SoundManager.Instance.SetSFXVolume(value);
         PlayerPrefs.SetFloat(PrefSfxVolume, value);
+        UpdateSfxVolumeText(value);
     }
 
     private void OnResolutionDropdownChanged(int index)
     {
-        ApplyAspectRatio(index);
-        PlayerPrefs.SetInt(PrefAspectRatioIndex, index);
+        ApplyResolution(index);
+        PlayerPrefs.SetInt(PrefResolutionIndex, index);
     }
 
     private void OnScreenModeDropdownChanged(int index)
     {
         ApplyScreenMode(index);
         PlayerPrefs.SetInt(PrefScreenModeIndex, index);
+        UpdateResolutionDropdownInteractable(index);
     }
 
     // ------------------------------------------------------------------
     // 실제 적용
     // ------------------------------------------------------------------
 
-    /// <summary>현재 화면 높이는 유지한 채, 고른 비율에 맞는 너비로 해상도를 다시 잡습니다
-    /// (예: 높이 1080에서 16:9를 고르면 1920x1080, 21:9를 고르면 2520x1080).</summary>
-    private void ApplyAspectRatio(int index)
+    private void UpdateBgmVolumeText(float value)
     {
-        Vector2Int ratio = AspectRatios[Mathf.Clamp(index, 0, AspectRatios.Length - 1)];
-        int height = Screen.height;
-        int width = Mathf.RoundToInt(height * (ratio.x / (float)ratio.y));
+        if (_textBGMValue != null) _textBGMValue.text = $"{Mathf.RoundToInt(value * 100f)}%";
+    }
 
-        Screen.SetResolution(width, height, Screen.fullScreenMode);
+    private void UpdateSfxVolumeText(float value)
+    {
+        if (_textSFXValue != null) _textSFXValue.text = $"{Mathf.RoundToInt(value * 100f)}%";
+    }
+
+    /// <summary>해상도 드롭다운은 화면 모드가 창모드(Windowed)일 때만 의미가 있어서, 그 외
+    /// 모드에서는 비활성화(회색 처리)합니다.</summary>
+    private void UpdateResolutionDropdownInteractable(int screenModeIndex)
+    {
+        FullScreenMode mode = ScreenModes[Mathf.Clamp(screenModeIndex, 0, ScreenModes.Length - 1)];
+        _dropdownResolution.interactable = mode == FullScreenMode.Windowed;
+    }
+
+    private void ApplyResolution(int index)
+    {
+        if (_resolutions.Count == 0) return;
+        index = Mathf.Clamp(index, 0, _resolutions.Count - 1);
+        Vector2Int r = _resolutions[index];
+        Screen.SetResolution(r.x, r.y, Screen.fullScreenMode);
     }
 
     private void ApplyScreenMode(int index)
@@ -318,39 +379,52 @@ public class UIOption : MonoBehaviour, IUIWindow
     {
         float bgm = PlayerPrefs.HasKey(PrefBgmVolume) ? PlayerPrefs.GetFloat(PrefBgmVolume) : SoundManager.Instance.bgmVolume;
         float sfx = PlayerPrefs.HasKey(PrefSfxVolume) ? PlayerPrefs.GetFloat(PrefSfxVolume) : SoundManager.Instance.sfxVolume;
-        int aspectIndex = PlayerPrefs.HasKey(PrefAspectRatioIndex) ? PlayerPrefs.GetInt(PrefAspectRatioIndex) : FindClosestAspectRatioIndex();
+        int resolutionIndex = PlayerPrefs.HasKey(PrefResolutionIndex) ? PlayerPrefs.GetInt(PrefResolutionIndex) : FindClosestResolutionIndex();
         int screenModeIndex = PlayerPrefs.HasKey(PrefScreenModeIndex) ? PlayerPrefs.GetInt(PrefScreenModeIndex) : FindScreenModeIndex();
 
         SoundManager.Instance.SetBGMVolume(bgm);
         SoundManager.Instance.SetSFXVolume(sfx);
-        ApplyAspectRatio(aspectIndex);
+        ApplyResolution(resolutionIndex);
         ApplyScreenMode(screenModeIndex);
 
         _sliderBGM.SetValueWithoutNotify(bgm);
         _sliderSFX.SetValueWithoutNotify(sfx);
-        _dropdownResolution.SetValueWithoutNotify(aspectIndex);
+        UpdateBgmVolumeText(bgm);
+        UpdateSfxVolumeText(sfx);
+
+        _dropdownResolution.SetValueWithoutNotify(resolutionIndex);
         _dropdownScreenMode.SetValueWithoutNotify(screenModeIndex);
+        UpdateResolutionDropdownInteractable(screenModeIndex);
     }
 
     /// <summary>창을 열 때마다 UI를 "지금 실제 상태"와 다시 맞춥니다(저장된 값 기준이 아님).</summary>
     private void RefreshUIFromCurrentState()
     {
-        _sliderBGM.SetValueWithoutNotify(SoundManager.Instance.bgmVolume);
-        _sliderSFX.SetValueWithoutNotify(SoundManager.Instance.sfxVolume);
-        _dropdownResolution.SetValueWithoutNotify(FindClosestAspectRatioIndex());
-        _dropdownScreenMode.SetValueWithoutNotify(FindScreenModeIndex());
+        float bgm = SoundManager.Instance.bgmVolume;
+        float sfx = SoundManager.Instance.sfxVolume;
+        int screenModeIndex = FindScreenModeIndex();
+
+        _sliderBGM.SetValueWithoutNotify(bgm);
+        _sliderSFX.SetValueWithoutNotify(sfx);
+        UpdateBgmVolumeText(bgm);
+        UpdateSfxVolumeText(sfx);
+
+        _dropdownResolution.SetValueWithoutNotify(FindClosestResolutionIndex());
+        _dropdownScreenMode.SetValueWithoutNotify(screenModeIndex);
+        UpdateResolutionDropdownInteractable(screenModeIndex);
     }
 
-    private int FindClosestAspectRatioIndex()
+    private int FindClosestResolutionIndex()
     {
-        float currentRatio = Screen.width / (float)Screen.height;
+        int currentWidth = Screen.width;
+        int currentHeight = Screen.height;
         int bestIndex = 0;
-        float bestDiff = float.MaxValue;
+        int bestDiff = int.MaxValue;
 
-        for (int i = 0; i < AspectRatios.Length; i++)
+        for (int i = 0; i < _resolutions.Count; i++)
         {
-            float ratio = AspectRatios[i].x / (float)AspectRatios[i].y;
-            float diff = Mathf.Abs(ratio - currentRatio);
+            Vector2Int r = _resolutions[i];
+            int diff = Mathf.Abs(r.x - currentWidth) + Mathf.Abs(r.y - currentHeight);
             if (diff < bestDiff)
             {
                 bestDiff = diff;
@@ -378,7 +452,7 @@ public class UIOption : MonoBehaviour, IUIWindow
     {
         snapshotBgmVolume = SoundManager.Instance.bgmVolume;
         snapshotSfxVolume = SoundManager.Instance.sfxVolume;
-        snapshotAspectIndex = FindClosestAspectRatioIndex();
+        snapshotResolutionIndex = FindClosestResolutionIndex();
         snapshotScreenModeIndex = FindScreenModeIndex();
     }
 
@@ -389,17 +463,21 @@ public class UIOption : MonoBehaviour, IUIWindow
     {
         SoundManager.Instance.SetBGMVolume(snapshotBgmVolume);
         SoundManager.Instance.SetSFXVolume(snapshotSfxVolume);
-        ApplyAspectRatio(snapshotAspectIndex);
+        ApplyResolution(snapshotResolutionIndex);
         ApplyScreenMode(snapshotScreenModeIndex);
 
         _sliderBGM.SetValueWithoutNotify(snapshotBgmVolume);
         _sliderSFX.SetValueWithoutNotify(snapshotSfxVolume);
-        _dropdownResolution.SetValueWithoutNotify(snapshotAspectIndex);
+        UpdateBgmVolumeText(snapshotBgmVolume);
+        UpdateSfxVolumeText(snapshotSfxVolume);
+
+        _dropdownResolution.SetValueWithoutNotify(snapshotResolutionIndex);
         _dropdownScreenMode.SetValueWithoutNotify(snapshotScreenModeIndex);
+        UpdateResolutionDropdownInteractable(snapshotScreenModeIndex);
 
         PlayerPrefs.SetFloat(PrefBgmVolume, snapshotBgmVolume);
         PlayerPrefs.SetFloat(PrefSfxVolume, snapshotSfxVolume);
-        PlayerPrefs.SetInt(PrefAspectRatioIndex, snapshotAspectIndex);
+        PlayerPrefs.SetInt(PrefResolutionIndex, snapshotResolutionIndex);
         PlayerPrefs.SetInt(PrefScreenModeIndex, snapshotScreenModeIndex);
     }
 }

@@ -29,6 +29,7 @@
 //   길이를 자동 계산해줄 필요가 없어 VFXManager보다 훨씬 단순한 구조입니다.
 // ============================================================================
 
+using System.Collections;
 using UnityEngine;
 
 /// <summary>데미지를 입은 쪽이 몬스터(Enemy)인지 플레이어(Player)인지에 따라 DamageNumberPopup이
@@ -53,6 +54,12 @@ public class DamageNumberManager : MonoBehaviour
     public int maxPoolSize = 200;
     [Tooltip("켜두면 Show()/반납 등 동작을 콘솔에 로그로 남깁니다.")]
     public bool debugLog = false;
+
+    [Header("워밍업 (첫 등장 시 렉 방지)")]
+    [Tooltip("Prewarm()이 TextMeshPro 폰트 아틀라스/셰이더를 미리 데울 때 화면에 보이지 않게(알파 0) " +
+              "한 번 렌더링시킬 표본 문자열입니다. 데미지 숫자는 어차피 숫자만 표시되니 기본값이면 " +
+              "충분합니다.")]
+    public string warmUpSampleText = "0123456789";
 
     private static DamageNumberManager instance;
     public static DamageNumberManager Instance
@@ -119,6 +126,40 @@ public class DamageNumberManager : MonoBehaviour
     public void ReturnToPool(GameObject instance)
     {
         pool?.Release(instance);
+    }
+
+    /// <summary>데미지 숫자가 전투 중 처음 뜰 때 순간적으로 렉이 걸리는 문제를 미리 없애기 위한
+    /// 워밍업입니다. FloatingTextManager.Prewarm()과 같은 이유입니다 - Resources.Load, 풀 최초
+    /// Instantiate, 그리고 TextMeshPro가 그 문자를 화면에 "실제로 그리는" 첫 순간 필요한 폰트
+    /// 아틀라스 생성/셰이더 변형(variant) 컴파일까지 첫 Show() 한 프레임에 몰려서 일어나는 게
+    /// 원인입니다. 이 데미지 숫자는 UI(TextMeshProUGUI)가 아니라 월드 스페이스 3D
+    /// TextMeshPro라 셰이더 자체가 FloatingText 쪽과 다르므로, 그쪽을 워밍업했다고 이쪽까지
+    /// 자동으로 해결되지 않습니다 - 따로 호출해야 합니다. GameManager의 로딩 루틴처럼 화면이
+    /// 이미 가려져 있는 시점에 호출하는 걸 추천합니다 - DamageNumberManager.Instance.Prewarm();</summary>
+    public void Prewarm()
+    {
+        StartCoroutine(PrewarmRoutine());
+    }
+
+    private IEnumerator PrewarmRoutine()
+    {
+        GameObjectPool p = GetOrCreatePool();
+        if (p == null) yield break;
+
+        GameObject spawned = p.Get(Vector3.zero, Quaternion.identity);
+        DamageNumberPopup popup = spawned.GetComponent<DamageNumberPopup>();
+        if (popup != null)
+        {
+            popup.WarmUp(warmUpSampleText);
+        }
+
+        // 최소 한 프레임은 실제로 활성 상태로 렌더링되게 두어야, CPU 쪽 아틀라스 생성뿐 아니라
+        // GPU 셰이더 변형 컴파일까지 이 시점에 끝납니다(알파가 0이라 화면에는 아무것도 안 보입니다).
+        yield return null;
+
+        pool.Release(spawned);
+
+        if (debugLog) Debug.Log("[DamageNumberManager] 워밍업 완료 (폰트 아틀라스 생성 + 셰이더 컴파일을 미리 끝냄)");
     }
 
     private GameObjectPool GetOrCreatePool()

@@ -93,6 +93,15 @@
 //   public이라 UI 버튼의 OnClick이나 TriggerEvent의 UnityEvent에도 그대로 연결할 수 있습니다. 다만
 //   화면이 FadeOut 도중이었다면 화면이 그 밝기 상태로 남는 등, 끊긴 시점의 화면/연출 상태까지 자동으로
 //   되돌려주지는 않으므로 필요하면 호출 전후에 직접 FadeIn 등을 넣어 정리하세요.
+//
+// [컷씬 전용 배경음악 - CutsceneData.bgmName]
+//   각 CutsceneData 애셋에 bgmName을 채워두면, 이 컷씬이 시작되는 순간(PlayRoutine() 맨 앞) 그 곡으로
+//   전환되고, 이 컷씬이 끝나는 순간(FinishCutscene() - 정상 종료/StopCutscene() 강제 종료 모두 공통으로
+//   지나가는 지점) 컷씬 시작 전에 재생 중이던 필드 음악으로 자동 복귀합니다. SoundManager.SetFieldBGM()이
+//   아니라 PlayBGM()을 직접 호출하는 이유는, 전투 중(SoundManager.IsInCombat)에 컷씬이 시작되는 경우에도
+//   컷씬 음악이 확실히 우선하도록 하기 위해서입니다 - SetFieldBGM()을 썼다면 "전투 중이면 지금 당장
+//   바꾸지 않는다"는 규칙 때문에 컷씬 음악이 아예 재생되지 않았을 것입니다. bgmName을 비워두면 이 컷씬은
+//   배경음악을 전혀 건드리지 않고, 지금 재생 중이던 곡(필드 곡이든 전투 곡이든)이 그대로 계속됩니다.
 // ============================================================================
 
 using System;
@@ -194,6 +203,13 @@ public class CutsceneManager : MonoBehaviour
     private Coroutine activeWalkCoroutine;
     private readonly Dictionary<string, Tween> titleCardFadeTweens = new Dictionary<string, Tween>();
 
+    // 이번 컷씬이 CutsceneData.bgmName으로 배경음악을 전환했는지, 전환했다면 끝난 뒤 되돌릴 곡 이름과
+    // 크로스페이드 시간입니다(파일 상단 [컷씬 전용 배경음악] 참고). bgmName이 비어있는 컷씬이라면
+    // cutsceneBgmActive가 false로 유지되어 FinishCutscene()이 BGM을 전혀 건드리지 않습니다.
+    private bool cutsceneBgmActive;
+    private string fieldBgmToRestore;
+    private float cutsceneBgmFadeDuration;
+
     private void Awake()
     {
         Instance = this;
@@ -282,6 +298,19 @@ public class CutsceneManager : MonoBehaviour
         IsAnyCutscenePlaying = true;
         currentPlayer = player; // StopCutscene()이 나중에 조작권을 돌려줄 때 필요합니다.
 
+        // CutsceneData.bgmName이 채워져 있으면, 지금 재생 중이던 필드 음악 이름을 기억해두고(전투 중이라
+        // 다른 곡이 실제로 재생 중이었더라도, 되돌릴 대상은 항상 "필드 음악"입니다) 곧바로 컷씬 곡으로
+        // 전환합니다. SoundManager.SetFieldBGM() 쪽 로직(전투 중이면 즉시 바꾸지 않는 등)을 전혀 거치지 않고
+        // SoundManager.PlayBGM()을 직접 불러서, 혹시 컷씬 도중 몬스터가 교전 상태여도 컷씬 음악이 확실히
+        // 우선하도록 합니다(파일 상단 [컷씬 전용 배경음악] 참고).
+        cutsceneBgmActive = !string.IsNullOrEmpty(data.bgmName);
+        if (cutsceneBgmActive)
+        {
+            fieldBgmToRestore = SoundManager.Instance.CurrentFieldBGMName;
+            cutsceneBgmFadeDuration = data.bgmFadeDuration;
+            SoundManager.Instance.PlayBGM(data.bgmName, cutsceneBgmFadeDuration);
+        }
+
         // 트리거되는 순간 즉시 조작을 넘겨받습니다(TalkManager 등과 같은 인터럽트 세이프티넷 타이밍) -
         // 첫 스텝(보통 FadeOut)이 끝나기 전까지 남아있던 이동 입력 등이 어색하게 섞여 들어가지
         // 않도록, 실제 스텝 실행보다 앞서 조작을 끊어둡니다.
@@ -320,6 +349,26 @@ public class CutsceneManager : MonoBehaviour
         }
 
         if (currentPlayer != null) currentPlayer.EndCutsceneControl();
+
+        // 이 컷씬이 시작할 때 배경음악을 전환했다면(cutsceneBgmActive), 컷씬 시작 전 필드 음악으로
+        // 되돌립니다 - 정상 종료든 StopCutscene()으로 끊겼든 이 한 곳을 공통으로 지나가므로 두 경로
+        // 모두 자동으로 처리됩니다. 되돌릴 필드 음악이 애초에 없었다면(fieldBgmToRestore가 비어있다면 -
+        // 컷씬이 시작되기 전까지 아직 어떤 구역 음악도 정해지지 않았던 경우) SetFieldBGM(빈 문자열)로
+        // 어설프게 재생을 시도하는 대신 StopBGM()으로 조용히 정지합니다.
+        if (cutsceneBgmActive)
+        {
+            if (!string.IsNullOrEmpty(fieldBgmToRestore))
+            {
+                SoundManager.Instance.SetFieldBGM(fieldBgmToRestore, cutsceneBgmFadeDuration);
+            }
+            else
+            {
+                SoundManager.Instance.StopBGM(cutsceneBgmFadeDuration);
+            }
+
+            cutsceneBgmActive = false;
+            fieldBgmToRestore = null;
+        }
 
         isPlaying = false;
         IsAnyCutscenePlaying = false;

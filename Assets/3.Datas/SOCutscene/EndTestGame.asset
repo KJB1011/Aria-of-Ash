@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 13cb09ea5bc971d44a94b59325849814, type: 3}
   m_Name: EndTestGame
   m_EditorClassIdentifier: 
+  bgmName: 
+  bgmFadeDuration: 1
   steps:
   - type: 10
     label: 

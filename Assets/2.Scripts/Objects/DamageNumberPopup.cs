@@ -99,6 +99,25 @@ public class DamageNumberPopup : MonoBehaviour, IPoolable
         animateRoutine = StartCoroutine(AnimateAndRelease());
     }
 
+    /// <summary>실제 사용 전에 TextMeshPro 폰트 아틀라스 생성/셰이더 컴파일을 미리 "데워두기" 위한
+    /// 진입점입니다. DamageNumberManager.Prewarm()이 로딩 화면(화면이 가려진 동안) 호출합니다 -
+    /// 실제 Play()처럼 텍스트를 세팅하고 ForceMeshUpdate()로 지오메트리/아틀라스 생성을 이 프레임에
+    /// 강제로 끝내되, 알파를 0으로 낮춰 화면에는 아무것도 보이지 않게 합니다. 이 컴포넌트는 UI가
+    /// 아니라 월드 스페이스 3D TextMeshPro라 CanvasGroup이 없으므로, FloatingTextPopup과 달리
+    /// label.color.a를 직접 0으로 낮춥니다. 셰이더 변형(variant) 컴파일까지 끝내려면 이 오브젝트가
+    /// 최소 한 프레임은 활성 상태로 실제 렌더링을 거쳐야 하므로, 반납은 호출부(DamageNumberManager)가
+    /// 한 프레임 뒤에 처리합니다.</summary>
+    public void WarmUp(string sampleText)
+    {
+        if (label == null) return;
+
+        label.text = sampleText;
+        Color c = label.color;
+        c.a = 0f;
+        label.color = c;
+        label.ForceMeshUpdate(); // 아틀라스에 없는 글리프가 있으면 지금 이 자리에서 강제로 생성.
+    }
+
     /// <summary>IPoolable 구현. 풀에서 꺼내져 활성화된 직후 호출됩니다. 실제 값 채우기는 뒤이어
     /// 호출되는 Play()가 담당하므로, 여기서는 이전 사용의 흔적(진행 중이던 코루틴/스케일)만 정리합니다.</summary>
     public void OnGetFromPool()
