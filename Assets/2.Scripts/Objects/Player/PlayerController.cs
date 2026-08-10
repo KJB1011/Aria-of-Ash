@@ -308,6 +308,12 @@ public class PlayerController : MonoBehaviour
               "자동으로 이 시간만큼 조작이 잠깁니다.")]
     public float hitStunDuration = 0.4f;
 
+    [Tooltip("맞은 직후 이 시간(초) 동안 무적이 되어, 같은 공격에 여러 번 연속으로 맞지 않도록 막습니다 " +
+              "(예: 히트박스가 여러 프레임 겹치거나 OnTriggerStay가 연속으로 불리는 경우). dashGrantsInvincibility/" +
+              "ultSkillGrantsInvincibility와 완전히 같은 방식(EnterInvincible/ExitInvincible로 invincibleLayerName " +
+              "레이어로 임시 전환)이라 별도 설정이 필요 없습니다. 0 이하로 두면 이 기능을 끕니다.")]
+    public float hitInvincibilityDuration = 0.05f;
+
     [Header("리스폰 (사망 시 위치만 초기화 - 씬을 다시 불러오지 않음)")]
     [Tooltip("사망 후 부활할 위치/방향입니다. 씬에 빈 오브젝트를 하나 만들어 원하는 리스폰 지점에 놓고 " +
               "여기에 연결하세요. 비워두면 경고 로그를 남기고 죽은 자리에서 그대로(콜라이더/조작만 복구해서) " +
@@ -332,6 +338,7 @@ public class PlayerController : MonoBehaviour
     private CharacterController controller;
     private int normalLayer;
     private int invincibleLayer = -1;
+    private float hitInvincibilityTimer = 0f;
     private InputAction moveAction;
     private InputAction dashAction;
     private InputAction skillAction;
@@ -450,16 +457,16 @@ public class PlayerController : MonoBehaviour
         controller = GetComponent<CharacterController>();
 
         normalLayer = gameObject.layer;
-        // invincibleLayer는 대시 무적과 필살기 무적이 함께 공유하는 레이어라, 둘 중 하나라도 켜져있으면
-        // 미리 찾아둡니다(하나만 켜져있다고 해서 다른 쪽 무적이 조용히 깨지면 안 되기 때문입니다).
-        if (dashGrantsInvincibility || ultSkillGrantsInvincibility)
+        // invincibleLayer는 대시 무적/필살기 무적/피격 직후 무적이 함께 공유하는 레이어라, 셋 중
+        // 하나라도 켜져있으면 미리 찾아둡니다(하나만 켜져있다고 해서 다른 쪽 무적이 조용히 깨지면 안 되기 때문입니다).
+        if (dashGrantsInvincibility || ultSkillGrantsInvincibility || hitInvincibilityDuration > 0f)
         {
             invincibleLayer = LayerMask.NameToLayer(invincibleLayerName);
             if (invincibleLayer < 0)
             {
                 Debug.LogWarning($"[PlayerController] '{invincibleLayerName}' 레이어를 찾을 수 없습니다. " +
                                   "Edit > Project Settings > Tags and Layers에서 새 레이어를 추가하고 이름을 " +
-                                  "맞춰주세요. 레이어가 없으면 구르기/필살기 무적이 동작하지 않습니다(항상 데미지를 받습니다).", this);
+                                  "맞춰주세요. 레이어가 없으면 구르기/필살기/피격 직후 무적이 동작하지 않습니다(항상 데미지를 받습니다).", this);
             }
         }
 
@@ -575,6 +582,7 @@ public class PlayerController : MonoBehaviour
             Vector3 moveDirection = GetCameraRelativeMoveDirection();
 
             HandleHitStun();
+            HandleHitInvincibility();
             HandleSkills();
             HandleAttackCombo();
             HandleDash(moveDirection);
@@ -870,6 +878,21 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /// <summary>TakeHit()에서 시작된 "피격 직후 무적" 타이머를 흘려보내고, 다 되면 ExitInvincible()로
+    /// 레이어를 원래대로 되돌립니다. hitInvincibilityDuration이 hitStunDuration보다 훨씬 짧게 쓰이는
+    /// 경우가 대부분이라(기본값 0.05초 vs 0.4초) 대시/필살기처럼 isHit 중에 다시 무적을 켤 수 있는
+    /// 경로가 없어 충돌 걱정 없이 안전합니다.</summary>
+    private void HandleHitInvincibility()
+    {
+        if (hitInvincibilityTimer <= 0f) return;
+
+        hitInvincibilityTimer -= Time.deltaTime;
+        if (hitInvincibilityTimer <= 0f)
+        {
+            ExitInvincible();
+        }
+    }
+
     /// <summary>카메라의 수평 방향을 기준으로 WASD 입력을 월드 방향으로 변환합니다.</summary>
     private Vector3 GetCameraRelativeMoveDirection()
     {
@@ -1154,6 +1177,25 @@ public class PlayerController : MonoBehaviour
     /// 없습니다." 안내를 띄웁니다. 에너지 부족에 대한 안내는 아직 없습니다.
     /// ultSkillGrantsInvincibility가 켜져있으면 필살기 모션이 재생되는 동안(isUsingSkill이 꺼질 때까지)
     /// 대시와 같은 방식으로 무적입니다(EnterInvincible() 재사용) - 일반 스킬(우클릭)에는 적용되지 않습니다.</summary>
+    /// <summary>스킬(우클릭)을 지금 당장 실제로 발동할 수 있는지 여부입니다 - 쿨타임과 마나를 모두
+    /// 만족해야 true입니다. HandleSkills()뿐 아니라 HandleAttackCombo()에서도 "스킬 입력이 들어오면
+    /// 기본 공격을 캔슬해도 되는지" 판단할 때 반드시 이 함수로 확인해야 합니다 - 그래야 쿨타임 중인
+    /// 스킬 입력(어차피 발동되지 않는 헛스윙)만으로 기본 공격의 딜레이를 무시하고 캔슬해버리는
+    /// 일이 없습니다.</summary>
+    private bool IsSkillReady()
+    {
+        return skillCooldownTimer <= 0f && playerStats.CurrentMP >= skillManaCost;
+    }
+
+    /// <summary>필살기(Q)를 지금 당장 실제로 발동할 수 있는지 여부입니다 - 쿨타임/마나/에너지를 모두
+    /// 만족해야 true입니다. IsSkillReady()와 같은 이유로 HandleAttackCombo()에서도 재사용합니다.</summary>
+    private bool IsUltReady()
+    {
+        return ultCooldownTimer <= 0f
+            && playerStats.CurrentMP >= ultManaCost
+            && playerStats.CurrentEnergy >= ultEnergyCost;
+    }
+
     private void HandleSkills()
     {
         if (skillCooldownTimer > 0f) skillCooldownTimer -= Time.deltaTime;
@@ -1187,9 +1229,7 @@ public class PlayerController : MonoBehaviour
 
         if (isDashing || isHit) return; // 구르는 중이거나 피격 경직 중에는 스킬 입력을 받지 않습니다.
 
-        bool ultReady = ultCooldownTimer <= 0f
-            && playerStats.CurrentMP >= ultManaCost
-            && playerStats.CurrentEnergy >= ultEnergyCost;
+        bool ultReady = IsUltReady();
         if (ultSkillAction.WasPressedThisFrame())
         {
             if (ultReady)
@@ -1225,7 +1265,7 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        bool skillReady = skillCooldownTimer <= 0f && playerStats.CurrentMP >= skillManaCost;
+        bool skillReady = IsSkillReady();
         if (skillAction.WasPressedThisFrame())
         {
             if (skillReady)
@@ -1250,6 +1290,26 @@ public class PlayerController : MonoBehaviour
     public void ReduceSkillCooldown(float amount)
     {
         skillCooldownTimer = Mathf.Max(0f, skillCooldownTimer - amount);
+    }
+
+    /// <summary>AttackAreaController 전용 진입점입니다. Animation Event(OpenHitbox)가 들어왔을 때,
+    /// motionName("Attack1"/"Attack2"/"Attack3"/"Skill"/"UltSkill")이 지금 실제로 진행 중인 모션과
+    /// 일치하는지 확인합니다. 대시/스킬 캔슬(CancelAttack→EndAttackMotion) 등으로 이미 끝난 모션의
+    /// Animation Event가 트랜지션 블렌드 등으로 인해 뒤늦게 들어오는 경우를 걸러내기 위한 용도입니다 -
+    /// 이 함수가 false를 반환하면 AttackAreaController는 해당 OpenHitbox 요청을 무시해야 합니다
+    /// (안 그러면 캐릭터가 이미 다른 모션으로 넘어간 뒤에도 판정만 몰래 열리는 "유령 히트박스"가
+    /// 생길 수 있습니다).</summary>
+    public bool IsAttackMotionCurrent(string motionName)
+    {
+        if (isAttacking)
+        {
+            return motionName == $"Attack{comboIndex}";
+        }
+        if (isUsingSkill)
+        {
+            return motionName == (isUsingUltSkill ? "UltSkill" : "Skill");
+        }
+        return false;
     }
 
     private void StartSkill(int animatorTriggerParam, float duration)
@@ -1280,7 +1340,13 @@ public class PlayerController : MonoBehaviour
         if (isAttacking)
         {
             bool wantsToDash = dashAction.WasPressedThisFrame() && dashCooldownTimer <= 0f;
-            bool wantsSkill = skillAction.WasPressedThisFrame() || ultSkillAction.WasPressedThisFrame();
+            // [쿨타임 중인 스킬로 공격 캔슬 방지] 버튼을 누르기만 하면 무조건 콤보를 끊어버리면,
+            // 쿨타임이라 실제로는 발동되지도 않는 스킬/필살기 입력만으로 기본 공격을 캔슬해서
+            // "공격 → 쿨타임 중인 스킬 → 공격"으로 딜레이를 씹고 다시 나가는 게 가능해집니다.
+            // IsSkillReady()/IsUltReady()로 실제로 발동 가능할 때만 캔슬 사유로 인정합니다 -
+            // HandleSkills()가 스킬을 실제로 발동시킬 때 쓰는 조건과 동일합니다.
+            bool wantsSkill = (skillAction.WasPressedThisFrame() && IsSkillReady())
+                || (ultSkillAction.WasPressedThisFrame() && IsUltReady());
 
             if (wantsToDash || wantsSkill)
             {
@@ -1642,6 +1708,20 @@ public class PlayerController : MonoBehaviour
         // 이동/대기 애니메이션까지 계속 빨라진 채로 남습니다.
         if (animator != null) animator.speed = 1f;
 
+        // [대시/스킬 캔슬 시 유령 판정 방지] SetTrigger()로 걸어둔 Attack1/2/3 트리거가 아직
+        // 소비되지 않은 채 남아있으면(예: 대시/스킬 트리거와 같은 프레임에 걸려서 우선순위상 밀린
+        // 경우), Dash/Skill 애니메이션으로 전환된 뒤에도 Animator가 나중에 이 트리거를 뒤늦게
+        // 소비하면서 공격 클립(과 거기 달린 OnAttackHitboxOpen 등 Animation Event)이 다시 잠깐
+        // 끼어들 수 있습니다 - 모션은 이미 Dash/Skill로 넘어가 눈에 안 보이지만, 그 클립의 히트박스
+        // 이벤트만 뒤늦게 발동해서 "모션 없이 판정만 나가는" 현상으로 이어질 수 있습니다.
+        // ResetTrigger()로 확실히 비워서 이 경로를 막습니다.
+        if (animator != null)
+        {
+            animator.ResetTrigger(Attack1Param);
+            animator.ResetTrigger(Attack2Param);
+            animator.ResetTrigger(Attack3Param);
+        }
+
         // 안전장치: 대시/스킬 캔슬이나 타임아웃으로 끝나서 그 타격의 OnHitboxClose 이벤트가
         // 아예 호출되지 못한 경우에도, 열려있던 판정을 확실히 닫아줍니다.
         if (attackArea != null) attackArea.CloseAllHitboxes();
@@ -1673,6 +1753,14 @@ public class PlayerController : MonoBehaviour
 
         isHit = true;
         hitStunTimer = hitStunDuration;
+
+        // 방금 막 맞은 이 프레임 이후로 hitInvincibilityDuration 동안은 같은 공격에 다시 맞지
+        // 않도록 무적 레이어로 전환합니다(HandleHitInvincibility()가 시간이 다 되면 되돌립니다).
+        if (hitInvincibilityDuration > 0f)
+        {
+            EnterInvincible();
+            hitInvincibilityTimer = hitInvincibilityDuration;
+        }
 
         if (animator != null) animator.SetTrigger(HitParam);
     }

@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 3048672894258678471}
   - component: {fileID: 3993808766362758750}
   - component: {fileID: 7027662939515590768}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: glow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4874,7 +4874,7 @@ GameObject:
   - component: {fileID: 1750755490238117820}
   - component: {fileID: 2162939273954164358}
   - component: {fileID: 1242184117356876435}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: dust11
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9777,7 +9777,7 @@ GameObject:
   - component: {fileID: 4360130557711000173}
   - component: {fileID: 3616910723134153185}
   - component: {fileID: 1893697364268136791}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: flare
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -14632,7 +14632,7 @@ GameObject:
   - component: {fileID: 8639912082458411829}
   - component: {fileID: 6486940405436879612}
   - component: {fileID: 6631036608704328001}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: Ground ring (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -19610,7 +19610,7 @@ GameObject:
   - component: {fileID: 796759939620270968}
   - component: {fileID: 5420274987062091513}
   - component: {fileID: 8859204647944045477}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: stone
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -24466,7 +24466,7 @@ GameObject:
   - component: {fileID: 264167427809028550}
   - component: {fileID: 4470929741080006882}
   - component: {fileID: 3639921446231875165}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: FX_Player_UltImpact
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -29417,7 +29417,7 @@ GameObject:
   - component: {fileID: 1276762800553011274}
   - component: {fileID: 5908799929267589658}
   - component: {fileID: 7045275056428962998}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: Ground ring
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -34329,7 +34329,7 @@ GameObject:
   - component: {fileID: 3005544794129398038}
   - component: {fileID: 5116408462546709799}
   - component: {fileID: 30513217886682446}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -39175,7 +39175,7 @@ GameObject:
   - component: {fileID: 7176394542296473026}
   - component: {fileID: 2036132198829065306}
   - component: {fileID: 6434034933968055970}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: CFXR2 Ground Hit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -43955,7 +43955,7 @@ GameObject:
   - component: {fileID: 4234624952270567651}
   - component: {fileID: 6593137769438789637}
   - component: {fileID: 1695063079939629136}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: Decal
   m_TagString: Untagged
   m_Icon: {fileID: 0}

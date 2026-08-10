@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 5151644823859448501}
   - component: {fileID: 1464211568921416440}
   - component: {fileID: 4382795560878698138}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: Ring
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5031,7 +5031,7 @@ GameObject:
   - component: {fileID: 5271508101467023576}
   - component: {fileID: 5271508101467023591}
   - component: {fileID: 5271508101467023578}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: CFXR3 Magic Aura A (Runic)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10012,7 +10012,7 @@ GameObject:
   - component: {fileID: 5824670795371433374}
   - component: {fileID: 5824670795371433368}
   - component: {fileID: 5824670795371433375}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: FX_Player_UltCharge
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -14761,7 +14761,7 @@ GameObject:
   - component: {fileID: 7575649991865765767}
   - component: {fileID: 1034700375001605414}
   - component: {fileID: 1109952328751068821}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: Point Light
   m_TagString: Untagged
   m_Icon: {fileID: 0}

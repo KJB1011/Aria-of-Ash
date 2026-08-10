@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 5301098637131407009}
   - component: {fileID: 731542631023797489}
   - component: {fileID: 4171292344760214109}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: Big Ripples
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4923,7 +4923,7 @@ GameObject:
   - component: {fileID: 4220806068814787002}
   - component: {fileID: 4178329984290972865}
   - component: {fileID: 5681265566165930252}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: Shockwave
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9826,7 +9826,7 @@ GameObject:
   - component: {fileID: 2495104883481865648}
   - component: {fileID: 7190695944384038317}
   - component: {fileID: 8303992366066500842}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: Foam
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -14549,7 +14549,7 @@ GameObject:
   - component: {fileID: 7281757966575515440}
   - component: {fileID: 2508114523452121739}
   - component: {fileID: 405799972406115516}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: VFX_Shockwave_01_White_1s 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -19512,7 +19512,7 @@ GameObject:
   - component: {fileID: 8205706795460263316}
   - component: {fileID: 8205706795460263315}
   - component: {fileID: 114897394939201808}
-  m_Layer: 0
+  m_Layer: 17
   m_Name: FX_Player_UltImpact2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -24486,10 +24486,20 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 8205706795460263317}
     m_Modifications:
+    - target: {fileID: 357695953536306332, guid: 87ee7299dd44ed747af24dbb91bcd33b,
+        type: 3}
+      propertyPath: m_Layer
+      value: 17
+      objectReference: {fileID: 0}
     - target: {fileID: 3432958286849152088, guid: 87ee7299dd44ed747af24dbb91bcd33b,
         type: 3}
       propertyPath: m_Name
       value: CFXR2 Ground Hit
+      objectReference: {fileID: 0}
+    - target: {fileID: 3432958286849152088, guid: 87ee7299dd44ed747af24dbb91bcd33b,
+        type: 3}
+      propertyPath: m_Layer
+      value: 17
       objectReference: {fileID: 0}
     - target: {fileID: 4113911032170361916, guid: 87ee7299dd44ed747af24dbb91bcd33b,
         type: 3}

@@ -30,6 +30,7 @@ public class AttackAreaController : MonoBehaviour
 
     private readonly Dictionary<string, AttackHitbox> hitboxesByName = new Dictionary<string, AttackHitbox>();
     private string currentOpenMotionName;
+    private PlayerController playerController;
 
     // 주의: 여기서 자식 AttackHitbox들의 Close()를 호출하려면 그 히트박스들의 Awake()가 먼저
     // 끝나서 boxCollider가 세팅되어 있어야 합니다. 그런데 유니티는 서로 다른 오브젝트의
@@ -43,6 +44,16 @@ public class AttackAreaController : MonoBehaviour
         {
             Debug.LogWarning($"[AttackAreaController] {name}: 이 오브젝트의 Tag가 '{RequiredTag}'가 아닙니다. " +
                               "설정 혼동을 막기 위해 Tag를 맞춰두는 걸 권장합니다.", this);
+        }
+
+        // 캔슬된 모션의 뒤늦은 OpenHitbox 이벤트를 걸러내기 위해 필요합니다(OpenHitbox() 주석 참고).
+        // 못 찾아도 경고만 남기고 예전처럼(필터링 없이) 동작합니다 - Player 하위 구조가 아닌 다른
+        // 용도로 이 컨트롤러를 재사용하는 경우를 막지 않기 위해서입니다.
+        playerController = GetComponentInParent<PlayerController>();
+        if (playerController == null)
+        {
+            Debug.LogWarning($"[AttackAreaController] {name}: 상위에서 PlayerController를 찾지 못했습니다. " +
+                              "캔슬된 공격의 뒤늦은 Animation Event를 걸러내는 기능이 동작하지 않습니다.", this);
         }
 
         // 비활성 상태인 자식도 포함해서 이름으로 등록해둡니다 (Attack1, Attack2, Skill...).
@@ -69,6 +80,18 @@ public class AttackAreaController : MonoBehaviour
         {
             Debug.LogWarning($"[AttackAreaController] '{motionName}' 이름의 히트박스를 찾을 수 없습니다. " +
                               "AttackArea 하위 오브젝트 이름과 Animation Event에 넣은 문자열이 일치하는지 확인하세요.");
+            return;
+        }
+
+        // [캔슬 이후 유령 판정 방지] 대시/스킬 입력으로 이 공격이 이미 캔슬(CancelAttack→
+        // EndAttackMotion→CloseAllHitboxes)된 뒤에도, Animator 트랜지션 블렌드 등으로 인해 예전
+        // 모션의 OpenHitbox Animation Event가 한두 프레임 늦게 들어올 수 있습니다. 이때 아무 확인 없이
+        // 그냥 열어버리면, 캐릭터는 이미 구르기/스킬 모션으로 넘어간 것처럼 보이는데 판정만 몰래 열려서
+        // (심지어 이 뒤에 CloseHitbox가 영영 안 불릴 수도 있어 계속 켜진 채로 남을 수도 있습니다)
+        // "모션은 안 나갔는데 공격만 맞는" 현상이 생깁니다. PlayerController에게 지금 정말 이 모션이
+        // 진행 중인지 먼저 확인해서, 이미 캔슬된 뒤늦은 이벤트는 조용히 무시합니다.
+        if (playerController != null && !playerController.IsAttackMotionCurrent(motionName))
+        {
             return;
         }
 

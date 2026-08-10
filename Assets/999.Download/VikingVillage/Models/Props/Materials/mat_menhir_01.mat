@@ -8,13 +8,12 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: mat_menhir_01
-  m_Shader: {fileID: -6465566751694194690, guid: 65ab067e659b9d64cb1b6f50a7ee7735,
+  m_Shader: {fileID: -6465566751694194690, guid: a631bbcbce89fd540894881c7cabd021,
     type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
-  m_InvalidKeywords:
-  - _NORMALMAP
+  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -27,7 +26,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: f807b8a901e5c63498d6cde6dc440c5e, type: 3}
+        m_Texture: {fileID: 2800000, guid: 0ec510cdb25bdfe4caa13521fb51944c, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
@@ -70,6 +69,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _RampTex:
+        m_Texture: {fileID: 2800000, guid: 06175885bf844fd41990e95572c36cac, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _SpecGlossMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -91,6 +94,7 @@ Material:
     - _ALPHATEST: 0
     - _AlphaClip: 0
     - _AlphaTestRef: 0.5
+    - _AmbientIntensity: 0.04
     - _Blend: 0
     - _BumpScale: 1
     - _Cull: 2
@@ -110,6 +114,9 @@ Material:
     - _QueueControl: 0
     - _QueueOffset: 0
     - _ReceiveShadows: 1
+    - _RimIntensity: 0
+    - _RimPower: 1.17
+    - _RimThreshold: 0.299
     - _SPECGLOSSMAP: 0
     - _Smoothness: 0.103
     - _SmoothnessTextureChannel: 0
@@ -125,6 +132,7 @@ Material:
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0.99999994}
     - _EmissionColorUI: {r: 0, g: 0, b: 0, a: 1}
     - _EmissionColorWithMapUI: {r: 1, g: 1, b: 1, a: 1}
+    - _RimColor: {r: 0.022583995, g: 0, b: 0.33962262, a: 0}
     - _SpecColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
     - _SpecularColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
   m_BuildTextureStacks: []
