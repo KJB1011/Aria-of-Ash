@@ -152,11 +152,19 @@ public class UIDialogue : MonoBehaviour
 
     /// <summary>대화창(또는 화면 전체 클릭 영역) Button의 OnClick에 연결하세요. 타이핑 중이면
     /// 즉시 전체 텍스트를 보여주고, 이미 다 보여준 상태면 다음으로 진행합니다(선택지가 떠 있는
-    /// Talks라면 TalkManager.Advance()가 스스로 무시하므로 여기서 따로 막지 않습니다).</summary>
+    /// Talks라면 TalkManager.Advance()가 스스로 무시하므로 여기서 따로 막지 않습니다).
+    /// [isVisible 체크가 SFX보다 먼저인 이유] 마우스 클릭은 CanvasGroup.blocksRaycasts가
+    /// HidePanel()에서 꺼지므로 대화 중이 아니면 버튼 자체가 클릭을 못 받아 자연스럽게 막히지만,
+    /// Space 키(advanceKeyAction)는 이 CanvasGroup 게이팅을 거치지 않는 순수 키보드 입력이라
+    /// UIDialogue 오브젝트가 켜져있는 한(=거의 항상) 대화 중이 아니어도 매 프레임 눌림을
+    /// 감지합니다. SFX를 isVisible 체크보다 먼저 재생하면 대화가 없을 때 스페이스바를 눌러도
+    /// 클릭음만 계속 새어나가는 버그가 생기므로, 반드시 "실제로 뭔가 진행시킬 때"만 재생되도록
+    /// 체크 뒤로 옮겨뒀습니다.</summary>
     public void ClickAdvance()
     {
-        SoundManager.Instance.PlayUIClickSfx();
         if (!isVisible) return;
+
+        SoundManager.Instance.PlayUIClickSfx();
 
         if (isTyping)
         {

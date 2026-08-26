@@ -26,11 +26,8 @@ MonoBehaviour:
     endsConversation: 0
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
-    choices:
-    - choiceText: "\uC608.."
-      targetIndex: 1
-      questToGrant: {fileID: 0}
-      questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
+    choices: []
   - index: 1
     cameraLocalPosition: {x: 2, y: 3, z: 3}
     cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
@@ -44,11 +41,13 @@ MonoBehaviour:
     endsConversation: 0
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices:
     - choiceText: "\uBB34\uC2A8 \uC77C\uC774\uB77C\uB3C4 \uC788\uC5C8\uB098\uC694?"
       targetIndex: 2
       questToGrant: {fileID: 0}
       questToTurnIn: {fileID: 0}
+      cutsceneToPlay: {fileID: 0}
   - index: 2
     cameraLocalPosition: {x: 2, y: 3, z: 3}
     cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
@@ -63,6 +62,7 @@ MonoBehaviour:
     endsConversation: 0
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices: []
   - index: 3
     cameraLocalPosition: {x: 2, y: 3, z: 3}
@@ -79,6 +79,7 @@ MonoBehaviour:
     endsConversation: 0
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices: []
   - index: 4
     cameraLocalPosition: {x: 2, y: 3, z: 3}
@@ -94,11 +95,13 @@ MonoBehaviour:
     endsConversation: 0
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices:
     - choiceText: "\uC81C\uAC00 \uBB38\uC81C\uB97C \uD574\uACB0\uD574\uBCFC\uAC8C\uC694"
       targetIndex: 5
       questToGrant: {fileID: 11400000, guid: fb5a6387d1f702d42ab3da982b99dcff, type: 2}
       questToTurnIn: {fileID: 0}
+      cutsceneToPlay: {fileID: 0}
   - index: 5
     cameraLocalPosition: {x: 2, y: 3, z: 3}
     cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
@@ -113,6 +116,7 @@ MonoBehaviour:
     endsConversation: 1
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices: []
   - index: 9
     cameraLocalPosition: {x: 2, y: 3, z: 3}
@@ -126,6 +130,7 @@ MonoBehaviour:
     endsConversation: 1
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices: []
   - index: 11
     cameraLocalPosition: {x: 2, y: 3, z: 3}
@@ -141,15 +146,18 @@ MonoBehaviour:
     endsConversation: 0
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices:
     - choiceText: "\uC608"
       targetIndex: 12
       questToGrant: {fileID: 11400000, guid: 3cd2c3ad44a948f47b9eea61a31ce12f, type: 2}
       questToTurnIn: {fileID: 0}
+      cutsceneToPlay: {fileID: 0}
     - choiceText: "\uC544\uB1E8"
       targetIndex: -1
       questToGrant: {fileID: 0}
       questToTurnIn: {fileID: 0}
+      cutsceneToPlay: {fileID: 0}
   - index: 12
     cameraLocalPosition: {x: 2, y: 3, z: 3}
     cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
@@ -162,6 +170,7 @@ MonoBehaviour:
     endsConversation: 1
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices: []
   - index: 21
     cameraLocalPosition: {x: 2, y: 3, z: 3}
@@ -175,15 +184,18 @@ MonoBehaviour:
     endsConversation: 0
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices:
     - choiceText: "\uC9C4\uD589 \uBCF4\uACE0"
       targetIndex: 22
       questToGrant: {fileID: 0}
       questToTurnIn: {fileID: 11400000, guid: 3cd2c3ad44a948f47b9eea61a31ce12f, type: 2}
+      cutsceneToPlay: {fileID: 0}
     - choiceText: "\uC544\uC9C1.."
       targetIndex: -1
       questToGrant: {fileID: 0}
       questToTurnIn: {fileID: 0}
+      cutsceneToPlay: {fileID: 0}
   - index: 22
     cameraLocalPosition: {x: 2, y: 3, z: 3}
     cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
@@ -197,6 +209,7 @@ MonoBehaviour:
     endsConversation: 1
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices: []
   - index: 25
     cameraLocalPosition: {x: 2, y: 3, z: 3}
@@ -210,15 +223,18 @@ MonoBehaviour:
     endsConversation: 1
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices:
     - choiceText: "\uC9C4\uD589 \uBCF4\uACE0"
       targetIndex: 26
       questToGrant: {fileID: 0}
       questToTurnIn: {fileID: 11400000, guid: 3cd2c3ad44a948f47b9eea61a31ce12f, type: 2}
+      cutsceneToPlay: {fileID: 0}
     - choiceText: "\uC544\uC9C1.."
       targetIndex: -1
       questToGrant: {fileID: 0}
       questToTurnIn: {fileID: 0}
+      cutsceneToPlay: {fileID: 0}
   - index: 26
     cameraLocalPosition: {x: 2, y: 3, z: 3}
     cameraLocalEulerAngles: {x: 30, y: -135, z: 0}
@@ -232,6 +248,7 @@ MonoBehaviour:
     endsConversation: 1
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices: []
   - index: 31
     cameraLocalPosition: {x: 2, y: 3, z: 3}
@@ -245,4 +262,5 @@ MonoBehaviour:
     endsConversation: 1
     questToGrant: {fileID: 0}
     questToTurnIn: {fileID: 0}
+    cutsceneToPlay: {fileID: 0}
     choices: []
