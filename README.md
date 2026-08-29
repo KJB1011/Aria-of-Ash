@@ -1,7 +1,4 @@
 # Aria of Ash
-3D OpenWorld RPG motivated GenshinImpact
-
-# Aria of Ash
 
 3D 오픈월드 액션 게임 · Unity / C# · 1인 개발
 
