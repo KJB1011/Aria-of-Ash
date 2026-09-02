@@ -6,7 +6,9 @@
 
 ## Play / Demo
 
-- Gameplay video: `https://youtu.be/6ZlzcaMGf3w`
+- 게임플레이 영상: `https://youtu.be/6ZlzcaMGf3w`
+- 다운로드하지 않고 플레이: `https://kjb001011.itch.io/aria-of-ash`
+(단, WebBuild의 한계로 인하여 정상적인 플레이는 불가능함)
 
 ![gameplay](docs/gameplay.gif)
 
