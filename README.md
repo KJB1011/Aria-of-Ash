@@ -53,8 +53,8 @@
 ## 실행 방법
 
 ```
-구글 드라이브 : https://drive.google.com/drive/folders/1MzqaD6R2fDD3rjOVO0BJ9LQFvG1_8uXo
--다운로드 후 'Aria of Ash.exe' 실행
+구글 드라이브 : https://drive.google.com/drive/folders/1Y9iuKwyzTWAd2EQZtdIJlRGt91BXCGw8
+-'Aria of Ash'다운로드 후 'Aria of Ash.exe' 실행
 ```
 
 ## 배운 점
